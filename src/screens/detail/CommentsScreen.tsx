@@ -1,0 +1,102 @@
+import React, { useEffect, useState } from 'react';
+import {
+  View, Text, FlatList, TextInput, TouchableOpacity,
+  KeyboardAvoidingView, Platform, Alert, ActivityIndicator,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { useRoute, type RouteProp } from '@react-navigation/native';
+import { Avatar } from '../../components/ui/Avatar';
+import { useAuthStore } from '../../stores/authStore';
+import { supabase } from '../../lib/supabase';
+import { formatTimeAgo } from '../../utils/format';
+import type { Comment, RootStackParamList } from '../../types';
+
+type CommentsRoute = RouteProp<RootStackParamList, 'Comments'>;
+
+export function CommentsScreen() {
+  const { params } = useRoute<CommentsRoute>();
+  const { user } = useAuthStore();
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [text, setText] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSending, setIsSending] = useState(false);
+
+  useEffect(() => {
+    loadComments();
+  }, []);
+
+  const loadComments = async () => {
+    const { data } = await supabase
+      .from('comments')
+      .select('*, author:users!comments_author_id_fkey(*)')
+      .eq('post_id', params.postId)
+      .order('created_at', { ascending: true });
+    setComments((data ?? []) as Comment[]);
+    setIsLoading(false);
+  };
+
+  const sendComment = async () => {
+    if (!text.trim() || !user) return;
+    setIsSending(true);
+    const content = text.trim();
+    setText('');
+    const { data, error } = await supabase
+      .from('comments')
+      .insert({ post_id: params.postId, author_id: user.id, content })
+      .select('*, author:users!comments_author_id_fkey(*)')
+      .single();
+    if (!error && data) {
+      setComments((prev) => [...prev, data as Comment]);
+    } else {
+      Alert.alert('Error', 'Could not post comment.');
+    }
+    setIsSending(false);
+  };
+
+  return (
+    <SafeAreaView className="flex-1 bg-background" edges={['bottom']}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1">
+        {isLoading ? (
+          <View className="flex-1 items-center justify-center">
+            <ActivityIndicator size="large" color="#007AFF" />
+          </View>
+        ) : (
+          <FlatList
+            data={comments}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={{ padding: 16, paddingBottom: 80 }}
+            renderItem={({ item }) => (
+              <View className="flex-row mb-4">
+                <Avatar uri={item.author?.avatar_url} displayName={item.author?.display_name ?? 'User'} size={36} />
+                <View className="flex-1 ml-2 bg-background-secondary rounded-2xl rounded-tl-sm px-3 py-2">
+                  <Text className="text-sm font-semibold text-text-primary">{item.author?.username}</Text>
+                  <Text className="text-sm text-text-primary mt-0.5">{item.content}</Text>
+                  <Text className="text-xs text-text-secondary mt-1">{formatTimeAgo(item.created_at)}</Text>
+                </View>
+              </View>
+            )}
+            ListEmptyComponent={
+              <Text className="text-sm text-text-secondary text-center mt-8">No comments yet. Be first!</Text>
+            }
+          />
+        )}
+
+        <View className="flex-row items-center px-4 py-3 border-t border-border-light">
+          <TextInput
+            value={text}
+            onChangeText={setText}
+            placeholder="Add a comment..."
+            placeholderTextColor="#9CA3AF"
+            className="flex-1 mr-3 text-base text-text-primary"
+            multiline
+            maxLength={500}
+          />
+          <TouchableOpacity onPress={sendComment} disabled={!text.trim() || isSending}>
+            <Ionicons name="send" size={22} color={text.trim() ? '#007AFF' : '#D1D5DB'} />
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+}

@@ -32,6 +32,12 @@ yarn-error.*
 
 # local env files
 .env*.local
+.env
+.env.production
+.env.staging
+
+# NativeWind
+.nativewind/
 
 # typescript
 *.tsbuildinfo
