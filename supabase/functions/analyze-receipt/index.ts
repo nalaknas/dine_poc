@@ -23,7 +23,7 @@ serve(async (req) => {
     // ── Step 1: Google Vision API — extract text from all images ──────────────
     const visionRequests = images.map((base64) => ({
       image: { content: base64 },
-      features: [{ type: 'TEXT_DETECTION', maxResults: 1 }],
+      features: [{ type: 'DOCUMENT_TEXT_DETECTION', maxResults: 1 }],
     }));
 
     const visionResponse = await fetch(
@@ -41,9 +41,9 @@ serve(async (req) => {
 
     const visionData = await visionResponse.json();
 
-    // Combine all detected text blocks
+    // Combine all detected text — prefer fullTextAnnotation (better structure) with fallback
     const fullText = (visionData.responses as any[])
-      .map((r: any) => r.textAnnotations?.[0]?.description ?? '')
+      .map((r: any) => r.fullTextAnnotation?.text ?? r.textAnnotations?.[0]?.description ?? '')
       .filter(Boolean)
       .join('\n\n--- NEXT PAGE ---\n\n');
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View, Text, TextInput, ScrollView, TouchableOpacity,
   Alert, KeyboardAvoidingView, Platform,
@@ -85,6 +85,43 @@ export function ValidateReceiptScreen() {
             </View>
           </View>
 
+          {/* Meal details */}
+          <View className="bg-background-secondary rounded-xl p-4 mb-4">
+            <Text className="text-sm font-semibold text-text-secondary mb-3">MEAL DETAILS</Text>
+            <View className="flex-row gap-2 mb-2">
+              <View className="flex-1">
+                <Text className="text-xs text-text-secondary mb-1">Date</Text>
+                <TextInput
+                  value={currentReceipt.date}
+                  onChangeText={(v) => updateReceiptField('date', v)}
+                  placeholder="YYYY-MM-DD"
+                  placeholderTextColor="#9CA3AF"
+                  className="text-base text-text-primary border border-border rounded-lg px-3 py-2"
+                />
+              </View>
+              <View className="flex-1">
+                <Text className="text-xs text-text-secondary mb-1">Time</Text>
+                <TextInput
+                  value={currentReceipt.time}
+                  onChangeText={(v) => updateReceiptField('time', v)}
+                  placeholder="7:30 PM"
+                  placeholderTextColor="#9CA3AF"
+                  className="text-base text-text-primary border border-border rounded-lg px-3 py-2"
+                />
+              </View>
+            </View>
+            <View>
+              <Text className="text-xs text-text-secondary mb-1">Address</Text>
+              <TextInput
+                value={currentReceipt.address}
+                onChangeText={(v) => updateReceiptField('address', v)}
+                placeholder="Street address"
+                placeholderTextColor="#9CA3AF"
+                className="text-base text-text-primary border border-border rounded-lg px-3 py-2"
+              />
+            </View>
+          </View>
+
           {/* Items */}
           <View className="bg-background-secondary rounded-xl p-4 mb-4">
             <Text className="text-sm font-semibold text-text-secondary mb-3">ITEMS</Text>
@@ -120,12 +157,11 @@ export function ValidateReceiptScreen() {
           </View>
 
           {/* Totals */}
-          <View className="bg-background-secondary rounded-xl p-4 mb-6">
+          <View className="bg-background-secondary rounded-xl p-4 mb-4">
             <Text className="text-sm font-semibold text-text-secondary mb-3">TOTALS</Text>
             {[
               { label: 'Subtotal', field: 'subtotal' as const },
               { label: 'Tax', field: 'tax' as const },
-              { label: 'Tip', field: 'tip' as const },
               { label: 'Discount', field: 'discount' as const },
             ].map((row) => (
               <View key={row.field} className="flex-row justify-between items-center mb-2">
@@ -140,9 +176,51 @@ export function ValidateReceiptScreen() {
                 />
               </View>
             ))}
-            <View className="flex-row justify-between items-center mt-2 pt-2 border-t border-border">
-              <Text className="text-base font-bold text-text-primary">Total</Text>
-              <Text className="text-base font-bold text-accent">
+          </View>
+
+          {/* Tip */}
+          <View className="bg-background-secondary rounded-xl p-4 mb-4">
+            <Text className="text-sm font-semibold text-text-secondary mb-3">TIP</Text>
+            <View className="flex-row gap-2 mb-3">
+              {[15, 18, 20, 25].map((pct) => {
+                const tipAmount = Math.round(currentReceipt.subtotal * pct) / 100;
+                const isSelected = currentReceipt.tip > 0 && Math.abs(currentReceipt.tip - tipAmount) < 0.01;
+                return (
+                  <TouchableOpacity
+                    key={pct}
+                    onPress={() => updateReceiptField('tip', tipAmount)}
+                    className={`flex-1 py-2 rounded-lg items-center border ${
+                      isSelected ? 'bg-accent border-accent' : 'bg-transparent border-border'
+                    }`}
+                  >
+                    <Text className={`text-sm font-semibold ${isSelected ? 'text-white' : 'text-text-primary'}`}>
+                      {pct}%
+                    </Text>
+                    <Text className={`text-xs ${isSelected ? 'text-white/70' : 'text-text-secondary'}`}>
+                      {formatCurrency(tipAmount)}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            <View className="flex-row justify-between items-center">
+              <Text className="text-base text-text-secondary">Custom</Text>
+              <TextInput
+                value={currentReceipt.tip > 0 ? currentReceipt.tip.toString() : ''}
+                onChangeText={(v) => updateReceiptField('tip', parseFloat(v) || 0)}
+                placeholder="0.00"
+                placeholderTextColor="#9CA3AF"
+                keyboardType="decimal-pad"
+                className="w-24 text-right text-base text-text-primary border border-border rounded-lg px-3 py-1.5"
+              />
+            </View>
+          </View>
+
+          {/* Total */}
+          <View className="bg-background-secondary rounded-xl p-4 mb-6">
+            <View className="flex-row justify-between items-center">
+              <Text className="text-lg font-bold text-text-primary">Total</Text>
+              <Text className="text-lg font-bold text-accent">
                 {formatCurrency(currentReceipt.total || (currentReceipt.subtotal + currentReceipt.tax + currentReceipt.tip - currentReceipt.discount))}
               </Text>
             </View>

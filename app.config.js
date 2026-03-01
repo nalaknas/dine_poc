@@ -9,9 +9,9 @@ module.exports = {
     icon: './assets/icon.png',
     userInterfaceStyle: 'automatic',
     splash: {
-      image: './assets/splash-icon.png',
+      image: './assets/splash-logo.png',
       resizeMode: 'contain',
-      backgroundColor: '#ffffff',
+      backgroundColor: '#000000',
     },
     ios: {
       supportsTablet: false,

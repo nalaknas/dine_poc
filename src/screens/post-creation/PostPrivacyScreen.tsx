@@ -16,8 +16,8 @@ export function PostPrivacyScreen() {
   const navigation = useNavigation<any>();
   const { user } = useAuthStore();
   const { profile, incrementMealCount } = useUserProfileStore();
-  const { draftPost, updateDraftPost, clearDraftPost, prependFeedPost } = useSocialStore();
-  const { personBreakdowns, currentReceipt, reset: resetBill } = useBillSplitterStore();
+  const { draftPost, clearDraftPost, prependFeedPost } = useSocialStore();
+  const { personBreakdowns, currentReceipt, selectedFriends, itemAssignments, isFamilyStyle, reset: resetBill } = useBillSplitterStore();
 
   const [isPublic, setIsPublic] = useState(true);
   const [isPosting, setIsPosting] = useState(false);
@@ -27,7 +27,18 @@ export function PostPrivacyScreen() {
 
     setIsPosting(true);
     try {
-      const draft = { ...draftPost, isPublic } as CreatePostDraft;
+      // Merge data from BOTH stores into a complete draft
+      const draft = {
+        ...draftPost,
+        isPublic,
+        // From billSplitterStore
+        receiptData: currentReceipt ?? undefined,
+        selectedFriends,
+        itemAssignments,
+        isFamilyStyle,
+        personBreakdowns,
+        mealDate: currentReceipt?.date,
+      } as CreatePostDraft;
 
       // 1. Upload food photos
       const uploadedPhotos: string[] = [];

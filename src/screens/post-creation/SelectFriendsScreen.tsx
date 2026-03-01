@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View, Text, TextInput, FlatList, TouchableOpacity, Alert, Modal, KeyboardAvoidingView, Platform,
 } from 'react-native';
@@ -9,6 +9,7 @@ import { Avatar } from '../../components/ui/Avatar';
 import { useBillSplitterStore } from '../../stores/billSplitterStore';
 import { searchUsers } from '../../services/user-service';
 import { useAuthStore } from '../../stores/authStore';
+import { useUserProfileStore } from '../../stores/userProfileStore';
 import type { User, Friend } from '../../types';
 import { generateId } from '../../utils/format';
 
@@ -27,7 +28,23 @@ function userToFriend(u: User): Friend {
 export function SelectFriendsScreen() {
   const navigation = useNavigation<any>();
   const { user } = useAuthStore();
+  const { profile } = useUserProfileStore();
   const { selectedFriends, addSelectedFriend, removeSelectedFriend } = useBillSplitterStore();
+
+  // Auto-include current user ("You") in the bill split on mount
+  useEffect(() => {
+    if (user && profile && !selectedFriends.some((f) => f.id === user.id)) {
+      addSelectedFriend({
+        id: user.id,
+        display_name: profile.display_name || 'You',
+        username: profile.username,
+        avatar_url: profile.avatar_url,
+        venmo_username: profile.venmo_username,
+        user_id: user.id,
+        is_app_user: true,
+      });
+    }
+  }, []);
 
   const [query, setQuery] = useState('');
   const [searchResults, setSearchResults] = useState<User[]>([]);
@@ -80,22 +97,28 @@ export function SelectFriendsScreen() {
             data={selectedFriends}
             keyExtractor={(item) => item.id}
             showsHorizontalScrollIndicator={false}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                onPress={() => removeSelectedFriend(item.id)}
-                className="items-center mr-3"
-              >
-                <View className="relative">
-                  <Avatar uri={item.avatar_url} displayName={item.display_name} size={42} />
-                  <View className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-error rounded-full items-center justify-center">
-                    <Ionicons name="close" size={9} color="#fff" />
+            renderItem={({ item }) => {
+              const isMe = item.id === user?.id;
+              return (
+                <TouchableOpacity
+                  onPress={() => !isMe && removeSelectedFriend(item.id)}
+                  activeOpacity={isMe ? 1 : 0.7}
+                  className="items-center mr-3"
+                >
+                  <View className="relative">
+                    <Avatar uri={item.avatar_url} displayName={item.display_name} size={42} />
+                    {!isMe && (
+                      <View className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-error rounded-full items-center justify-center">
+                        <Ionicons name="close" size={9} color="#fff" />
+                      </View>
+                    )}
                   </View>
-                </View>
-                <Text className="text-xs text-text-secondary mt-1" numberOfLines={1} style={{ maxWidth: 44 }}>
-                  {item.display_name.split(' ')[0]}
-                </Text>
-              </TouchableOpacity>
-            )}
+                  <Text className="text-xs text-text-secondary mt-1" numberOfLines={1} style={{ maxWidth: 44 }}>
+                    {isMe ? 'You' : item.display_name.split(' ')[0]}
+                  </Text>
+                </TouchableOpacity>
+              );
+            }}
           />
         </View>
       )}
@@ -199,7 +222,7 @@ export function SelectFriendsScreen() {
           }`}
         >
           <Text className="text-base font-semibold text-white">
-            Continue with {selectedFriends.length} friend{selectedFriends.length !== 1 ? 's' : ''}
+            Continue with {selectedFriends.length} {selectedFriends.length === 1 ? 'person' : 'people'}
           </Text>
         </TouchableOpacity>
       </View>
