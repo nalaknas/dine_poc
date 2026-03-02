@@ -1,7 +1,7 @@
-import * as FileSystem from 'expo-file-system';
-// EncodingType is a string enum — use the string literal directly if type isn't exported
+import * as FileSystem from 'expo-file-system/legacy';
 const BASE64 = 'base64' as const;
 import { supabase } from '../lib/supabase';
+import { Config } from '../constants/config';
 import type { ReceiptData } from '../types';
 
 /**
@@ -20,12 +20,25 @@ export async function analyzeReceipt(imageUris: string[]): Promise<ReceiptData> 
     })
   );
 
-  const { data, error } = await supabase.functions.invoke('analyze-receipt', {
-    body: { images: base64Images },
+  // Use direct fetch instead of supabase.functions.invoke for better error handling
+  const anonKey = Config.supabase.anonKey;
+  const functionUrl = `${Config.supabase.url}/functions/v1/analyze-receipt`;
+
+  const response = await fetch(functionUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${anonKey}`,
+      'apikey': anonKey,
+    },
+    body: JSON.stringify({ images: base64Images }),
   });
 
-  if (error) throw new Error(`Receipt analysis failed: ${error.message}`);
-  if (!data) throw new Error('No data returned from receipt analysis');
+  const data = await response.json();
+
+  if (!response.ok || data.error) {
+    throw new Error(data.error ?? `Edge Function returned ${response.status}`);
+  }
 
   return data as ReceiptData;
 }

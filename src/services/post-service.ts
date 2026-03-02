@@ -41,20 +41,49 @@ export async function getFeedPosts(currentUserId: string, limit = 20): Promise<P
 }
 
 export async function getUserPosts(userId: string, currentUserId?: string): Promise<Post[]> {
-  const query = supabase
+  // Viewing own profile: show all posts
+  if (userId === currentUserId) {
+    const { data, error } = await supabase
+      .from('posts')
+      .select(`*, author:users!posts_author_id_fkey(*), dish_ratings(*), tagged_friends:post_tagged_friends(*)`)
+      .eq('author_id', userId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return (data ?? []) as Post[];
+  }
+
+  // Viewing someone else's profile: public posts + private posts where viewer is tagged
+  const { data: publicPosts, error: pubErr } = await supabase
     .from('posts')
     .select(`*, author:users!posts_author_id_fkey(*), dish_ratings(*), tagged_friends:post_tagged_friends(*)`)
     .eq('author_id', userId)
+    .eq('is_public', true)
+    .order('created_at', { ascending: false });
+  if (pubErr) throw pubErr;
+
+  if (!currentUserId) return (publicPosts ?? []) as Post[];
+
+  // Find private posts where the viewer is tagged
+  const { data: taggedEntries } = await supabase
+    .from('post_tagged_friends')
+    .select('post_id')
+    .eq('user_id', currentUserId);
+  const taggedPostIds = (taggedEntries ?? []).map((t: { post_id: string }) => t.post_id);
+
+  if (taggedPostIds.length === 0) return (publicPosts ?? []) as Post[];
+
+  const { data: privatePosts } = await supabase
+    .from('posts')
+    .select(`*, author:users!posts_author_id_fkey(*), dish_ratings(*), tagged_friends:post_tagged_friends(*)`)
+    .eq('author_id', userId)
+    .eq('is_public', false)
+    .in('id', taggedPostIds)
     .order('created_at', { ascending: false });
 
-  // If viewing own profile, show all posts; otherwise only public
-  if (userId !== currentUserId) {
-    query.eq('is_public', true);
-  }
-
-  const { data, error } = await query;
-  if (error) throw error;
-  return (data ?? []) as Post[];
+  // Merge and sort by date
+  const all = [...(publicPosts ?? []), ...(privatePosts ?? [])] as Post[];
+  all.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  return all;
 }
 
 export async function getTaggedPosts(userId: string): Promise<Post[]> {
@@ -66,11 +95,11 @@ export async function getTaggedPosts(userId: string): Promise<Post[]> {
   const postIds = (taggedFriends ?? []).map((t: { post_id: string }) => t.post_id);
   if (postIds.length === 0) return [];
 
+  // Tagged friends can see both public and private posts they're tagged in
   const { data, error } = await supabase
     .from('posts')
     .select(`*, author:users!posts_author_id_fkey(*), dish_ratings(*)`)
     .in('id', postIds)
-    .eq('is_public', true)
     .order('created_at', { ascending: false });
 
   if (error) throw error;

@@ -4,6 +4,8 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuthStore } from '../stores/authStore';
 import { useSettingsStore } from '../stores/settingsStore';
+import { useUserProfileStore } from '../stores/userProfileStore';
+import { getOrCreateUserProfile } from '../services/auth-service';
 import { MainTabNavigator } from './MainTabNavigator';
 import { AuthScreen } from '../screens/auth/AuthScreen';
 import { SplashScreen } from '../screens/onboarding/SplashScreen';
@@ -28,10 +30,20 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 export function RootNavigator() {
   const { user, isInitialized, initialize } = useAuthStore();
   const { hasCompletedOnboarding, loadSettings } = useSettingsStore();
+  const { profile, setProfile } = useUserProfileStore();
 
   useEffect(() => {
     loadSettings().then(() => initialize());
   }, []);
+
+  // Auto-load profile when user is authenticated but profile isn't loaded yet
+  useEffect(() => {
+    if (user && !profile) {
+      getOrCreateUserProfile(user.id, user.email)
+        .then(setProfile)
+        .catch(console.error);
+    }
+  }, [user, profile]);
 
   if (!isInitialized) {
     return (

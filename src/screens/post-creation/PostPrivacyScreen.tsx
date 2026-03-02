@@ -16,7 +16,7 @@ export function PostPrivacyScreen() {
   const navigation = useNavigation<any>();
   const { user } = useAuthStore();
   const { profile, incrementMealCount } = useUserProfileStore();
-  const { draftPost, clearDraftPost, prependFeedPost } = useSocialStore();
+  const { draftPost, clearDraftPost, prependFeedPost, prependMyPost } = useSocialStore();
   const { personBreakdowns, currentReceipt, selectedFriends, itemAssignments, isFamilyStyle, reset: resetBill } = useBillSplitterStore();
 
   const [isPublic, setIsPublic] = useState(true);
@@ -71,7 +71,9 @@ export function PostPrivacyScreen() {
 
       // 4. Update local state
       incrementMealCount();
-      prependFeedPost({ ...post, author: profile });
+      const fullPost = { ...post, author: profile };
+      if (isPublic) prependFeedPost(fullPost);
+      prependMyPost(fullPost);
 
       // 5. Clear draft
       clearDraftPost();

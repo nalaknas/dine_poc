@@ -31,17 +31,29 @@ export function ProfileScreen() {
 
   const loadProfile = useCallback(async () => {
     if (!user) return;
+    console.warn('🔴 PROFILE_LOAD_START userId=' + user.id);
     setIsLoading(true);
     try {
-      const [posts, followers, following] = await Promise.all([
+      // Load posts independently so follower count errors don't block posts
+      const [posts, followers, following] = await Promise.allSettled([
         getUserPosts(user.id, user.id),
         getFollowerCount(user.id),
         getFollowingCount(user.id),
       ]);
-      setMyPosts(posts);
-      setFollowCounts(followers, following);
-    } catch {
-      // silent
+      console.warn('🔴 POSTS_RESULT status=' + posts.status + ' count=' + (posts.status === 'fulfilled' ? posts.value.length : 'N/A'));
+      if (posts.status === 'fulfilled') {
+        setMyPosts(posts.value);
+      } else {
+        console.warn('🔴 POSTS_ERROR:', JSON.stringify(posts.reason));
+      }
+      if (followers.status === 'rejected') console.warn('🔴 FOLLOWERS_ERROR:', JSON.stringify(followers.reason));
+      if (following.status === 'rejected') console.warn('🔴 FOLLOWING_ERROR:', JSON.stringify(following.reason));
+      setFollowCounts(
+        followers.status === 'fulfilled' ? followers.value : 0,
+        following.status === 'fulfilled' ? following.value : 0,
+      );
+    } catch (err) {
+      console.error('[ProfileScreen] loadProfile error:', err);
     } finally {
       setIsLoading(false);
     }
@@ -60,8 +72,6 @@ export function ProfileScreen() {
   const handleSignOut = () => {
     signOut();
   };
-
-  const photoPosts = myPosts.filter((p) => p.food_photos.length > 0);
 
   const header = (
     <View>
@@ -151,7 +161,7 @@ export function ProfileScreen() {
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['top']}>
       <FlatList
-        data={photoPosts}
+        data={myPosts}
         keyExtractor={(item) => item.id}
         numColumns={3}
         ListHeaderComponent={header}
@@ -160,11 +170,20 @@ export function ProfileScreen() {
             onPress={() => navigation.navigate('MealDetail', { postId: item.id })}
             style={{ width: PHOTO_SIZE, height: PHOTO_SIZE, padding: 1 }}
           >
-            <Image
-              source={{ uri: item.food_photos[0] }}
-              style={{ flex: 1 }}
-              resizeMode="cover"
-            />
+            {item.food_photos?.length > 0 ? (
+              <Image
+                source={{ uri: item.food_photos[0] }}
+                style={{ flex: 1 }}
+                resizeMode="cover"
+              />
+            ) : (
+              <View style={{ flex: 1, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="receipt-outline" size={28} color="#9CA3AF" />
+                <Text style={{ fontSize: 10, color: '#9CA3AF', marginTop: 2 }} numberOfLines={1}>
+                  {item.restaurant_name || 'Meal'}
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
         )}
         refreshControl={

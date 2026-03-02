@@ -11,6 +11,7 @@ interface SocialState {
   setFeedPosts: (posts: Post[]) => void;
   prependFeedPost: (post: Post) => void;
   setMyPosts: (posts: Post[]) => void;
+  prependMyPost: (post: Post) => void;
   setTaggedPosts: (posts: Post[]) => void;
   setLoadingFeed: (loading: boolean) => void;
   // Like
@@ -35,6 +36,8 @@ export const useSocialStore = create<SocialState>((set, get) => ({
   prependFeedPost: (post) =>
     set((state) => ({ feedPosts: [post, ...state.feedPosts] })),
   setMyPosts: (myPosts) => set({ myPosts }),
+  prependMyPost: (post) =>
+    set((state) => ({ myPosts: [post, ...state.myPosts] })),
   setTaggedPosts: (taggedPosts) => set({ taggedPosts }),
   setLoadingFeed: (isLoadingFeed) => set({ isLoadingFeed }),
 

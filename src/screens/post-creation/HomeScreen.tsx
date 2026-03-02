@@ -79,7 +79,8 @@ export function HomeScreen() {
       updateDraftPost({ receiptImages: images });
       navigation.navigate('ValidateReceipt');
     } catch (err: any) {
-      Alert.alert('Analysis Failed', 'Could not read the receipt. Try again or enter manually.');
+      console.error('Receipt analysis error:', err);
+      Alert.alert('Analysis Failed', err?.message ?? 'Could not read the receipt. Try again or enter manually.');
     } finally {
       setIsAnalyzing(false);
     }

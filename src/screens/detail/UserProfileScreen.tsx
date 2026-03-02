@@ -86,12 +86,10 @@ export function UserProfileScreen() {
     );
   }
 
-  const photoPosts = posts.filter((p) => p.food_photos.length > 0);
-
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['bottom']}>
       <FlatList
-        data={photoPosts}
+        data={posts}
         keyExtractor={(item) => item.id}
         numColumns={3}
         ListHeaderComponent={
@@ -149,11 +147,20 @@ export function UserProfileScreen() {
             onPress={() => navigation.navigate('MealDetail', { postId: item.id })}
             style={{ width: PHOTO_SIZE, height: PHOTO_SIZE, padding: 1 }}
           >
-            <Image
-              source={{ uri: item.food_photos[0] }}
-              style={{ flex: 1 }}
-              resizeMode="cover"
-            />
+            {item.food_photos?.length > 0 ? (
+              <Image
+                source={{ uri: item.food_photos[0] }}
+                style={{ flex: 1 }}
+                resizeMode="cover"
+              />
+            ) : (
+              <View style={{ flex: 1, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="receipt-outline" size={28} color="#9CA3AF" />
+                <Text style={{ fontSize: 10, color: '#9CA3AF', marginTop: 2 }} numberOfLines={1}>
+                  {item.restaurant_name || 'Meal'}
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
         )}
         showsVerticalScrollIndicator={false}
