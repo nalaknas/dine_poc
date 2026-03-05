@@ -31,29 +31,20 @@ export function ProfileScreen() {
 
   const loadProfile = useCallback(async () => {
     if (!user) return;
-    console.warn('🔴 PROFILE_LOAD_START userId=' + user.id);
     setIsLoading(true);
     try {
-      // Load posts independently so follower count errors don't block posts
       const [posts, followers, following] = await Promise.allSettled([
         getUserPosts(user.id, user.id),
         getFollowerCount(user.id),
         getFollowingCount(user.id),
       ]);
-      console.warn('🔴 POSTS_RESULT status=' + posts.status + ' count=' + (posts.status === 'fulfilled' ? posts.value.length : 'N/A'));
       if (posts.status === 'fulfilled') {
         setMyPosts(posts.value);
-      } else {
-        console.warn('🔴 POSTS_ERROR:', JSON.stringify(posts.reason));
       }
-      if (followers.status === 'rejected') console.warn('🔴 FOLLOWERS_ERROR:', JSON.stringify(followers.reason));
-      if (following.status === 'rejected') console.warn('🔴 FOLLOWING_ERROR:', JSON.stringify(following.reason));
       setFollowCounts(
         followers.status === 'fulfilled' ? followers.value : 0,
         following.status === 'fulfilled' ? following.value : 0,
       );
-    } catch (err) {
-      console.error('[ProfileScreen] loadProfile error:', err);
     } finally {
       setIsLoading(false);
     }

@@ -1,8 +1,22 @@
 import * as FileSystem from 'expo-file-system/legacy';
+import * as ImageManipulator from 'expo-image-manipulator';
 const BASE64 = 'base64' as const;
 import { supabase } from '../lib/supabase';
-import { Config } from '../constants/config';
 import type { ReceiptData } from '../types';
+
+/**
+ * Compress and resize an image to keep Edge Function payload under limits.
+ * Receipt text is readable at 1500px wide; quality 0.6 keeps detail while
+ * reducing a typical iPhone photo from ~6MB to ~300KB.
+ */
+async function compressForOCR(uri: string): Promise<string> {
+  const result = await ImageManipulator.manipulateAsync(
+    uri,
+    [{ resize: { width: 1500 } }],
+    { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG }
+  );
+  return FileSystem.readAsStringAsync(result.uri, { encoding: BASE64 });
+}
 
 /**
  * Analyzes receipt images by calling the Supabase Edge Function.
@@ -10,34 +24,27 @@ import type { ReceiptData } from '../types';
  * API keys stay server-side, never in the client bundle.
  */
 export async function analyzeReceipt(imageUris: string[]): Promise<ReceiptData> {
-  // Convert local image URIs to base64
-  const base64Images = await Promise.all(
-    imageUris.map(async (uri) => {
-      const base64 = await FileSystem.readAsStringAsync(uri, {
-        encoding: BASE64,
-      });
-      return base64;
-    })
-  );
+  // Compress images before sending to keep payload small
+  const base64Images = await Promise.all(imageUris.map(compressForOCR));
 
-  // Use direct fetch instead of supabase.functions.invoke for better error handling
-  const anonKey = Config.supabase.anonKey;
-  const functionUrl = `${Config.supabase.url}/functions/v1/analyze-receipt`;
-
-  const response = await fetch(functionUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${anonKey}`,
-      'apikey': anonKey,
-    },
-    body: JSON.stringify({ images: base64Images }),
+  // supabase.functions.invoke automatically sends the user's session JWT
+  const { data, error } = await supabase.functions.invoke('analyze-receipt', {
+    body: { images: base64Images },
   });
 
-  const data = await response.json();
-
-  if (!response.ok || data.error) {
-    throw new Error(data.error ?? `Edge Function returned ${response.status}`);
+  if (error) {
+    // FunctionsHttpError hardcodes its message; the real error is in the Response context
+    let msg = 'Receipt analysis failed';
+    try {
+      const res = (error as any).context;
+      if (res && typeof res.json === 'function') {
+        const body = await res.json();
+        msg = body.error || `Edge Function error (${res.status})`;
+      }
+    } catch {
+      msg = error.message;
+    }
+    throw new Error(msg);
   }
 
   return data as ReceiptData;

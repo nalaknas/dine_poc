@@ -25,7 +25,14 @@ module.exports = {
         ITSAppUsesNonExemptEncryption: false,
       },
     },
+    updates: {
+      url: 'https://u.expo.dev/a11c2f5e-73df-446c-b361-cc1f36bf4cdf',
+    },
+    runtimeVersion: {
+      policy: 'appVersion',
+    },
     plugins: [
+      'expo-updates',
       'expo-camera',
       'expo-media-library',
       [
