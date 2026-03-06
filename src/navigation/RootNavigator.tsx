@@ -55,7 +55,13 @@ export function RootNavigator() {
 
   return (
     <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Navigator screenOptions={{
+        headerShown: false,
+        headerTintColor: '#007AFF',
+        headerTitleStyle: { fontWeight: '700', color: '#1F2937' },
+        headerShadowVisible: false,
+        headerBackTitle: 'Back',
+      }}>
         {!user ? (
           <>
             <Stack.Screen name="Splash" component={SplashScreen} />
@@ -86,7 +92,12 @@ export function RootNavigator() {
             <Stack.Screen
               name="Comments"
               component={CommentsScreen}
-              options={{ headerShown: true, title: 'Comments' }}
+              options={{
+                headerShown: true,
+                title: 'Comments',
+                presentation: 'modal',
+                animation: 'slide_from_bottom',
+              }}
             />
             <Stack.Screen
               name="EditPost"
@@ -106,7 +117,12 @@ export function RootNavigator() {
             <Stack.Screen
               name="CreatePlaylist"
               component={CreatePlaylistScreen}
-              options={{ headerShown: true, title: 'New Playlist' }}
+              options={{
+                headerShown: true,
+                title: 'New Playlist',
+                presentation: 'modal',
+                animation: 'slide_from_bottom',
+              }}
             />
             <Stack.Screen
               name="Settings"

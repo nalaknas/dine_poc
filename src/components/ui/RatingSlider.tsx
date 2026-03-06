@@ -1,5 +1,7 @@
 import React, { useCallback } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text } from 'react-native';
+import * as Haptics from 'expo-haptics';
+import { AnimatedPressable } from './AnimatedPressable';
 
 interface RatingSliderProps {
   value: number;
@@ -58,9 +60,13 @@ export function RatingSlider({
       {/* Tap-to-rate grid for 0–10 (whole numbers only for quick tap) */}
       <View className="flex-row flex-wrap gap-1">
         {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((v) => (
-          <TouchableOpacity
+          <AnimatedPressable
             key={v}
-            onPress={() => onChange(v)}
+            scaleValue={0.9}
+            onPress={() => {
+              Haptics.selectionAsync();
+              onChange(v);
+            }}
             style={{
               width: 34,
               height: 34,
@@ -81,7 +87,7 @@ export function RatingSlider({
             >
               {v}
             </Text>
-          </TouchableOpacity>
+          </AnimatedPressable>
         ))}
       </View>
     </View>

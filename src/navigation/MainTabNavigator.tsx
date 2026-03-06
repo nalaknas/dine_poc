@@ -4,6 +4,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
 import { FeedScreen } from '../screens/tabs/FeedScreen';
 import { ExploreScreen } from '../screens/tabs/ExploreScreen';
 import { ActivityScreen } from '../screens/tabs/ActivityScreen';
@@ -59,6 +60,20 @@ export function MainTabNavigator() {
           height: Platform.OS === 'ios' ? 88 : 68,
           ...Shadows.tabBar,
         },
+        tabBarButton: ({ style, children, onPress, ...rest }) => (
+          <Pressable
+            onPress={(e) => {
+              Haptics.selectionAsync();
+              onPress?.(e as any);
+            }}
+            accessibilityRole={rest.accessibilityRole}
+            accessibilityState={rest.accessibilityState}
+            testID={rest.testID}
+            style={style}
+          >
+            {children}
+          </Pressable>
+        ),
         tabBarBackground: () => (
           <BlurView
             intensity={80}
@@ -97,7 +112,10 @@ export function MainTabNavigator() {
           tabBarIcon: () => null,
           tabBarButton: ({ style: _style, children: _children, ...rest }) => (
             <Pressable
-              onPress={rest.onPress}
+              onPress={(e) => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                rest.onPress?.(e);
+              }}
               onLongPress={rest.onLongPress}
               accessibilityRole={rest.accessibilityRole}
               accessibilityState={rest.accessibilityState}
