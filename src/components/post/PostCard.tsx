@@ -188,7 +188,7 @@ export function PostCard({ post, onLike, onComment }: PostCardProps) {
       {post.caption ? (
         <View style={{ paddingHorizontal: 12, paddingBottom: 8 }}>
           <Text style={{ fontSize: 13, color: '#1F2937', lineHeight: 20 }}>
-            <Text style={{ fontWeight: '600' }}>{author?.username ?? ''} </Text>
+            <Text style={{ fontWeight: '600' }} onPress={handleAuthorPress}>{author?.username ?? ''} </Text>
             {post.caption}
           </Text>
         </View>

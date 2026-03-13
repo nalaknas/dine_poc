@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, FlatList, TextInput, TouchableOpacity,
-  KeyboardAvoidingView, Platform, Alert, ActivityIndicator,
+  KeyboardAvoidingView, Platform, Alert, ActivityIndicator, Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useRoute, type RouteProp } from '@react-navigation/native';
+import { useRoute, useNavigation, type RouteProp } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Avatar } from '../../components/ui/Avatar';
 import { useAuthStore } from '../../stores/authStore';
 import { supabase } from '../../lib/supabase';
@@ -14,8 +15,11 @@ import type { Comment, RootStackParamList } from '../../types';
 
 type CommentsRoute = RouteProp<RootStackParamList, 'Comments'>;
 
+type Nav = NativeStackNavigationProp<RootStackParamList>;
+
 export function CommentsScreen() {
   const { params } = useRoute<CommentsRoute>();
+  const navigation = useNavigation<Nav>();
   const { user } = useAuthStore();
   const [comments, setComments] = useState<Comment[]>([]);
   const [text, setText] = useState('');
@@ -68,9 +72,13 @@ export function CommentsScreen() {
             contentContainerStyle={{ padding: 16, paddingBottom: 80 }}
             renderItem={({ item }) => (
               <View className="flex-row mb-4">
-                <Avatar uri={item.author?.avatar_url} displayName={item.author?.display_name ?? 'User'} size={36} />
+                <Pressable onPress={() => navigation.navigate('UserProfile', { userId: item.author_id })}>
+                  <Avatar uri={item.author?.avatar_url} displayName={item.author?.display_name ?? 'User'} size={36} />
+                </Pressable>
                 <View className="flex-1 ml-2 bg-background-secondary rounded-2xl rounded-tl-sm px-3 py-2">
-                  <Text className="text-sm font-semibold text-text-primary">{item.author?.username}</Text>
+                  <Pressable onPress={() => navigation.navigate('UserProfile', { userId: item.author_id })}>
+                    <Text className="text-sm font-semibold text-text-primary">{item.author?.username}</Text>
+                  </Pressable>
                   <Text className="text-sm text-text-primary mt-0.5">{item.content}</Text>
                   <Text className="text-xs text-text-secondary mt-1">{formatTimeAgo(item.created_at)}</Text>
                 </View>
