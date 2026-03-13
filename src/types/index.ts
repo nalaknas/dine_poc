@@ -169,12 +169,14 @@ export interface Comment {
   author_id: string;
   author?: User;
   content: string;
+  like_count: number;
+  is_liked?: boolean;
   created_at: string;
 }
 
 // ─── Notification ─────────────────────────────────────────────────────────────
 
-export type NotificationType = 'like' | 'comment' | 'tag' | 'follow' | 'recommendation';
+export type NotificationType = 'like' | 'comment' | 'comment_like' | 'tag' | 'follow' | 'recommendation';
 
 export interface Notification {
   id: string;
