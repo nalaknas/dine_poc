@@ -148,7 +148,10 @@ export function ActivityScreen() {
                 borderLeftColor: '#007AFF',
               }}
             >
-              <View style={{ position: 'relative', marginRight: 12 }}>
+              <Pressable
+                style={{ position: 'relative', marginRight: 12 }}
+                onPress={(e) => { e.stopPropagation(); navigation.navigate('UserProfile', { userId: item.from_user_id }); }}
+              >
                 <Avatar
                   uri={item.from_user?.avatar_url}
                   displayName={item.from_user?.display_name ?? item.from_user_id}
@@ -171,10 +174,13 @@ export function ActivityScreen() {
                 >
                   <Ionicons name={iconInfo.name} size={10} color="#fff" />
                 </View>
-              </View>
+              </Pressable>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: 14, color: '#1F2937', lineHeight: 20 }}>
-                  <Text style={{ fontWeight: '600' }}>
+                  <Text
+                    style={{ fontWeight: '600' }}
+                    onPress={() => navigation.navigate('UserProfile', { userId: item.from_user_id })}
+                  >
                     {item.from_user?.display_name ?? 'Someone'}
                   </Text>{' '}
                   {item.message}
