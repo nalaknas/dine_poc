@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, TextInput,
-  FlatList, ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
+  ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,7 +12,8 @@ import { StarDishes } from '../../components/post/StarDishes';
 import { LikeButton } from '../../components/post/LikeButton';
 import { useAuthStore } from '../../stores/authStore';
 import { useSocialStore } from '../../stores/socialStore';
-import { getPost, likePost, unlikePost } from '../../services/post-service';
+import { getPost, likePost, unlikePost, notifyTaggedParticipants } from '../../services/post-service';
+import { createNotification } from '../../services/user-service';
 import { supabase } from '../../lib/supabase';
 import { formatTimeAgo, formatCurrency } from '../../utils/format';
 import type { Post, Comment, RootStackParamList } from '../../types';
@@ -89,6 +90,19 @@ export function MealDetailScreen() {
       if (!error && data) {
         setComments((prev) => [...prev, data as Comment]);
         setPost((p) => p ? { ...p, comment_count: p.comment_count + 1 } : null);
+
+        // Notify post author (skip self)
+        if (post.author_id !== user.id) {
+          createNotification({
+            userId: post.author_id,
+            type: 'comment',
+            fromUserId: user.id,
+            postId: post.id,
+            message: 'commented on your post',
+          });
+        }
+        // Notify tagged meal participants
+        notifyTaggedParticipants(post.id, user.id, 'comment', 'commented on a post you were part of');
       }
     } catch {
       Alert.alert('Error', 'Could not post comment.');

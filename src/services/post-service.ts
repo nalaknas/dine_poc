@@ -240,6 +240,31 @@ export async function createPost(
   return post as Post;
 }
 
+// ─── Notify tagged participants ───────────────────────────────────────────────
+
+export async function notifyTaggedParticipants(
+  postId: string,
+  fromUserId: string,
+  type: string,
+  message: string,
+): Promise<void> {
+  const { data } = await supabase
+    .from('post_tagged_friends')
+    .select('user_id')
+    .eq('post_id', postId)
+    .not('user_id', 'is', null)
+    .neq('user_id', fromUserId);
+
+  if (!data || data.length === 0) return;
+
+  const uniqueIds = [...new Set((data as { user_id: string }[]).map((r) => r.user_id))];
+  await Promise.all(
+    uniqueIds.map((uid) =>
+      createNotification({ userId: uid, type, fromUserId, postId, message }),
+    ),
+  );
+}
+
 // ─── Like / Unlike ────────────────────────────────────────────────────────────
 
 export async function likePost(postId: string, userId: string, authorId: string): Promise<void> {
@@ -259,6 +284,40 @@ export async function likePost(postId: string, userId: string, authorId: string)
       message: 'liked your post',
     });
   }
+
+  // Notify tagged meal participants
+  await notifyTaggedParticipants(postId, userId, 'like', 'liked a post you were part of');
+}
+
+// ─── Like / Unlike Comment ────────────────────────────────────────────────────
+
+export async function likeComment(
+  commentId: string,
+  userId: string,
+  commentAuthorId: string,
+  postId: string,
+): Promise<void> {
+  await supabase.from('comment_likes').insert({ comment_id: commentId, user_id: userId });
+  await supabase.rpc('increment_comment_like_count', { p_comment_id: commentId });
+
+  if (userId !== commentAuthorId) {
+    await createNotification({
+      userId: commentAuthorId,
+      type: 'comment_like',
+      fromUserId: userId,
+      postId,
+      message: 'liked your comment',
+    });
+  }
+}
+
+export async function unlikeComment(commentId: string, userId: string): Promise<void> {
+  await supabase
+    .from('comment_likes')
+    .delete()
+    .eq('comment_id', commentId)
+    .eq('user_id', userId);
+  await supabase.rpc('decrement_comment_like_count', { p_comment_id: commentId });
 }
 
 export async function unlikePost(postId: string, userId: string): Promise<void> {
