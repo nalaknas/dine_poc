@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import { HomeScreen } from '../screens/post-creation/HomeScreen';
@@ -55,7 +55,18 @@ export function PostCreationNavigator() {
         headerBottom: () => <ProgressBar routeName={route.name} />,
       })}
     >
-      <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'New Post' }} />
+      <Stack.Screen
+        name="Home"
+        component={HomeScreen}
+        options={({ navigation }) => ({
+          title: 'New Post',
+          headerLeft: () => (
+            <TouchableOpacity onPress={() => navigation.getParent()?.navigate('Feed')}>
+              <Text style={{ color: '#007AFF', fontSize: 17 }}>Cancel</Text>
+            </TouchableOpacity>
+          ),
+        })}
+      />
       <Stack.Screen name="ValidateReceipt" component={ValidateReceiptScreen} options={{ title: 'Confirm Receipt' }} />
       <Stack.Screen name="SelectFriends" component={SelectFriendsScreen} options={{ title: 'Who was there?' }} />
       <Stack.Screen name="AssignItems" component={AssignItemsScreen} options={{ title: 'Split the Bill' }} />
