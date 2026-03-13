@@ -1,13 +1,14 @@
 import React, { useEffect, useCallback, useState } from 'react';
-import {
-  View, Text, FlatList, ActivityIndicator, RefreshControl, Alert,
-} from 'react-native';
+import { View, Text, FlatList, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Ionicons } from '@expo/vector-icons';
 import { PostCard } from '../../components/post/PostCard';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { FeedSkeleton } from '../../components/ui/Skeleton';
+import { AnimatedPressable } from '../../components/ui/AnimatedPressable';
+import { Shadows } from '../../constants/shadows';
 import { useSocialStore } from '../../stores/socialStore';
 import { useAuthStore } from '../../stores/authStore';
 import { getFeedPosts, likePost, unlikePost } from '../../services/post-service';
@@ -54,7 +55,6 @@ export function FeedScreen() {
         await likePost(post.id, user.id, post.author_id);
       }
     } catch {
-      // Revert optimistic update
       toggleLike(post.id, user.id);
     }
   }, [user, toggleLike]);
@@ -65,21 +65,26 @@ export function FeedScreen() {
 
   if (isLoadingFeed && feedPosts.length === 0) {
     return (
-      <View className="flex-1 items-center justify-center bg-background">
-        <ActivityIndicator size="large" color="#007AFF" />
-        <Text className="text-sm text-text-secondary mt-2">Loading your feed...</Text>
-      </View>
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF' }} edges={['top']}>
+        <View style={[{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12 }, Shadows.header]}>
+          <Text style={{ fontSize: 28, fontWeight: '800', color: '#1F2937' }}>Dine</Text>
+        </View>
+        <FeedSkeleton />
+      </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF' }} edges={['top']}>
       {/* Header */}
-      <View className="flex-row items-center justify-between px-4 py-3 border-b border-border-light">
-        <Text className="text-2xl font-bold text-text-primary">Dine</Text>
-        <View className="flex-row gap-3">
+      <View style={[{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#FFFFFF' }, Shadows.header]}>
+        <Text style={{ fontSize: 28, fontWeight: '800', color: '#1F2937' }}>Dine</Text>
+        <AnimatedPressable
+          onPress={() => navigation.navigate('Activity' as any)}
+          style={{ padding: 4 }}
+        >
           <Ionicons name="notifications-outline" size={24} color="#1F2937" />
-        </View>
+        </AnimatedPressable>
       </View>
 
       <FlatList
@@ -105,7 +110,7 @@ export function FeedScreen() {
           />
         }
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ flexGrow: 1 }}
+        contentContainerStyle={{ flexGrow: 1, paddingTop: 8, paddingBottom: 100 }}
       />
     </SafeAreaView>
   );

@@ -1,14 +1,18 @@
 import React, { useEffect, useCallback, useState } from 'react';
 import {
-  View, Text, TouchableOpacity, FlatList, RefreshControl,
-  Image, Dimensions, ActivityIndicator,
+  View, Text, Pressable, FlatList, RefreshControl,
+  Image, Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Avatar } from '../../components/ui/Avatar';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { AnimatedPressable } from '../../components/ui/AnimatedPressable';
+import { ProfileSkeleton } from '../../components/ui/Skeleton';
+import { Shadows } from '../../constants/shadows';
 import { useAuthStore } from '../../stores/authStore';
 import { useUserProfileStore } from '../../stores/userProfileStore';
 import { useSocialStore } from '../../stores/socialStore';
@@ -19,7 +23,7 @@ import type { Post, RootStackParamList } from '../../types';
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 const { width } = Dimensions.get('window');
-const PHOTO_SIZE = width / 3;
+const PHOTO_SIZE = (width - 48) / 3;
 
 export function ProfileScreen() {
   const navigation = useNavigation<Nav>();
@@ -28,6 +32,7 @@ export function ProfileScreen() {
   const { myPosts, setMyPosts } = useSocialStore();
   const [isLoading, setIsLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState<'grid' | 'list' | 'map'>('grid');
 
   const loadProfile = useCallback(async () => {
     if (!user) return;
@@ -38,9 +43,7 @@ export function ProfileScreen() {
         getFollowerCount(user.id),
         getFollowingCount(user.id),
       ]);
-      if (posts.status === 'fulfilled') {
-        setMyPosts(posts.value);
-      }
+      if (posts.status === 'fulfilled') setMyPosts(posts.value);
       setFollowCounts(
         followers.status === 'fulfilled' ? followers.value : 0,
         following.status === 'fulfilled' ? following.value : 0,
@@ -60,36 +63,42 @@ export function ProfileScreen() {
     setRefreshing(false);
   };
 
-  const handleSignOut = () => {
-    signOut();
-  };
-
   const header = (
     <View>
       {/* Header bar */}
-      <View className="flex-row items-center justify-between px-4 py-3 border-b border-border-light">
-        <Text className="text-xl font-bold text-text-primary">@{profile?.username ?? ''}</Text>
-        <View className="flex-row gap-3">
-          <TouchableOpacity onPress={() => navigation.navigate('Settings')}>
-            <Ionicons name="settings-outline" size={24} color="#1F2937" />
-          </TouchableOpacity>
-        </View>
+      <View style={[{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#FFFFFF' }, Shadows.header]}>
+        <Text style={{ fontSize: 20, fontWeight: '700', color: '#1F2937' }}>@{profile?.username ?? ''}</Text>
+        <AnimatedPressable onPress={() => navigation.navigate('Settings')} style={{ padding: 4 }}>
+          <Ionicons name="settings-outline" size={24} color="#1F2937" />
+        </AnimatedPressable>
       </View>
 
-      {/* Profile info */}
-      <View className="px-4 py-4">
-        <View className="flex-row items-center">
+      {/* Gradient banner */}
+      <LinearGradient colors={['#EFF6FF', '#FFFFFF']} style={{ paddingHorizontal: 16, paddingTop: 20, paddingBottom: 16 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <Avatar uri={profile?.avatar_url} displayName={profile?.display_name ?? 'Me'} size={72} />
-          <View className="flex-1 ml-4">
-            <View className="flex-row justify-around">
+          <View style={{ flex: 1, marginLeft: 16 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-around' }}>
               {[
                 { label: 'Meals', value: profile?.total_meals ?? 0 },
                 { label: 'Followers', value: followersCount },
                 { label: 'Following', value: followingCount },
               ].map((stat) => (
-                <View key={stat.label} className="items-center">
-                  <Text className="text-xl font-bold text-text-primary">{stat.value}</Text>
-                  <Text className="text-xs text-text-secondary">{stat.label}</Text>
+                <View
+                  key={stat.label}
+                  style={[
+                    {
+                      alignItems: 'center',
+                      backgroundColor: '#FFFFFF',
+                      paddingHorizontal: 12,
+                      paddingVertical: 8,
+                      borderRadius: 12,
+                    },
+                    Shadows.sm,
+                  ]}
+                >
+                  <Text style={{ fontSize: 22, fontWeight: '700', color: '#1F2937' }}>{stat.value}</Text>
+                  <Text style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>{stat.label}</Text>
                 </View>
               ))}
             </View>
@@ -97,15 +106,15 @@ export function ProfileScreen() {
         </View>
 
         {/* Name + bio */}
-        <View className="mt-3">
-          <Text className="text-base font-semibold text-text-primary">{profile?.display_name}</Text>
+        <View style={{ marginTop: 12 }}>
+          <Text style={{ fontSize: 16, fontWeight: '600', color: '#1F2937' }}>{profile?.display_name}</Text>
           {profile?.bio ? (
-            <Text className="text-sm text-text-secondary mt-0.5">{profile.bio}</Text>
+            <Text style={{ fontSize: 13, color: '#6B7280', marginTop: 2 }}>{profile.bio}</Text>
           ) : null}
           {profile?.city && (
-            <View className="flex-row items-center mt-1">
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
               <Ionicons name="location-outline" size={13} color="#9CA3AF" />
-              <Text className="text-xs text-text-secondary ml-0.5">
+              <Text style={{ fontSize: 12, color: '#6B7280', marginLeft: 2 }}>
                 {profile.city}{profile.state ? `, ${profile.state}` : ''}
               </Text>
             </View>
@@ -113,29 +122,66 @@ export function ProfileScreen() {
         </View>
 
         {/* Edit profile */}
-        <TouchableOpacity
+        <AnimatedPressable
           onPress={() => navigation.navigate('EditProfile')}
-          className="mt-3 border border-border rounded-lg py-2 items-center"
+          style={[{
+            marginTop: 12,
+            borderWidth: 1,
+            borderColor: '#E5E7EB',
+            borderRadius: 10,
+            paddingVertical: 8,
+            alignItems: 'center',
+            backgroundColor: '#FFFFFF',
+          }, Shadows.sm]}
         >
-          <Text className="text-sm font-semibold text-text-primary">Edit Profile</Text>
-        </TouchableOpacity>
+          <Text style={{ fontSize: 14, fontWeight: '600', color: '#1F2937' }}>Edit Profile</Text>
+        </AnimatedPressable>
 
         {/* Taste recommendations CTA */}
-        <TouchableOpacity
+        <AnimatedPressable
           onPress={() => navigation.navigate('Recommendations')}
-          className="mt-2 bg-accent/10 border border-accent/20 rounded-lg py-2 items-center flex-row justify-center"
+          style={{
+            marginTop: 8,
+            backgroundColor: 'rgba(0,122,255,0.08)',
+            borderWidth: 1,
+            borderColor: 'rgba(0,122,255,0.15)',
+            borderRadius: 10,
+            paddingVertical: 8,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
         >
           <Ionicons name="sparkles" size={16} color="#007AFF" />
-          <Text className="text-sm font-semibold text-accent ml-1">For You</Text>
-        </TouchableOpacity>
-      </View>
+          <Text style={{ fontSize: 14, fontWeight: '600', color: '#007AFF', marginLeft: 4 }}>For You</Text>
+        </AnimatedPressable>
+      </LinearGradient>
 
-      {/* Grid header */}
-      <View className="border-t border-border-light">
-        <View className="flex-row justify-around py-2">
-          <View className="items-center pb-1 border-b-2 border-text-primary px-4">
-            <Ionicons name="grid-outline" size={22} color="#1F2937" />
-          </View>
+      {/* Grid tabs */}
+      <View style={{ borderTopWidth: 0.5, borderTopColor: '#E5E7EB' }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-around', paddingVertical: 10 }}>
+          {([
+            { key: 'grid' as const, icon: 'grid-outline' },
+            { key: 'list' as const, icon: 'list-outline' },
+            { key: 'map' as const, icon: 'map-outline' },
+          ]).map((tab) => (
+            <Pressable
+              key={tab.key}
+              onPress={() => setActiveTab(tab.key)}
+              style={{
+                paddingHorizontal: 16,
+                paddingBottom: 8,
+                borderBottomWidth: activeTab === tab.key ? 2 : 0,
+                borderBottomColor: '#1F2937',
+              }}
+            >
+              <Ionicons
+                name={tab.icon as any}
+                size={22}
+                color={activeTab === tab.key ? '#1F2937' : '#9CA3AF'}
+              />
+            </Pressable>
+          ))}
         </View>
       </View>
     </View>
@@ -143,23 +189,27 @@ export function ProfileScreen() {
 
   if (isLoading && myPosts.length === 0) {
     return (
-      <SafeAreaView className="flex-1 bg-background items-center justify-center" edges={['top']}>
-        <ActivityIndicator size="large" color="#007AFF" />
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF' }} edges={['top']}>
+        <View style={[{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12 }, Shadows.header]}>
+          <Text style={{ fontSize: 20, fontWeight: '700', color: '#1F2937' }}>Profile</Text>
+        </View>
+        <ProfileSkeleton />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF' }} edges={['top']}>
       <FlatList
         data={myPosts}
         keyExtractor={(item) => item.id}
         numColumns={3}
         ListHeaderComponent={header}
+        columnWrapperStyle={{ paddingHorizontal: 16, gap: 4 }}
         renderItem={({ item }) => (
-          <TouchableOpacity
+          <AnimatedPressable
             onPress={() => navigation.navigate('MealDetail', { postId: item.id })}
-            style={{ width: PHOTO_SIZE, height: PHOTO_SIZE, padding: 1 }}
+            style={{ width: PHOTO_SIZE, height: PHOTO_SIZE, marginBottom: 4, borderRadius: 8, overflow: 'hidden' }}
           >
             {item.food_photos?.length > 0 ? (
               <Image
@@ -168,14 +218,17 @@ export function ProfileScreen() {
                 resizeMode="cover"
               />
             ) : (
-              <View style={{ flex: 1, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' }}>
+              <LinearGradient
+                colors={['#F3F4F6', '#E5E7EB']}
+                style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
+              >
                 <Ionicons name="receipt-outline" size={28} color="#9CA3AF" />
                 <Text style={{ fontSize: 10, color: '#9CA3AF', marginTop: 2 }} numberOfLines={1}>
                   {item.restaurant_name || 'Meal'}
                 </Text>
-              </View>
+              </LinearGradient>
             )}
-          </TouchableOpacity>
+          </AnimatedPressable>
         )}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#007AFF" />
@@ -189,7 +242,7 @@ export function ProfileScreen() {
             onAction={() => navigation.navigate('PostCreation' as any)}
           />
         }
-        contentContainerStyle={{ flexGrow: 1 }}
+        contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
       />
     </SafeAreaView>

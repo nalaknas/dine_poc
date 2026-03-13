@@ -1,12 +1,15 @@
 import React, { useCallback } from 'react';
-import { View, Text, TouchableOpacity, Pressable } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Avatar } from '../ui/Avatar';
 import { PhotoCarousel } from './PhotoCarousel';
 import { StarDishes } from './StarDishes';
 import { LikeButton } from './LikeButton';
+import { AnimatedPressable } from '../ui/AnimatedPressable';
+import { Shadows } from '../../constants/shadows';
 import type { Post, RootStackParamList } from '../../types';
 import { formatTimeAgo } from '../../utils/format';
 
@@ -39,52 +42,109 @@ export function PostCard({ post, onLike, onComment }: PostCardProps) {
   const author = post.author;
 
   return (
-    <View className="bg-background mb-2 border-b border-border-light">
+    <View
+      style={[
+        {
+          backgroundColor: '#FFFFFF',
+          marginHorizontal: 12,
+          marginBottom: 12,
+          borderRadius: 16,
+          overflow: 'hidden',
+        },
+        Shadows.card,
+      ]}
+    >
       {/* Header */}
-      <View className="flex-row items-center px-3 py-3">
-        <TouchableOpacity onPress={handleAuthorPress} className="flex-row items-center flex-1">
+      <View style={{ flexDirection: 'row', alignItems: 'center', padding: 12 }}>
+        <AnimatedPressable onPress={handleAuthorPress} style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
           <Avatar
             uri={author?.avatar_url}
             displayName={author?.display_name ?? 'User'}
             size={38}
           />
-          <View className="ml-2 flex-1">
-            <Text className="text-sm font-semibold text-text-primary">
+          <View style={{ marginLeft: 8, flex: 1 }}>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: '#1F2937' }}>
               {author?.username ?? 'unknown'}
             </Text>
-            <TouchableOpacity onPress={handleRestaurantPress} className="flex-row items-center">
-              <Ionicons name="restaurant" size={11} color="#007AFF" />
-              <Text className="text-xs text-accent ml-0.5" numberOfLines={1}>
-                {post.restaurant_name}
-              </Text>
-            </TouchableOpacity>
+            <Pressable onPress={handleRestaurantPress}>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: 'rgba(0,122,255,0.08)',
+                  paddingHorizontal: 6,
+                  paddingVertical: 2,
+                  borderRadius: 6,
+                  alignSelf: 'flex-start',
+                  marginTop: 2,
+                }}
+              >
+                <Ionicons name="restaurant" size={10} color="#007AFF" />
+                <Text
+                  style={{ fontSize: 11, color: '#007AFF', marginLeft: 3, fontWeight: '500' }}
+                  numberOfLines={1}
+                >
+                  {post.restaurant_name}
+                </Text>
+              </View>
+            </Pressable>
           </View>
-        </TouchableOpacity>
+        </AnimatedPressable>
 
         {/* Rating badge */}
         {post.overall_rating > 0 && (
-          <View className="flex-row items-center bg-background-secondary px-2 py-1 rounded-lg">
-            <Ionicons name="star" size={12} color="#F59E0B" />
-            <Text className="text-xs font-bold text-text-primary ml-0.5">
-              {post.overall_rating.toFixed(1)}
-            </Text>
-          </View>
+          post.overall_rating >= 8.0 ? (
+            <View style={{ borderRadius: 10, overflow: 'hidden' }}>
+              <LinearGradient
+                colors={['#F59E0B', '#EF4444']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingHorizontal: 8,
+                  paddingVertical: 4,
+                }}
+              >
+                <Ionicons name="star" size={12} color="#FFFFFF" />
+                <Text style={{ fontSize: 13, fontWeight: '700', color: '#FFFFFF', marginLeft: 3 }}>
+                  {post.overall_rating.toFixed(1)}
+                </Text>
+              </LinearGradient>
+            </View>
+          ) : (
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: '#F9FAFB',
+                paddingHorizontal: 8,
+                paddingVertical: 4,
+                borderRadius: 10,
+              }}
+            >
+              <Ionicons name="star" size={12} color="#F59E0B" />
+              <Text style={{ fontSize: 13, fontWeight: '700', color: '#1F2937', marginLeft: 3 }}>
+                {post.overall_rating.toFixed(1)}
+              </Text>
+            </View>
+          )
         )}
       </View>
 
       {/* Location line */}
       {(post.city || post.price_range) && (
-        <View className="flex-row items-center px-3 pb-2">
+        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingBottom: 8 }}>
           {post.city && (
             <>
               <Ionicons name="location" size={11} color="#6B7280" />
-              <Text className="text-xs text-text-secondary ml-0.5">
+              <Text style={{ fontSize: 11, color: '#6B7280', marginLeft: 2 }}>
                 {post.city}{post.state ? `, ${post.state}` : ''}
               </Text>
             </>
           )}
           {post.price_range && (
-            <Text className="text-xs text-text-secondary ml-2">• {post.price_range}</Text>
+            <Text style={{ fontSize: 11, color: '#6B7280', marginLeft: 8 }}>• {post.price_range}</Text>
           )}
         </View>
       )}
@@ -97,32 +157,37 @@ export function PostCard({ post, onLike, onComment }: PostCardProps) {
       )}
 
       {/* Action bar */}
-      <View className="flex-row items-center px-3 pt-3 pb-2 gap-4">
+      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingTop: 12, paddingBottom: 8 }}>
         <LikeButton
           isLiked={post.is_liked ?? false}
           likeCount={post.like_count}
           onToggle={onLike}
         />
-        <TouchableOpacity onPress={onComment} className="flex-row items-center">
+        <Pressable onPress={onComment} style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 16 }}>
           <Ionicons name="chatbubble-outline" size={22} color="#6B7280" />
           {post.comment_count > 0 && (
-            <Text className="text-sm text-text-secondary ml-1">{post.comment_count}</Text>
+            <Text style={{ fontSize: 13, color: '#6B7280', marginLeft: 4 }}>{post.comment_count}</Text>
           )}
-        </TouchableOpacity>
-        <TouchableOpacity className="flex-row items-center">
+        </Pressable>
+        <Pressable style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 16 }}>
           <Ionicons name="paper-plane-outline" size={22} color="#6B7280" />
-        </TouchableOpacity>
+        </Pressable>
+        {/* Bookmark on far right */}
+        <View style={{ flex: 1 }} />
+        <Pressable>
+          <Ionicons name="bookmark-outline" size={22} color="#6B7280" />
+        </Pressable>
       </View>
 
       {/* Caption */}
-      <View className="px-3 pb-2">
-        {post.caption ? (
-          <Text className="text-sm text-text-primary leading-5">
-            <Text className="font-semibold">{author?.username ?? ''} </Text>
+      {post.caption ? (
+        <View style={{ paddingHorizontal: 12, paddingBottom: 8 }}>
+          <Text style={{ fontSize: 13, color: '#1F2937', lineHeight: 20 }}>
+            <Text style={{ fontWeight: '600' }}>{author?.username ?? ''} </Text>
             {post.caption}
           </Text>
-        ) : null}
-      </View>
+        </View>
+      ) : null}
 
       {/* Star dishes */}
       {post.dish_ratings && post.dish_ratings.length > 0 && (
@@ -131,9 +196,9 @@ export function PostCard({ post, onLike, onComment }: PostCardProps) {
 
       {/* Tags */}
       {post.tags.length > 0 && (
-        <View className="flex-row flex-wrap px-3 pb-2">
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 12, paddingBottom: 8 }}>
           {post.tags.map((tag) => (
-            <Text key={tag} className="text-xs text-accent mr-2">
+            <Text key={tag} style={{ fontSize: 12, color: '#007AFF', marginRight: 8 }}>
               #{tag}
             </Text>
           ))}
@@ -142,22 +207,22 @@ export function PostCard({ post, onLike, onComment }: PostCardProps) {
 
       {/* Tagged friends */}
       {post.tagged_friends && post.tagged_friends.length > 0 && (
-        <Text className="px-3 pb-2 text-xs text-text-secondary">
+        <Text style={{ paddingHorizontal: 12, paddingBottom: 8, fontSize: 11, color: '#6B7280' }}>
           with {post.tagged_friends.map((f) => f.display_name).join(', ')}
         </Text>
       )}
 
       {/* Comments hint */}
       {post.comment_count > 0 && (
-        <TouchableOpacity onPress={onComment} className="px-3 pb-2">
-          <Text className="text-xs text-text-secondary">
+        <Pressable onPress={onComment} style={{ paddingHorizontal: 12, paddingBottom: 8 }}>
+          <Text style={{ fontSize: 11, color: '#6B7280' }}>
             View all {post.comment_count} comment{post.comment_count !== 1 ? 's' : ''}
           </Text>
-        </TouchableOpacity>
+        </Pressable>
       )}
 
       {/* Timestamp */}
-      <Text className="px-3 pb-3 text-xs text-text-secondary">
+      <Text style={{ paddingHorizontal: 12, paddingBottom: 12, fontSize: 11, color: '#9CA3AF' }}>
         {formatTimeAgo(post.created_at)}
       </Text>
     </View>

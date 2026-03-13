@@ -1,11 +1,33 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { View, Image, ScrollView, Dimensions, Text } from 'react-native';
+import { BlurView } from 'expo-blur';
+import Animated, { FadeIn } from 'react-native-reanimated';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 interface PhotoCarouselProps {
   photos: string[];
   aspectRatio?: number;
+}
+
+function FadeInImage({ uri, width, height }: { uri: string; width: number; height: number }) {
+  const [loaded, setLoaded] = useState(false);
+  return (
+    <View style={{ width, height, backgroundColor: '#F3F4F6' }}>
+      <Image
+        source={{ uri }}
+        style={{ width, height }}
+        resizeMode="cover"
+        onLoad={() => setLoaded(true)}
+      />
+      {loaded && (
+        <Animated.View
+          entering={FadeIn.duration(250)}
+          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+        />
+      )}
+    </View>
+  );
 }
 
 export function PhotoCarousel({ photos, aspectRatio = 1 }: PhotoCarouselProps) {
@@ -15,13 +37,7 @@ export function PhotoCarousel({ photos, aspectRatio = 1 }: PhotoCarouselProps) {
   if (photos.length === 0) return null;
 
   if (photos.length === 1) {
-    return (
-      <Image
-        source={{ uri: photos[0] }}
-        style={{ width: SCREEN_WIDTH, height }}
-        resizeMode="cover"
-      />
-    );
+    return <FadeInImage uri={photos[0]} width={SCREEN_WIDTH} height={height} />;
   }
 
   return (
@@ -37,34 +53,48 @@ export function PhotoCarousel({ photos, aspectRatio = 1 }: PhotoCarouselProps) {
         scrollEventThrottle={16}
       >
         {photos.map((uri, i) => (
-          <Image
-            key={i}
-            source={{ uri }}
-            style={{ width: SCREEN_WIDTH, height }}
-            resizeMode="cover"
-          />
+          <FadeInImage key={i} uri={uri} width={SCREEN_WIDTH} height={height} />
         ))}
       </ScrollView>
       {/* Dot indicators */}
-      <View className="absolute bottom-2 left-0 right-0 flex-row justify-center">
+      <View
+        style={{
+          position: 'absolute',
+          bottom: 10,
+          left: 0,
+          right: 0,
+          flexDirection: 'row',
+          justifyContent: 'center',
+        }}
+      >
         {photos.map((_, i) => (
           <View
             key={i}
             style={{
-              width: 6,
+              width: i === currentIndex ? 16 : 6,
               height: 6,
               borderRadius: 3,
-              backgroundColor: i === currentIndex ? '#fff' : 'rgba(255,255,255,0.5)',
+              backgroundColor: i === currentIndex ? '#FFFFFF' : 'rgba(255,255,255,0.5)',
               marginHorizontal: 3,
             }}
           />
         ))}
       </View>
-      {/* Counter badge */}
-      <View className="absolute top-2 right-2 bg-black/50 rounded-full px-2 py-0.5">
-        <Text className="text-white text-xs font-medium">
-          {currentIndex + 1}/{photos.length}
-        </Text>
+      {/* Counter badge with blur */}
+      <View
+        style={{
+          position: 'absolute',
+          top: 10,
+          right: 10,
+          borderRadius: 12,
+          overflow: 'hidden',
+        }}
+      >
+        <BlurView intensity={60} tint="dark" style={{ paddingHorizontal: 10, paddingVertical: 4 }}>
+          <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '600' }}>
+            {currentIndex + 1}/{photos.length}
+          </Text>
+        </BlurView>
       </View>
     </View>
   );

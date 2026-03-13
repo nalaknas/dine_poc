@@ -1,7 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import {
-  View, Text, TextInput, FlatList, TouchableOpacity,
-  ActivityIndicator, Keyboard,
+  View, Text, TextInput, FlatList, Pressable, Keyboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,13 +8,17 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Avatar } from '../../components/ui/Avatar';
 import { EmptyState } from '../../components/ui/EmptyState';
-import { searchUsers } from '../../services/user-service';
-import { followUser, unfollowUser, isFollowing } from '../../services/user-service';
+import { ExploreSkeleton } from '../../components/ui/Skeleton';
+import { AnimatedPressable } from '../../components/ui/AnimatedPressable';
+import { Shadows } from '../../constants/shadows';
+import { searchUsers, followUser, unfollowUser } from '../../services/user-service';
 import { useAuthStore } from '../../stores/authStore';
 import { useUserProfileStore } from '../../stores/userProfileStore';
 import type { User, RootStackParamList } from '../../types';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
+
+const TRENDING_TAGS = ['Italian', 'Sushi', 'Brunch', 'Date Night', 'Vegan', 'Pizza'];
 
 export function ExploreScreen() {
   const navigation = useNavigation<Nav>();
@@ -62,32 +65,66 @@ export function ExploreScreen() {
   }, [user, followingMap, setIsFollowing]);
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <View className="px-4 pt-3 pb-4 border-b border-border-light">
-        <Text className="text-2xl font-bold text-text-primary mb-3">Explore</Text>
-        <View className="flex-row items-center bg-background-secondary rounded-xl px-3 py-2">
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF' }} edges={['top']}>
+      <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 16 }}>
+        <Text style={{ fontSize: 32, fontWeight: '800', color: '#1F2937', marginBottom: 12 }}>Explore</Text>
+        <View
+          style={[
+            {
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: '#FFFFFF',
+              borderRadius: 16,
+              paddingHorizontal: 14,
+              paddingVertical: 10,
+              borderWidth: 1,
+              borderColor: '#F3F4F6',
+            },
+            Shadows.card,
+          ]}
+        >
           <Ionicons name="search" size={18} color="#9CA3AF" />
           <TextInput
             value={query}
             onChangeText={handleSearch}
             placeholder="Search users..."
             placeholderTextColor="#9CA3AF"
-            className="flex-1 ml-2 text-base text-text-primary"
+            style={{ flex: 1, marginLeft: 8, fontSize: 15, color: '#1F2937' }}
             returnKeyType="search"
             onSubmitEditing={Keyboard.dismiss}
           />
           {query.length > 0 && (
-            <TouchableOpacity onPress={() => { setQuery(''); setResults([]); setHasSearched(false); }}>
+            <Pressable onPress={() => { setQuery(''); setResults([]); setHasSearched(false); }}>
               <Ionicons name="close-circle" size={18} color="#9CA3AF" />
-            </TouchableOpacity>
+            </Pressable>
           )}
         </View>
       </View>
 
-      {isSearching ? (
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#007AFF" />
+      {!hasSearched && !isSearching && (
+        <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
+          <Text style={{ fontSize: 14, fontWeight: '600', color: '#1F2937', marginBottom: 8 }}>Trending</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            {TRENDING_TAGS.map((tag) => (
+              <AnimatedPressable
+                key={tag}
+                onPress={() => handleSearch(tag)}
+                style={{
+                  backgroundColor: '#F3F4F6',
+                  paddingHorizontal: 14,
+                  paddingVertical: 6,
+                  borderRadius: 20,
+                }}
+              >
+                <Text style={{ fontSize: 13, color: '#6B7280', fontWeight: '500' }}>{tag}</Text>
+              </AnimatedPressable>
+            ))}
+          </View>
         </View>
+      )}
+
+      {isSearching ? (
+        <ExploreSkeleton />
       ) : (
         <FlatList
           data={results}
@@ -95,41 +132,46 @@ export function ExploreScreen() {
           renderItem={({ item }) => {
             const following = followingMap[item.id] ?? false;
             return (
-              <TouchableOpacity
+              <AnimatedPressable
                 onPress={() => navigation.navigate('UserProfile', { userId: item.id })}
-                className="flex-row items-center px-4 py-3 border-b border-border-light"
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingHorizontal: 16,
+                  paddingVertical: 12,
+                  marginHorizontal: 16,
+                  borderBottomWidth: 0.5,
+                  borderBottomColor: '#F3F4F6',
+                }}
               >
                 <Avatar uri={item.avatar_url} displayName={item.display_name} size={46} />
-                <View className="flex-1 ml-3">
-                  <Text className="text-base font-semibold text-text-primary">{item.display_name}</Text>
-                  <Text className="text-sm text-text-secondary">@{item.username}</Text>
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={{ fontSize: 15, fontWeight: '600', color: '#1F2937' }}>{item.display_name}</Text>
+                  <Text style={{ fontSize: 13, color: '#6B7280' }}>@{item.username}</Text>
                 </View>
-                <TouchableOpacity
+                <Pressable
                   onPress={() => handleFollowToggle(item)}
-                  className={`px-4 py-1.5 rounded-lg border ${
-                    following ? 'border-border bg-transparent' : 'border-accent bg-accent'
-                  }`}
+                  style={{
+                    paddingHorizontal: 16,
+                    paddingVertical: 6,
+                    borderRadius: 8,
+                    borderWidth: 1,
+                    borderColor: following ? '#E5E7EB' : '#007AFF',
+                    backgroundColor: following ? 'transparent' : '#007AFF',
+                  }}
                 >
-                  <Text className={`text-sm font-semibold ${following ? 'text-text-primary' : 'text-white'}`}>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: following ? '#1F2937' : '#FFFFFF' }}>
                     {following ? 'Following' : 'Follow'}
                   </Text>
-                </TouchableOpacity>
-              </TouchableOpacity>
+                </Pressable>
+              </AnimatedPressable>
             );
           }}
           ListEmptyComponent={
             hasSearched ? (
-              <EmptyState
-                icon="search-outline"
-                title="No results found"
-                description="Try a different name or username."
-              />
+              <EmptyState icon="search-outline" title="No results found" description="Try a different name or username." />
             ) : (
-              <EmptyState
-                icon="people-outline"
-                title="Find friends on Dine"
-                description="Search by name or username to discover and follow friends."
-              />
+              <EmptyState icon="people-outline" title="Find friends on Dine" description="Search by name or username to discover and follow friends." />
             )
           }
           contentContainerStyle={{ flexGrow: 1 }}

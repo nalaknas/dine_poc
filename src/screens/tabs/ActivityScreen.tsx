@@ -1,6 +1,6 @@
 import React, { useEffect, useCallback } from 'react';
 import {
-  View, Text, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl,
+  View, Text, SectionList, Pressable, RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,6 +8,9 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Avatar } from '../../components/ui/Avatar';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { ActivitySkeleton } from '../../components/ui/Skeleton';
+import { AnimatedPressable } from '../../components/ui/AnimatedPressable';
+import { Shadows } from '../../constants/shadows';
 import { useNotificationsStore } from '../../stores/notificationsStore';
 import { useAuthStore } from '../../stores/authStore';
 import { getUserNotifications, markAllNotificationsRead } from '../../services/user-service';
@@ -23,6 +26,26 @@ const NOTIFICATION_ICONS = {
   follow: { name: 'person-add' as const, color: '#F59E0B' },
   recommendation: { name: 'star' as const, color: '#F59E0B' },
 };
+
+function groupNotifications(notifications: Notification[]) {
+  const now = Date.now();
+  const today: Notification[] = [];
+  const thisWeek: Notification[] = [];
+  const earlier: Notification[] = [];
+
+  for (const n of notifications) {
+    const age = now - new Date(n.created_at).getTime();
+    if (age < 86400000) today.push(n);
+    else if (age < 604800000) thisWeek.push(n);
+    else earlier.push(n);
+  }
+
+  const sections: { title: string; data: Notification[] }[] = [];
+  if (today.length) sections.push({ title: 'Today', data: today });
+  if (thisWeek.length) sections.push({ title: 'This Week', data: thisWeek });
+  if (earlier.length) sections.push({ title: 'Earlier', data: earlier });
+  return sections;
+}
 
 export function ActivityScreen() {
   const navigation = useNavigation<Nav>();
@@ -70,66 +93,100 @@ export function ActivityScreen() {
 
   if (isLoading && notifications.length === 0) {
     return (
-      <View className="flex-1 items-center justify-center bg-background">
-        <ActivityIndicator size="large" color="#007AFF" />
-      </View>
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF' }} edges={['top']}>
+        <View style={[{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#FFFFFF' }, Shadows.header]}>
+          <Text style={{ fontSize: 28, fontWeight: '800', color: '#1F2937' }}>Activity</Text>
+        </View>
+        <ActivitySkeleton />
+      </SafeAreaView>
     );
   }
 
+  const sections = groupNotifications(notifications);
+
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={['top']}>
-      <View className="flex-row items-center justify-between px-4 py-3 border-b border-border-light">
-        <Text className="text-2xl font-bold text-text-primary">Activity</Text>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF' }} edges={['top']}>
+      <View style={[{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#FFFFFF' }, Shadows.header]}>
+        <Text style={{ fontSize: 28, fontWeight: '800', color: '#1F2937' }}>Activity</Text>
         {notifications.some((n) => !n.is_read) && (
-          <TouchableOpacity onPress={handleMarkAllRead}>
-            <Text className="text-sm font-semibold text-accent">Mark all read</Text>
-          </TouchableOpacity>
+          <Pressable onPress={handleMarkAllRead}>
+            <Text style={{ fontSize: 14, fontWeight: '600', color: '#007AFF' }}>Mark all read</Text>
+          </Pressable>
         )}
       </View>
 
-      <FlatList
-        data={notifications}
+      <SectionList
+        sections={sections}
         keyExtractor={(item) => item.id}
+        stickySectionHeadersEnabled={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#007AFF" />
         }
+        renderSectionHeader={({ section }) => (
+          <View style={{ paddingHorizontal: 16, paddingTop: 20, paddingBottom: 8 }}>
+            <Text style={{ fontSize: 14, fontWeight: '700', color: '#6B7280', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              {section.title}
+            </Text>
+          </View>
+        )}
         renderItem={({ item }) => {
           const iconInfo = NOTIFICATION_ICONS[item.type] ?? NOTIFICATION_ICONS.like;
+          const isUnread = !item.is_read;
           return (
-            <TouchableOpacity
+            <AnimatedPressable
               onPress={() => handleNotificationPress(item)}
-              className={`flex-row items-center px-4 py-3 border-b border-border-light ${
-                !item.is_read ? 'bg-blue-50' : 'bg-background'
-              }`}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingHorizontal: 16,
+                paddingVertical: 12,
+                marginHorizontal: 12,
+                marginBottom: 4,
+                borderRadius: 12,
+                backgroundColor: isUnread ? 'rgba(0,122,255,0.04)' : '#FFFFFF',
+                borderLeftWidth: isUnread ? 3 : 0,
+                borderLeftColor: '#007AFF',
+              }}
             >
-              <View className="relative mr-3">
+              <View style={{ position: 'relative', marginRight: 12 }}>
                 <Avatar
                   uri={item.from_user?.avatar_url}
                   displayName={item.from_user?.display_name ?? item.from_user_id}
                   size={42}
                 />
                 <View
-                  className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full items-center justify-center"
-                  style={{ backgroundColor: iconInfo.color }}
+                  style={{
+                    position: 'absolute',
+                    bottom: -2,
+                    right: -2,
+                    width: 20,
+                    height: 20,
+                    borderRadius: 10,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: iconInfo.color,
+                    borderWidth: 2,
+                    borderColor: '#FFFFFF',
+                  }}
                 >
                   <Ionicons name={iconInfo.name} size={10} color="#fff" />
                 </View>
               </View>
-              <View className="flex-1">
-                <Text className="text-sm text-text-primary leading-5">
-                  <Text className="font-semibold">
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 14, color: '#1F2937', lineHeight: 20 }}>
+                  <Text style={{ fontWeight: '600' }}>
                     {item.from_user?.display_name ?? 'Someone'}
                   </Text>{' '}
                   {item.message}
                 </Text>
-                <Text className="text-xs text-text-secondary mt-0.5">
+                <Text style={{ fontSize: 12, color: '#9CA3AF', marginTop: 2 }}>
                   {formatTimeAgo(item.created_at)}
                 </Text>
               </View>
-              {!item.is_read && (
-                <View className="w-2 h-2 rounded-full bg-accent ml-2" />
+              {isUnread && (
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#007AFF', marginLeft: 8 }} />
               )}
-            </TouchableOpacity>
+            </AnimatedPressable>
           );
         }}
         ListEmptyComponent={
@@ -139,7 +196,7 @@ export function ActivityScreen() {
             description="When friends like, comment, or follow you, it'll show up here."
           />
         }
-        contentContainerStyle={{ flexGrow: 1 }}
+        contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }}
       />
     </SafeAreaView>
   );

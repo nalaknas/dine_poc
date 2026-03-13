@@ -1,5 +1,7 @@
 import React from 'react';
+import { View, Text } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { LinearGradient } from 'expo-linear-gradient';
 import { HomeScreen } from '../screens/post-creation/HomeScreen';
 import { ValidateReceiptScreen } from '../screens/post-creation/ValidateReceiptScreen';
 import { SelectFriendsScreen } from '../screens/post-creation/SelectFriendsScreen';
@@ -12,17 +14,55 @@ import type { PostCreationParamList } from '../types';
 
 const Stack = createNativeStackNavigator<PostCreationParamList>();
 
+const STEPS: (keyof PostCreationParamList)[] = [
+  'Home', 'ValidateReceipt', 'SelectFriends', 'AssignItems',
+  'Summary', 'RateMeal', 'AddCaption', 'PostPrivacy',
+];
+
+function ProgressHeader({ title, routeName }: { title: string; routeName: string }) {
+  const stepIndex = STEPS.indexOf(routeName as any);
+  const progress = stepIndex >= 0 ? (stepIndex + 1) / STEPS.length : 0;
+
+  return (
+    <View style={{ backgroundColor: '#FFFFFF' }}>
+      {/* Progress bar */}
+      <View style={{ height: 3, backgroundColor: '#F3F4F6' }}>
+        <LinearGradient
+          colors={['#007AFF', '#5856D6']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={{ height: 3, width: `${progress * 100}%`, borderRadius: 1.5 }}
+        />
+      </View>
+      {/* Step counter */}
+      <View style={{ alignItems: 'center', paddingVertical: 4 }}>
+        <Text style={{ fontSize: 11, color: '#9CA3AF', fontWeight: '500' }}>
+          Step {stepIndex + 1} of {STEPS.length}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
 export function PostCreationNavigator() {
   return (
     <Stack.Navigator
-      screenOptions={{
+      screenOptions={({ route }) => ({
         headerShown: true,
         headerBackTitle: 'Back',
         headerTintColor: '#007AFF',
         headerTitleStyle: { fontWeight: '700', color: '#1F2937' },
         headerShadowVisible: false,
         headerStyle: { backgroundColor: '#FFFFFF' },
-      }}
+        header: ({ options }) => (
+          <View>
+            <View style={{ backgroundColor: '#FFFFFF', paddingTop: 0 }}>
+              {/* The default header will render, this just adds the progress bar below */}
+            </View>
+            <ProgressHeader title={options.title ?? ''} routeName={route.name} />
+          </View>
+        ),
+      })}
     >
       <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'New Post' }} />
       <Stack.Screen name="ValidateReceipt" component={ValidateReceiptScreen} options={{ title: 'Confirm Receipt' }} />
