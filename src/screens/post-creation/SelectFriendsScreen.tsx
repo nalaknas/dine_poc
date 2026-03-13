@@ -7,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { Avatar } from '../../components/ui/Avatar';
 import { useBillSplitterStore } from '../../stores/billSplitterStore';
-import { searchUsers } from '../../services/user-service';
+import { searchUsers, getFrequentFriends } from '../../services/user-service';
 import { useAuthStore } from '../../stores/authStore';
 import { useUserProfileStore } from '../../stores/userProfileStore';
 import type { User, Friend } from '../../types';
@@ -48,9 +48,17 @@ export function SelectFriendsScreen() {
 
   const [query, setQuery] = useState('');
   const [searchResults, setSearchResults] = useState<User[]>([]);
+  const [frequentFriends, setFrequentFriends] = useState<User[]>([]);
   const [showManualModal, setShowManualModal] = useState(false);
   const [manualName, setManualName] = useState('');
   const [manualVenmo, setManualVenmo] = useState('');
+
+  // Load frequently tagged friends on mount
+  useEffect(() => {
+    if (user) {
+      getFrequentFriends(user.id).then(setFrequentFriends).catch(() => {});
+    }
+  }, [user]);
 
   const handleSearch = useCallback(async (text: string) => {
     setQuery(text);
@@ -136,6 +144,28 @@ export function SelectFriendsScreen() {
           />
         </View>
       </View>
+
+      {/* Frequent friends — quick add */}
+      {frequentFriends.length > 0 && query.length === 0 && (
+        <View className="px-4 pb-2">
+          <Text className="text-xs font-semibold text-text-secondary mb-2 uppercase tracking-wide">Frequent</Text>
+          <View className="flex-row flex-wrap">
+            {frequentFriends
+              .filter((f) => !selectedFriends.some((s) => s.id === f.id))
+              .map((friend) => (
+                <TouchableOpacity
+                  key={friend.id}
+                  onPress={() => addSelectedFriend(userToFriend(friend))}
+                  className="flex-row items-center bg-background-secondary border border-border rounded-full px-3 py-1.5 mr-2 mb-2"
+                >
+                  <Avatar uri={friend.avatar_url} displayName={friend.display_name} size={22} />
+                  <Text className="text-sm font-semibold text-text-primary ml-1.5">{friend.display_name.split(' ')[0]}</Text>
+                  <Ionicons name="add" size={16} color="#007AFF" style={{ marginLeft: 4 }} />
+                </TouchableOpacity>
+              ))}
+          </View>
+        </View>
+      )}
 
       <FlatList
         data={searchResults}

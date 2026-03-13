@@ -13,12 +13,19 @@ export function RateMealScreen() {
   const { currentReceipt } = useBillSplitterStore();
 
   const [overallRating, setOverallRating] = useState(draftPost.overallRating ?? 0);
-  const [dishRatings, setDishRatings] = useState<{ dishName: string; rating: number; notes?: string }[]>(
-    currentReceipt?.items.map((item) => ({
-      dishName: item.name,
-      rating: 0,
-    })) ?? []
-  );
+  const [dishRatings, setDishRatings] = useState<{ dishName: string; rating: number; notes?: string }[]>(() => {
+    if (!currentReceipt?.items.length) return [];
+    // Deduplicate items by name so "Coffee" appears once, not 3 times
+    const seen = new Set<string>();
+    return currentReceipt.items
+      .filter((item) => {
+        const key = item.name.toLowerCase().trim();
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .map((item) => ({ dishName: item.name, rating: 0 }));
+  });
   const [customDishName, setCustomDishName] = useState('');
 
   const updateDishRating = (index: number, rating: number) => {

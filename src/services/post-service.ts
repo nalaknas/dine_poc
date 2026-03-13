@@ -155,12 +155,13 @@ export async function createPost(
       city: receipt?.city,
       state: receipt?.state,
       address: receipt?.address,
-      caption: draft.caption,
+      caption: draft.caption ?? '',
       overall_rating: draft.overallRating,
       cuisine_type: draft.cuisineType,
-      tags: draft.tags,
+      tags: draft.tags ?? [],
       meal_type: draft.mealType,
-      food_photos: draft.foodPhotos,
+      food_photos: draft.foodPhotos ?? [],
+      photo_labels: draft.photoLabels ?? {},
       is_public: draft.isPublic,
       meal_date: draft.mealDate,
       receipt_subtotal: receipt?.subtotal,
@@ -183,7 +184,8 @@ export async function createPost(
       price: item.price,
       assigned_to: draft.itemAssignments[item.id] ?? [],
     }));
-    await supabase.from('receipt_items').insert(itemRows);
+    const { error: itemsError } = await supabase.from('receipt_items').insert(itemRows);
+    if (itemsError) console.error('[createPost] receipt_items insert failed:', itemsError.message);
   }
 
   // 3. Insert dish ratings
@@ -198,7 +200,8 @@ export async function createPost(
         notes: r.notes,
       }));
     if (ratingRows.length > 0) {
-      await supabase.from('dish_ratings').insert(ratingRows);
+      const { error: ratingsError } = await supabase.from('dish_ratings').insert(ratingRows);
+      if (ratingsError) console.error('[createPost] dish_ratings insert failed:', ratingsError.message);
     }
   }
 
@@ -212,7 +215,8 @@ export async function createPost(
       venmo_username: b.friend.venmo_username,
       amount_owed: b.total,
     }));
-    await supabase.from('post_tagged_friends').insert(friendRows);
+    const { error: friendsError } = await supabase.from('post_tagged_friends').insert(friendRows);
+    if (friendsError) console.error('[createPost] post_tagged_friends insert failed:', friendsError.message);
   }
 
   return post as Post;

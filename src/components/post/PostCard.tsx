@@ -152,8 +152,13 @@ export function PostCard({ post, onLike, onComment }: PostCardProps) {
       {/* Photos */}
       {post.food_photos.length > 0 && (
         <Pressable onPress={handlePostPress}>
-          <PhotoCarousel photos={post.food_photos} />
+          <PhotoCarousel photos={post.food_photos} photoLabels={post.photo_labels} />
         </Pressable>
+      )}
+
+      {/* Star dishes — always shown when present */}
+      {post.dish_ratings && post.dish_ratings.length > 0 && (
+        <StarDishes dishRatings={post.dish_ratings} />
       )}
 
       {/* Action bar */}
@@ -188,11 +193,6 @@ export function PostCard({ post, onLike, onComment }: PostCardProps) {
           </Text>
         </View>
       ) : null}
-
-      {/* Star dishes */}
-      {post.dish_ratings && post.dish_ratings.length > 0 && (
-        <StarDishes dishRatings={post.dish_ratings} />
-      )}
 
       {/* Tags */}
       {post.tags.length > 0 && (

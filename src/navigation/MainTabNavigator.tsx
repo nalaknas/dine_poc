@@ -109,6 +109,7 @@ export function MainTabNavigator() {
         name="PostCreation"
         component={PostCreationNavigator}
         options={{
+          tabBarStyle: { display: 'none' },
           tabBarIcon: () => null,
           tabBarButton: ({ style: _style, children: _children, ...rest }) => (
             <Pressable

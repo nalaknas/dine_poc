@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, CommonActions } from '@react-navigation/native';
 import { useSocialStore } from '../../stores/socialStore';
 import { useBillSplitterStore } from '../../stores/billSplitterStore';
 import { useAuthStore } from '../../stores/authStore';
@@ -47,8 +47,12 @@ export function PostPrivacyScreen() {
         if (uri.startsWith('http')) {
           uploadedPhotos.push(uri);
         } else {
-          const url = await uploadFoodPhoto(uri, user.id, `photo_${Date.now()}_${i}.jpg`);
-          uploadedPhotos.push(url);
+          try {
+            const url = await uploadFoodPhoto(uri, user.id, `photo_${Date.now()}_${i}.jpg`);
+            uploadedPhotos.push(url);
+          } catch (uploadErr: any) {
+            console.warn('[publish] Photo upload failed:', uploadErr?.message);
+          }
         }
       }
       draft.foodPhotos = uploadedPhotos;
@@ -79,17 +83,46 @@ export function PostPrivacyScreen() {
       clearDraftPost();
       resetBill();
 
-      // 6. Navigate to Venmo if friends owe money
+      // 6. Exit post creation flow
       const venmoableBreakdowns = personBreakdowns.filter(
         (b) => b.friend.venmo_username && b.total > 0
       );
+
+      // Get tab navigator to switch tabs, then reset PostCreation stack
+      const tabNav = navigation.getParent();
+
       if (venmoableBreakdowns.length > 0) {
-        navigation.replace('VenmoRequests', {
+        // Go to Venmo requests (root stack screen)
+        navigation.dispatch(
+          CommonActions.reset({
+            index: 0,
+            routes: [{ name: 'Home' }],
+          })
+        );
+        // Navigate to VenmoRequests on root stack
+        tabNav?.getParent()?.navigate('VenmoRequests', {
           breakdowns: venmoableBreakdowns,
           restaurantName: currentReceipt?.restaurantName ?? 'Dinner',
         });
+      } else if (isPublic) {
+        // Public → go to Feed so user sees their post
+        navigation.dispatch(
+          CommonActions.reset({
+            index: 0,
+            routes: [{ name: 'Home' }],
+          })
+        );
+        tabNav?.navigate('Feed');
       } else {
-        navigation.navigate('Main');
+        // Private → go to the meal detail card
+        navigation.dispatch(
+          CommonActions.reset({
+            index: 0,
+            routes: [{ name: 'Home' }],
+          })
+        );
+        tabNav?.navigate('Profile');
+        tabNav?.getParent()?.navigate('MealDetail', { postId: post.id });
       }
     } catch (err: any) {
       Alert.alert('Post Failed', err?.message ?? 'Could not publish your post. Please try again.');

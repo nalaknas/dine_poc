@@ -14,6 +14,52 @@ export async function searchUsers(query: string): Promise<User[]> {
   return (data ?? []) as User[];
 }
 
+// ─── Frequent Friends ────────────────────────────────────────────────────────
+
+/**
+ * Returns the user's most frequently tagged friends, ordered by tag count.
+ * Queries post_tagged_friends for posts authored by the current user,
+ * then joins with users to get full profile data.
+ */
+export async function getFrequentFriends(userId: string, limit = 8): Promise<User[]> {
+  // Get tagged friend user_ids grouped by count, for posts authored by this user
+  const { data: tagged, error: tagError } = await supabase
+    .from('post_tagged_friends')
+    .select('user_id, post_id, posts!inner(author_id)')
+    .eq('posts.author_id', userId)
+    .not('user_id', 'is', null)
+    .neq('user_id', userId);
+
+  if (tagError || !tagged || tagged.length === 0) return [];
+
+  // Count occurrences of each user_id
+  const counts: Record<string, number> = {};
+  for (const row of tagged) {
+    const uid = row.user_id as string;
+    counts[uid] = (counts[uid] ?? 0) + 1;
+  }
+
+  // Sort by count descending, take top N
+  const topIds = Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit)
+    .map(([id]) => id);
+
+  if (topIds.length === 0) return [];
+
+  // Fetch full user profiles
+  const { data: users, error: userError } = await supabase
+    .from('users')
+    .select('*')
+    .in('id', topIds);
+
+  if (userError || !users) return [];
+
+  // Re-sort by frequency
+  const idOrder = new Map(topIds.map((id, i) => [id, i]));
+  return (users as User[]).sort((a, b) => (idOrder.get(a.id) ?? 99) - (idOrder.get(b.id) ?? 99));
+}
+
 // ─── Follow System ────────────────────────────────────────────────────────────
 
 export async function followUser(currentUserId: string, targetUserId: string): Promise<void> {

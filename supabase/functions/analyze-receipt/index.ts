@@ -72,7 +72,8 @@ serve(async (req) => {
 Rules:
 - All prices must be numbers (not strings)
 - If a value is missing, use 0 for numbers or "" for strings
-- items array should contain each line item with its price
+- CRITICAL: If an item has a quantity greater than 1 (e.g. "3 Coffee $12" or "Coffee x3 $12" or "Coffee  3  $12.00"), you MUST expand it into separate individual items. For example "3 Coffee $12" becomes three separate items each named "Coffee" with price 4.00 (total divided by quantity). Each expanded item gets its own unique id.
+- items array should contain each individual line item with its per-unit price
 - Exclude items that are clearly not food (like "Take-out bag fee" unless it's a food item)
 - The "id" field should be a simple incrementing string like "item_1", "item_2", etc.
 

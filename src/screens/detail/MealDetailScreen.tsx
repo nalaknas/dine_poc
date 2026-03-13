@@ -135,7 +135,7 @@ export function MealDetailScreen() {
           </TouchableOpacity>
 
           {/* Photos */}
-          {post.food_photos.length > 0 && <PhotoCarousel photos={post.food_photos} />}
+          {post.food_photos.length > 0 && <PhotoCarousel photos={post.food_photos} photoLabels={post.photo_labels} />}
 
           {/* Actions */}
           <View className="flex-row items-center px-4 pt-3 gap-4">

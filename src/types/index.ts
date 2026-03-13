@@ -78,6 +78,7 @@ export interface Post {
   tags: string[];
   meal_type?: string;
   food_photos: string[];
+  photo_labels?: Record<string, string>; // photo index → dish name
   is_public: boolean;
   meal_date?: string;
   meal_time?: string;
@@ -149,6 +150,7 @@ export interface CreatePostDraft {
   dishRatings: { dishName: string; rating: number; notes?: string }[];
   // Step 6
   foodPhotos: string[];
+  photoLabels: Record<number, string>; // photo index → dish name
   caption: string;
   tags: string[];
   cuisineType?: string;

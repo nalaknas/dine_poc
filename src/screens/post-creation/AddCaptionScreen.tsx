@@ -19,9 +19,24 @@ export function AddCaptionScreen() {
 
   const [caption, setCaption] = useState(draftPost.caption ?? '');
   const [photos, setPhotos] = useState<string[]>(draftPost.foodPhotos ?? []);
+  const [photoLabels, setPhotoLabels] = useState<Record<number, string>>(draftPost.photoLabels ?? {});
   const [tags, setTags] = useState<string[]>(draftPost.tags ?? []);
   const [cuisineType, setCuisineType] = useState(draftPost.cuisineType ?? '');
   const [mealType, setMealType] = useState(draftPost.mealType ?? '');
+
+  // Unique dish names from the receipt for tagging photos
+  const dishNames = React.useMemo(() => {
+    if (!currentReceipt?.items?.length) return [];
+    const seen = new Set<string>();
+    return currentReceipt.items
+      .filter((item) => {
+        const key = item.name.toLowerCase().trim();
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .map((item) => item.name);
+  }, [currentReceipt]);
 
   const pickPhotos = async () => {
     if (photos.length >= 10) {
@@ -41,6 +56,15 @@ export function AddCaptionScreen() {
 
   const removePhoto = (index: number) => {
     setPhotos((prev) => prev.filter((_, i) => i !== index));
+    setPhotoLabels((prev) => {
+      const updated: Record<number, string> = {};
+      for (const [k, v] of Object.entries(prev)) {
+        const ki = Number(k);
+        if (ki < index) updated[ki] = v;
+        else if (ki > index) updated[ki - 1] = v;
+      }
+      return updated;
+    });
   };
 
   const toggleTag = (tag: string) => {
@@ -53,6 +77,7 @@ export function AddCaptionScreen() {
     updateDraftPost({
       caption,
       foodPhotos: photos,
+      photoLabels,
       tags,
       cuisineType: cuisineType || undefined,
       mealType: mealType || undefined,
@@ -72,18 +97,56 @@ export function AddCaptionScreen() {
             </Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               {photos.map((uri, i) => (
-                <View key={i} className="mr-2 relative">
-                  <Image
-                    source={{ uri }}
-                    style={{ width: 100, height: 100, borderRadius: 10 }}
-                    resizeMode="cover"
-                  />
-                  <TouchableOpacity
-                    onPress={() => removePhoto(i)}
-                    className="absolute top-1 right-1 bg-black/60 rounded-full w-5 h-5 items-center justify-center"
-                  >
-                    <Ionicons name="close" size={12} color="#fff" />
-                  </TouchableOpacity>
+                <View key={i} className="mr-3" style={{ width: 110 }}>
+                  <View className="relative">
+                    <Image
+                      source={{ uri }}
+                      style={{ width: 110, height: 110, borderRadius: 10 }}
+                      resizeMode="cover"
+                    />
+                    <TouchableOpacity
+                      onPress={() => removePhoto(i)}
+                      className="absolute top-1 right-1 bg-black/60 rounded-full w-5 h-5 items-center justify-center"
+                    >
+                      <Ionicons name="close" size={12} color="#fff" />
+                    </TouchableOpacity>
+                    {photoLabels[i] && (
+                      <View className="absolute bottom-0 left-0 right-0 bg-black/60 rounded-b-[10px] px-2 py-1">
+                        <Text className="text-white text-[10px] font-semibold" numberOfLines={1}>
+                          {photoLabels[i]}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                  {/* Dish tag selector */}
+                  {dishNames.length > 0 && (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-1.5">
+                      {dishNames.map((name) => (
+                        <TouchableOpacity
+                          key={name}
+                          onPress={() => setPhotoLabels((prev) =>
+                            prev[i] === name
+                              ? (() => { const { [i]: _, ...rest } = prev; return rest; })()
+                              : { ...prev, [i]: name }
+                          )}
+                          className={`mr-1 px-2 py-0.5 rounded-full border ${
+                            photoLabels[i] === name
+                              ? 'bg-accent border-accent'
+                              : 'bg-background-secondary border-border'
+                          }`}
+                        >
+                          <Text
+                            className={`text-[10px] ${
+                              photoLabels[i] === name ? 'text-white font-semibold' : 'text-text-secondary'
+                            }`}
+                            numberOfLines={1}
+                          >
+                            {name}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                  )}
                 </View>
               ))}
               {photos.length < 10 && (

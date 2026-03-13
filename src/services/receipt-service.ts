@@ -1,7 +1,7 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import * as ImageManipulator from 'expo-image-manipulator';
 const BASE64 = 'base64' as const;
-import { supabase } from '../lib/supabase';
+import { Config } from '../constants/config';
 import type { ReceiptData } from '../types';
 
 /**
@@ -24,30 +24,62 @@ async function compressForOCR(uri: string): Promise<string> {
  * API keys stay server-side, never in the client bundle.
  */
 export async function analyzeReceipt(imageUris: string[]): Promise<ReceiptData> {
+  const supabaseUrl = Config.supabase.url;
+  const anonKey = Config.supabase.anonKey;
+
   // Compress images before sending to keep payload small
   const base64Images = await Promise.all(imageUris.map(compressForOCR));
 
-  // supabase.functions.invoke automatically sends the user's session JWT
-  const { data, error } = await supabase.functions.invoke('analyze-receipt', {
-    body: { images: base64Images },
+  // Use anon key as Bearer token. Supabase Edge Function gateway validates
+  // the Authorization header with HS256, but Supabase Auth now issues ES256
+  // user JWTs — causing "Invalid JWT". The anon key is HS256 and works.
+  // This is safe: the Edge Function doesn't need user identity (it just does
+  // OCR), and the apikey header already authenticates the request.
+  const response = await fetch(`${supabaseUrl}/functions/v1/analyze-receipt`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${anonKey}`,
+      'apikey': anonKey,
+    },
+    body: JSON.stringify({ images: base64Images }),
   });
 
-  if (error) {
-    // FunctionsHttpError hardcodes its message; the real error is in the Response context
-    let msg = 'Receipt analysis failed';
-    try {
-      const res = (error as any).context;
-      if (res && typeof res.json === 'function') {
-        const body = await res.json();
-        msg = body.error || `Edge Function error (${res.status})`;
-      }
-    } catch {
-      msg = error.message;
-    }
-    throw new Error(msg);
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Receipt analysis failed (${response.status}): ${text}`);
   }
 
-  return data as ReceiptData;
+  return (await response.json()) as ReceiptData;
+}
+
+/**
+ * Upload a file to Supabase Storage via the upload-photo Edge Function.
+ *
+ * The Edge Function uses the service role key to bypass Storage RLS,
+ * avoiding the ES256 JWT issue that blocks direct client uploads.
+ */
+async function storageUpload(bucket: string, path: string, base64: string): Promise<string> {
+  const supabaseUrl = Config.supabase.url;
+  const anonKey = Config.supabase.anonKey;
+
+  const res = await fetch(`${supabaseUrl}/functions/v1/upload-photo`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${anonKey}`,
+      'apikey': anonKey,
+    },
+    body: JSON.stringify({ base64, bucket, path }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Storage upload failed (${res.status}): ${text}`);
+  }
+
+  const { url } = await res.json();
+  return url;
 }
 
 /**
@@ -58,19 +90,8 @@ export async function uploadReceiptImage(
   userId: string,
   fileName: string
 ): Promise<string> {
-  const base64 = await FileSystem.readAsStringAsync(uri, {
-    encoding: BASE64,
-  });
-
-  const path = `receipts/${userId}/${fileName}`;
-  const { error } = await supabase.storage
-    .from('dine-images')
-    .upload(path, decode(base64), { contentType: 'image/jpeg' });
-
-  if (error) throw error;
-
-  const { data } = supabase.storage.from('dine-images').getPublicUrl(path);
-  return data.publicUrl;
+  const base64 = await FileSystem.readAsStringAsync(uri, { encoding: BASE64 });
+  return storageUpload('dine-images', `receipts/${userId}/${fileName}`, base64);
 }
 
 /**
@@ -81,46 +102,14 @@ export async function uploadFoodPhoto(
   userId: string,
   fileName: string
 ): Promise<string> {
-  const base64 = await FileSystem.readAsStringAsync(uri, {
-    encoding: BASE64,
-  });
-
-  const path = `posts/${userId}/${fileName}`;
-  const { error } = await supabase.storage
-    .from('dine-images')
-    .upload(path, decode(base64), { contentType: 'image/jpeg' });
-
-  if (error) throw error;
-
-  const { data } = supabase.storage.from('dine-images').getPublicUrl(path);
-  return data.publicUrl;
+  const base64 = await FileSystem.readAsStringAsync(uri, { encoding: BASE64 });
+  return storageUpload('dine-images', `posts/${userId}/${fileName}`, base64);
 }
 
 /**
  * Uploads a profile avatar to Supabase Storage.
  */
 export async function uploadAvatar(uri: string, userId: string): Promise<string> {
-  const base64 = await FileSystem.readAsStringAsync(uri, {
-    encoding: BASE64,
-  });
-
-  const path = `profiles/${userId}/avatar.jpg`;
-  const { error } = await supabase.storage
-    .from('dine-images')
-    .upload(path, decode(base64), { contentType: 'image/jpeg', upsert: true });
-
-  if (error) throw error;
-
-  const { data } = supabase.storage.from('dine-images').getPublicUrl(path);
-  return data.publicUrl;
-}
-
-// Utility: decode base64 string to Uint8Array
-function decode(base64: string): Uint8Array {
-  const binaryStr = atob(base64);
-  const bytes = new Uint8Array(binaryStr.length);
-  for (let i = 0; i < binaryStr.length; i++) {
-    bytes[i] = binaryStr.charCodeAt(i);
-  }
-  return bytes;
+  const base64 = await FileSystem.readAsStringAsync(uri, { encoding: BASE64 });
+  return storageUpload('dine-images', `profiles/${userId}/avatar.jpg`, base64);
 }

@@ -9,7 +9,14 @@ interface StarDishesProps {
 }
 
 export function StarDishes({ dishRatings }: StarDishesProps) {
-  const starDishes = dishRatings.filter((d) => d.is_star_dish);
+  let starDishes = dishRatings.filter((d) => d.is_star_dish);
+
+  // Always show at least the top-rated dish even if none hit the star threshold
+  if (starDishes.length === 0 && dishRatings.length > 0) {
+    const top = [...dishRatings].sort((a, b) => b.rating - a.rating)[0];
+    if (top.rating > 0) starDishes = [top];
+  }
+
   if (starDishes.length === 0) return null;
 
   return (

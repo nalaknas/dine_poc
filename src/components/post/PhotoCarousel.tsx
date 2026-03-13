@@ -5,8 +5,27 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
+function PhotoLabel({ label }: { label: string }) {
+  return (
+    <View
+      style={{
+        position: 'absolute',
+        bottom: 10,
+        left: 10,
+        borderRadius: 8,
+        overflow: 'hidden',
+      }}
+    >
+      <BlurView intensity={60} tint="dark" style={{ paddingHorizontal: 10, paddingVertical: 5 }}>
+        <Text style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '600' }}>{label}</Text>
+      </BlurView>
+    </View>
+  );
+}
+
 interface PhotoCarouselProps {
   photos: string[];
+  photoLabels?: Record<string, string>;
   aspectRatio?: number;
 }
 
@@ -30,14 +49,20 @@ function FadeInImage({ uri, width, height }: { uri: string; width: number; heigh
   );
 }
 
-export function PhotoCarousel({ photos, aspectRatio = 1 }: PhotoCarouselProps) {
+export function PhotoCarousel({ photos, photoLabels, aspectRatio = 1 }: PhotoCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const height = SCREEN_WIDTH / aspectRatio;
 
   if (photos.length === 0) return null;
 
   if (photos.length === 1) {
-    return <FadeInImage uri={photos[0]} width={SCREEN_WIDTH} height={height} />;
+    const label = photoLabels?.['0'];
+    return (
+      <View style={{ position: 'relative' }}>
+        <FadeInImage uri={photos[0]} width={SCREEN_WIDTH} height={height} />
+        {label && <PhotoLabel label={label} />}
+      </View>
+    );
   }
 
   return (
@@ -53,7 +78,10 @@ export function PhotoCarousel({ photos, aspectRatio = 1 }: PhotoCarouselProps) {
         scrollEventThrottle={16}
       >
         {photos.map((uri, i) => (
-          <FadeInImage key={i} uri={uri} width={SCREEN_WIDTH} height={height} />
+          <View key={i} style={{ width: SCREEN_WIDTH, height, position: 'relative' }}>
+            <FadeInImage uri={uri} width={SCREEN_WIDTH} height={height} />
+            {photoLabels?.[String(i)] && <PhotoLabel label={photoLabels[String(i)]} />}
+          </View>
         ))}
       </ScrollView>
       {/* Dot indicators */}
