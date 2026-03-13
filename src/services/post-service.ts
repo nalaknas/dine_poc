@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import type { Post, CreatePostDraft, PersonBreakdown } from '../types';
+import type { Post, Comment, CreatePostDraft, PersonBreakdown } from '../types';
 import { createNotification } from './user-service';
 import { getFollowingIds } from './user-service';
 
@@ -37,7 +37,25 @@ export async function getFeedPosts(currentUserId: string, limit = 20): Promise<P
     .in('post_id', postIds);
 
   const likedSet = new Set((likes ?? []).map((l: { post_id: string }) => l.post_id));
-  return posts.map((p) => ({ ...p, is_liked: likedSet.has(p.id) }));
+
+  // Fetch 2 most recent comments per post
+  const { data: allComments } = await supabase
+    .from('comments')
+    .select('*, author:users!comments_author_id_fkey(*)')
+    .in('post_id', postIds)
+    .order('created_at', { ascending: false });
+
+  const commentsByPost = (allComments ?? [] as Comment[]).reduce<Record<string, Comment[]>>((acc, c) => {
+    if (!acc[c.post_id]) acc[c.post_id] = [];
+    if (acc[c.post_id].length < 2) acc[c.post_id].push(c as Comment);
+    return acc;
+  }, {});
+
+  return posts.map((p) => ({
+    ...p,
+    is_liked: likedSet.has(p.id),
+    recent_comments: (commentsByPost[p.id] ?? []).reverse(),
+  }));
 }
 
 export async function getUserPosts(userId: string, currentUserId?: string): Promise<Post[]> {

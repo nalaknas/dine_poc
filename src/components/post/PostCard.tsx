@@ -212,13 +212,23 @@ export function PostCard({ post, onLike, onComment }: PostCardProps) {
         </Text>
       )}
 
-      {/* Comments hint */}
+      {/* Comments */}
       {post.comment_count > 0 && (
-        <Pressable onPress={onComment} style={{ paddingHorizontal: 12, paddingBottom: 8 }}>
-          <Text style={{ fontSize: 11, color: '#6B7280' }}>
-            View all {post.comment_count} comment{post.comment_count !== 1 ? 's' : ''}
-          </Text>
-        </Pressable>
+        <View style={{ paddingHorizontal: 12, paddingBottom: 8 }}>
+          {post.comment_count > (post.recent_comments?.length ?? 0) && (
+            <Pressable onPress={onComment} style={{ marginBottom: 4 }}>
+              <Text style={{ fontSize: 12, color: '#6B7280' }}>
+                View all {post.comment_count} comment{post.comment_count !== 1 ? 's' : ''}
+              </Text>
+            </Pressable>
+          )}
+          {post.recent_comments?.map((comment) => (
+            <Text key={comment.id} style={{ fontSize: 13, color: '#1F2937', lineHeight: 19, marginBottom: 2 }}>
+              <Text style={{ fontWeight: '600' }}>{comment.author?.username ?? 'user'} </Text>
+              {comment.content}
+            </Text>
+          ))}
+        </View>
       )}
 
       {/* Timestamp */}

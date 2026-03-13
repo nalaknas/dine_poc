@@ -93,8 +93,7 @@ export function RootNavigator() {
               name="Comments"
               component={CommentsScreen}
               options={{
-                headerShown: true,
-                title: 'Comments',
+                headerShown: false,
                 presentation: 'modal',
                 animation: 'slide_from_bottom',
               }}
