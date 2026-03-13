@@ -53,6 +53,7 @@ export function CommentsScreen() {
       .single();
     if (!error && data) {
       setComments((prev) => [...prev, data as Comment]);
+      await supabase.rpc('increment_comment_count', { post_id: params.postId });
       // Notify post author (skip self-comments)
       const { data: post } = await supabase
         .from('posts')
@@ -75,7 +76,14 @@ export function CommentsScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={['bottom']}>
+    <SafeAreaView className="flex-1 bg-background" edges={['top', 'bottom']}>
+      {/* Header */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' }}>
+        <Pressable onPress={() => navigation.goBack()} style={{ padding: 4, marginRight: 8 }}>
+          <Ionicons name="chevron-back" size={26} color="#1F2937" />
+        </Pressable>
+        <Text style={{ fontSize: 17, fontWeight: '600', color: '#1F2937' }}>Comments</Text>
+      </View>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1">
         {isLoading ? (
           <View className="flex-1 items-center justify-center">

@@ -96,6 +96,7 @@ export interface Post {
   receipt_total?: number;
   // Client-side
   is_liked?: boolean;
+  recent_comments?: Comment[];
 }
 
 // ─── Post Creation Draft ───────────────────────────────────────────────────────
