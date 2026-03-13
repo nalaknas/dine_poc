@@ -12,6 +12,7 @@ export function AssignItemsScreen() {
   const navigation = useNavigation<any>();
   const {
     currentReceipt, selectedFriends, isFamilyStyle, setFamilyStyle,
+    familyStyleItems, toggleItemFamilyStyle,
     itemAssignments, assignItem, unassignItem, calculateBreakdowns,
   } = useBillSplitterStore();
 
@@ -61,7 +62,8 @@ export function AssignItemsScreen() {
         {/* Items */}
         {currentReceipt.items.map((item) => {
           const assigned = itemAssignments[item.id] ?? [];
-          const splitCount = isFamilyStyle ? selectedFriends.length : (assigned.length || 1);
+          const isItemFamily = isFamilyStyle || familyStyleItems.has(item.id);
+          const splitCount = isItemFamily ? selectedFriends.length : (assigned.length || 1);
           const perPerson = item.price / splitCount;
 
           return (
@@ -77,27 +79,48 @@ export function AssignItemsScreen() {
 
               {!isFamilyStyle && (
                 <View>
-                  <Text className="text-xs text-text-secondary mb-2">
-                    Assign to: {assigned.length === 0 ? 'nobody yet' : `${formatCurrency(perPerson)} each`}
-                  </Text>
-                  <View className="flex-row flex-wrap">
-                    {selectedFriends.map((friend) => {
-                      const isAssigned = assigned.includes(friend.id);
-                      return (
-                        <TouchableOpacity
-                          key={friend.id}
-                          onPress={() => toggleAssign(item.id, friend.id)}
-                          className={`mr-2 mb-2 px-3 py-1.5 rounded-full border ${
-                            isAssigned ? 'bg-accent border-accent' : 'bg-transparent border-border'
-                          }`}
-                        >
-                          <Text className={`text-xs font-semibold ${isAssigned ? 'text-white' : 'text-text-secondary'}`}>
-                            {friend.display_name.split(' ')[0]}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
+                  {/* Per-item family style toggle */}
+                  <View className="flex-row items-center justify-between mb-2">
+                    <Text className="text-xs text-text-secondary">
+                      {isItemFamily
+                        ? `Split equally → ${formatCurrency(perPerson)} each`
+                        : assigned.length === 0
+                          ? 'Assign to: nobody yet'
+                          : `Assign to: ${formatCurrency(perPerson)} each`}
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => toggleItemFamilyStyle(item.id)}
+                      className={`px-3 py-1 rounded-full border ${
+                        isItemFamily ? 'bg-accent border-accent' : 'bg-transparent border-border'
+                      }`}
+                    >
+                      <Text className={`text-xs font-semibold ${isItemFamily ? 'text-white' : 'text-text-secondary'}`}>
+                        Split equally
+                      </Text>
+                    </TouchableOpacity>
                   </View>
+
+                  {/* Individual friend assignment (hidden when item is family style) */}
+                  {!isItemFamily && (
+                    <View className="flex-row flex-wrap">
+                      {selectedFriends.map((friend) => {
+                        const isAssigned = assigned.includes(friend.id);
+                        return (
+                          <TouchableOpacity
+                            key={friend.id}
+                            onPress={() => toggleAssign(item.id, friend.id)}
+                            className={`mr-2 mb-2 px-3 py-1.5 rounded-full border ${
+                              isAssigned ? 'bg-accent border-accent' : 'bg-transparent border-border'
+                            }`}
+                          >
+                            <Text className={`text-xs font-semibold ${isAssigned ? 'text-white' : 'text-text-secondary'}`}>
+                              {friend.display_name.split(' ')[0]}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  )}
                 </View>
               )}
 
