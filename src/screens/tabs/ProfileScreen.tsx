@@ -18,7 +18,7 @@ import { useUserProfileStore } from '../../stores/userProfileStore';
 import { useSocialStore } from '../../stores/socialStore';
 import { getUserPosts } from '../../services/post-service';
 import { getFollowerCount, getFollowingCount } from '../../services/user-service';
-import type { Post, RootStackParamList } from '../../types';
+import type { RootStackParamList } from '../../types';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -27,7 +27,7 @@ const PHOTO_SIZE = (width - 48) / 3;
 
 export function ProfileScreen() {
   const navigation = useNavigation<Nav>();
-  const { user, signOut } = useAuthStore();
+  const { user } = useAuthStore();
   const { profile, followersCount, followingCount, setFollowCounts } = useUserProfileStore();
   const { myPosts, setMyPosts } = useSocialStore();
   const [isLoading, setIsLoading] = useState(false);
@@ -80,7 +80,7 @@ export function ProfileScreen() {
           <View style={{ flex: 1, marginLeft: 16 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-around' }}>
               {[
-                { label: 'Meals', value: profile?.total_meals ?? 0 },
+                { label: 'Meals', value: myPosts.length },
                 { label: 'Followers', value: followersCount },
                 { label: 'Following', value: followingCount },
               ].map((stat) => (
