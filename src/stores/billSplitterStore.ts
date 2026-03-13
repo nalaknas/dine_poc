@@ -6,6 +6,7 @@ interface BillSplitterState {
   selectedFriends: Friend[];
   savedFriends: Friend[];
   isFamilyStyle: boolean;
+  familyStyleItems: Set<string>; // itemIds that are split equally among everyone
   itemAssignments: Record<string, string[]>; // itemId -> friendIds
   personBreakdowns: PersonBreakdown[];
   // Receipt
@@ -19,6 +20,7 @@ interface BillSplitterState {
   setSavedFriends: (friends: Friend[]) => void;
   // Assignment
   setFamilyStyle: (value: boolean) => void;
+  toggleItemFamilyStyle: (itemId: string) => void;
   assignItem: (itemId: string, friendId: string) => void;
   unassignItem: (itemId: string, friendId: string) => void;
   setItemAssignment: (itemId: string, friendIds: string[]) => void;
@@ -32,18 +34,20 @@ function calcBreakdowns(
   receipt: ReceiptData,
   friends: Friend[],
   assignments: Record<string, string[]>,
-  familyStyle: boolean
+  familyStyle: boolean,
+  familyStyleItems: Set<string>
 ): PersonBreakdown[] {
   if (!receipt || friends.length === 0) return [];
 
   return friends.map((friend) => {
     const myItems = receipt.items
       .filter((item) => {
-        if (familyStyle) return true;
+        if (familyStyle || familyStyleItems.has(item.id)) return true;
         return assignments[item.id]?.includes(friend.id);
       })
       .map((item) => {
-        const assignedCount = familyStyle
+        const isItemFamilyStyle = familyStyle || familyStyleItems.has(item.id);
+        const assignedCount = isItemFamilyStyle
           ? friends.length
           : (assignments[item.id]?.length ?? 1);
         const share = item.price / assignedCount;
@@ -71,6 +75,7 @@ export const useBillSplitterStore = create<BillSplitterState>((set, get) => ({
   selectedFriends: [],
   savedFriends: [],
   isFamilyStyle: false,
+  familyStyleItems: new Set<string>(),
   itemAssignments: {},
   personBreakdowns: [],
 
@@ -106,6 +111,17 @@ export const useBillSplitterStore = create<BillSplitterState>((set, get) => ({
 
   setFamilyStyle: (isFamilyStyle) => set({ isFamilyStyle }),
 
+  toggleItemFamilyStyle: (itemId) =>
+    set((state) => {
+      const next = new Set(state.familyStyleItems);
+      if (next.has(itemId)) {
+        next.delete(itemId);
+      } else {
+        next.add(itemId);
+      }
+      return { familyStyleItems: next };
+    }),
+
   assignItem: (itemId, friendId) =>
     set((state) => {
       const current = state.itemAssignments[itemId] ?? [];
@@ -127,13 +143,14 @@ export const useBillSplitterStore = create<BillSplitterState>((set, get) => ({
     })),
 
   calculateBreakdowns: () => {
-    const { currentReceipt, selectedFriends, itemAssignments, isFamilyStyle } = get();
+    const { currentReceipt, selectedFriends, itemAssignments, isFamilyStyle, familyStyleItems } = get();
     if (!currentReceipt) return [];
     const breakdowns = calcBreakdowns(
       currentReceipt,
       selectedFriends,
       itemAssignments,
-      isFamilyStyle
+      isFamilyStyle,
+      familyStyleItems
     );
     set({ personBreakdowns: breakdowns });
     return breakdowns;
@@ -146,6 +163,7 @@ export const useBillSplitterStore = create<BillSplitterState>((set, get) => ({
       currentReceipt: null,
       selectedFriends: [],
       isFamilyStyle: false,
+      familyStyleItems: new Set<string>(),
       itemAssignments: {},
       personBreakdowns: [],
     }),
