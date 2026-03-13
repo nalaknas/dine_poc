@@ -4,7 +4,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Avatar } from '../../components/ui/Avatar';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -71,11 +71,14 @@ export function ActivityScreen() {
     loadNotifications();
   }, [loadNotifications]);
 
-  const handleMarkAllRead = async () => {
-    if (!user) return;
-    markAllAsRead();
-    await markAllNotificationsRead(user.id);
-  };
+  // Auto-mark all as read whenever the user views this screen
+  useFocusEffect(
+    useCallback(() => {
+      if (!user) return;
+      markAllAsRead();
+      markAllNotificationsRead(user.id);
+    }, [user, markAllAsRead])
+  );
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -106,13 +109,8 @@ export function ActivityScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF' }} edges={['top']}>
-      <View style={[{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#FFFFFF' }, Shadows.header]}>
+      <View style={[{ paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#FFFFFF' }, Shadows.header]}>
         <Text style={{ fontSize: 28, fontWeight: '800', color: '#1F2937' }}>Activity</Text>
-        {notifications.some((n) => !n.is_read) && (
-          <Pressable onPress={handleMarkAllRead}>
-            <Text style={{ fontSize: 14, fontWeight: '600', color: '#007AFF' }}>Mark all read</Text>
-          </Pressable>
-        )}
       </View>
 
       <SectionList

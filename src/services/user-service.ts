@@ -67,6 +67,13 @@ export async function followUser(currentUserId: string, targetUserId: string): P
     .from('follows')
     .insert({ follower_id: currentUserId, following_id: targetUserId });
   if (error) throw error;
+
+  await createNotification({
+    userId: targetUserId,
+    type: 'follow',
+    fromUserId: currentUserId,
+    message: 'started following you',
+  });
 }
 
 export async function unfollowUser(currentUserId: string, targetUserId: string): Promise<void> {

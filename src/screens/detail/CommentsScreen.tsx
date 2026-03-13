@@ -10,6 +10,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Avatar } from '../../components/ui/Avatar';
 import { useAuthStore } from '../../stores/authStore';
 import { supabase } from '../../lib/supabase';
+import { createNotification } from '../../services/user-service';
 import { formatTimeAgo } from '../../utils/format';
 import type { Comment, RootStackParamList } from '../../types';
 
@@ -52,6 +53,21 @@ export function CommentsScreen() {
       .single();
     if (!error && data) {
       setComments((prev) => [...prev, data as Comment]);
+      // Notify post author (skip self-comments)
+      const { data: post } = await supabase
+        .from('posts')
+        .select('author_id')
+        .eq('id', params.postId)
+        .single();
+      if (post && post.author_id !== user.id) {
+        createNotification({
+          userId: post.author_id,
+          type: 'comment',
+          fromUserId: user.id,
+          postId: params.postId,
+          message: 'commented on your post',
+        });
+      }
     } else {
       Alert.alert('Error', 'Could not post comment.');
     }
