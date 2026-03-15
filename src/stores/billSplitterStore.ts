@@ -1,5 +1,8 @@
 import { create } from 'zustand';
-import type { ReceiptData, Friend, PersonBreakdown } from '../types';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import type { ReceiptData, Friend, PersonBreakdown, PostCreationParamList } from '../types';
+
+const BILL_DRAFT_KEY = '@dine:bill_draft';
 
 interface BillSplitterState {
   currentReceipt: ReceiptData | null;
@@ -28,6 +31,10 @@ interface BillSplitterState {
   calculateBreakdowns: () => PersonBreakdown[];
   setBreakdowns: (breakdowns: PersonBreakdown[]) => void;
   reset: () => void;
+  // Draft persistence
+  persistDraft: (step: keyof PostCreationParamList) => Promise<void>;
+  loadDraft: () => Promise<{ step: keyof PostCreationParamList } | null>;
+  clearPersistedDraft: () => Promise<void>;
 }
 
 function calcBreakdowns(
@@ -158,7 +165,7 @@ export const useBillSplitterStore = create<BillSplitterState>((set, get) => ({
 
   setBreakdowns: (personBreakdowns) => set({ personBreakdowns }),
 
-  reset: () =>
+  reset: () => {
     set({
       currentReceipt: null,
       selectedFriends: [],
@@ -166,5 +173,49 @@ export const useBillSplitterStore = create<BillSplitterState>((set, get) => ({
       familyStyleItems: new Set<string>(),
       itemAssignments: {},
       personBreakdowns: [],
-    }),
+    });
+    AsyncStorage.removeItem(BILL_DRAFT_KEY).catch(() => {});
+  },
+
+  persistDraft: async (step) => {
+    try {
+      const { currentReceipt, selectedFriends, savedFriends, isFamilyStyle, familyStyleItems, itemAssignments, personBreakdowns } = get();
+      await AsyncStorage.setItem(BILL_DRAFT_KEY, JSON.stringify({
+        step,
+        currentReceipt,
+        selectedFriends,
+        savedFriends,
+        isFamilyStyle,
+        familyStyleItems: Array.from(familyStyleItems),
+        itemAssignments,
+        personBreakdowns,
+      }));
+    } catch {}
+  },
+
+  loadDraft: async () => {
+    try {
+      const raw = await AsyncStorage.getItem(BILL_DRAFT_KEY);
+      if (!raw) return null;
+      const saved = JSON.parse(raw);
+      set({
+        currentReceipt: saved.currentReceipt ?? null,
+        selectedFriends: saved.selectedFriends ?? [],
+        savedFriends: saved.savedFriends ?? [],
+        isFamilyStyle: saved.isFamilyStyle ?? false,
+        familyStyleItems: new Set<string>(saved.familyStyleItems ?? []),
+        itemAssignments: saved.itemAssignments ?? {},
+        personBreakdowns: saved.personBreakdowns ?? [],
+      });
+      return { step: saved.step };
+    } catch {
+      return null;
+    }
+  },
+
+  clearPersistedDraft: async () => {
+    try {
+      await AsyncStorage.removeItem(BILL_DRAFT_KEY);
+    } catch {}
+  },
 }));

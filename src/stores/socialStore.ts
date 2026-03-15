@@ -1,5 +1,8 @@
 import { create } from 'zustand';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Post, CreatePostDraft } from '../types';
+
+const SOCIAL_DRAFT_KEY = '@dine:social_draft';
 
 interface SocialState {
   feedPosts: Post[];
@@ -20,6 +23,10 @@ interface SocialState {
   setDraftPost: (draft: Partial<CreatePostDraft>) => void;
   updateDraftPost: (updates: Partial<CreatePostDraft>) => void;
   clearDraftPost: () => void;
+  // Draft persistence
+  persistDraft: () => Promise<void>;
+  loadDraft: () => Promise<boolean>;
+  clearPersistedDraft: () => Promise<void>;
   // Post management
   removePost: (postId: string) => void;
   updatePost: (postId: string, updates: Partial<Post>) => void;
@@ -66,7 +73,34 @@ export const useSocialStore = create<SocialState>((set, get) => ({
   setDraftPost: (draftPost) => set({ draftPost }),
   updateDraftPost: (updates) =>
     set((state) => ({ draftPost: { ...state.draftPost, ...updates } })),
-  clearDraftPost: () => set({ draftPost: {} }),
+  clearDraftPost: () => {
+    set({ draftPost: {} });
+    AsyncStorage.removeItem(SOCIAL_DRAFT_KEY).catch(() => {});
+  },
+
+  persistDraft: async () => {
+    try {
+      const { draftPost } = get();
+      await AsyncStorage.setItem(SOCIAL_DRAFT_KEY, JSON.stringify(draftPost));
+    } catch {}
+  },
+
+  loadDraft: async () => {
+    try {
+      const raw = await AsyncStorage.getItem(SOCIAL_DRAFT_KEY);
+      if (!raw) return false;
+      set({ draftPost: JSON.parse(raw) });
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  clearPersistedDraft: async () => {
+    try {
+      await AsyncStorage.removeItem(SOCIAL_DRAFT_KEY);
+    } catch {}
+  },
 
   removePost: (postId) =>
     set((state) => ({

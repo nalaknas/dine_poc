@@ -10,6 +10,8 @@ import { SummaryScreen } from '../screens/post-creation/SummaryScreen';
 import { RateMealScreen } from '../screens/post-creation/RateMealScreen';
 import { AddCaptionScreen } from '../screens/post-creation/AddCaptionScreen';
 import { PostPrivacyScreen } from '../screens/post-creation/PostPrivacyScreen';
+import { useBillSplitterStore } from '../stores/billSplitterStore';
+import { useSocialStore } from '../stores/socialStore';
 import type { PostCreationParamList } from '../types';
 
 const Stack = createNativeStackNavigator<PostCreationParamList>();
@@ -45,6 +47,15 @@ function ProgressBar({ routeName }: { routeName: string }) {
 export function PostCreationNavigator() {
   return (
     <Stack.Navigator
+      screenListeners={{
+        focus: (e) => {
+          const routeName = e.target?.split('-')[0] as keyof PostCreationParamList;
+          if (routeName && routeName !== 'Home') {
+            useBillSplitterStore.getState().persistDraft(routeName);
+            useSocialStore.getState().persistDraft();
+          }
+        },
+      }}
       screenOptions={({ route }) => ({
         headerShown: true,
         headerBackTitle: 'Back',
@@ -61,7 +72,11 @@ export function PostCreationNavigator() {
         options={({ navigation }) => ({
           title: 'New Post',
           headerLeft: () => (
-            <TouchableOpacity onPress={() => navigation.getParent()?.navigate('Feed')}>
+            <TouchableOpacity onPress={() => {
+              useBillSplitterStore.getState().reset();
+              useSocialStore.getState().clearDraftPost();
+              navigation.getParent()?.navigate('Feed');
+            }}>
               <Text style={{ color: '#007AFF', fontSize: 17 }}>Cancel</Text>
             </TouchableOpacity>
           ),
