@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { DishRating } from '../../types';
@@ -8,16 +8,25 @@ interface StarDishesProps {
   dishRatings: DishRating[];
 }
 
-export function StarDishes({ dishRatings }: StarDishesProps) {
-  let starDishes = dishRatings.filter((d) => d.is_star_dish);
+const MAX_VISIBLE = 3;
 
-  // Always show at least the top-rated dish even if none hit the star threshold
-  if (starDishes.length === 0 && dishRatings.length > 0) {
-    const top = [...dishRatings].sort((a, b) => b.rating - a.rating)[0];
+export function StarDishes({ dishRatings }: StarDishesProps) {
+  const [expanded, setExpanded] = useState(false);
+
+  // Sort all dishes by rating descending
+  const sorted = [...dishRatings].sort((a, b) => b.rating - a.rating);
+
+  // Filter star dishes (sorted) or fall back to top-rated
+  let starDishes = sorted.filter((d) => d.is_star_dish);
+  if (starDishes.length === 0 && sorted.length > 0) {
+    const top = sorted[0];
     if (top.rating > 0) starDishes = [top];
   }
 
   if (starDishes.length === 0) return null;
+
+  const hasMore = starDishes.length > MAX_VISIBLE;
+  const visible = expanded ? starDishes : starDishes.slice(0, MAX_VISIBLE);
 
   return (
     <View style={{ marginHorizontal: 12, marginBottom: 12, borderRadius: 12, overflow: 'hidden' }}>
@@ -33,7 +42,7 @@ export function StarDishes({ dishRatings }: StarDishesProps) {
             Star Dishes
           </Text>
         </View>
-        {starDishes.map((dish) => (
+        {visible.map((dish) => (
           <View
             key={dish.id}
             style={{
@@ -57,6 +66,18 @@ export function StarDishes({ dishRatings }: StarDishesProps) {
             </View>
           </View>
         ))}
+        {hasMore && (
+          <Pressable
+            onPress={() => setExpanded((prev) => !prev)}
+            style={{ paddingTop: 6 }}
+          >
+            <Text style={{ fontSize: 12, fontWeight: '500', color: '#D97706', textAlign: 'center' }}>
+              {expanded
+                ? 'Show less'
+                : `Show ${starDishes.length - MAX_VISIBLE} more`}
+            </Text>
+          </Pressable>
+        )}
       </LinearGradient>
     </View>
   );
