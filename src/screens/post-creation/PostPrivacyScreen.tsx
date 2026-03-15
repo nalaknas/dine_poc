@@ -8,6 +8,7 @@ import { useBillSplitterStore } from '../../stores/billSplitterStore';
 import { useAuthStore } from '../../stores/authStore';
 import { useUserProfileStore } from '../../stores/userProfileStore';
 import { createPost } from '../../services/post-service';
+import { useSplitHistoryStore } from '../../stores/splitHistoryStore';
 import { uploadFoodPhoto } from '../../services/receipt-service';
 import { generateDishEmbedding } from '../../services/recommendation-service';
 import type { CreatePostDraft } from '../../types';
@@ -60,7 +61,13 @@ export function PostPrivacyScreen() {
       // 2. Create the post
       const post = await createPost(draft, user.id, personBreakdowns);
 
-      // 3. Trigger taste embeddings (background, non-blocking)
+      // 3. Record split history (persist friends + venmo for future splits)
+      const friendsToRecord = selectedFriends.filter((f) => f.id !== user.id);
+      if (friendsToRecord.length > 0) {
+        useSplitHistoryStore.getState().recordSplit(friendsToRecord);
+      }
+
+      // 4. Trigger taste embeddings (background, non-blocking)
       for (const rating of draft.dishRatings ?? []) {
         if (rating.rating > 0) {
           generateDishEmbedding({
@@ -73,17 +80,17 @@ export function PostPrivacyScreen() {
         }
       }
 
-      // 4. Update local state
+      // 5. Update local state
       incrementMealCount();
       const fullPost = { ...post, author: profile };
       if (isPublic) prependFeedPost(fullPost);
       prependMyPost(fullPost);
 
-      // 5. Clear draft
+      // 6. Clear draft
       clearDraftPost();
       resetBill();
 
-      // 6. Exit post creation flow
+      // 7. Exit post creation flow
       const venmoableBreakdowns = personBreakdowns.filter(
         (b) => b.friend.venmo_username && b.total > 0
       );
