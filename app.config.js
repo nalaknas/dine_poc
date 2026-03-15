@@ -6,7 +6,7 @@ module.exports = {
     slug: 'dine',
     version: '1.0.0',
     orientation: 'portrait',
-    icon: './assets/icon.png',
+    icon: './assets/icon-gold.png',
     userInterfaceStyle: 'automatic',
     splash: {
       image: './assets/splash-logo.png',
