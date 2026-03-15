@@ -30,5 +30,9 @@ export function formatDate(isoString: string): string {
 }
 
 export function generateId(): string {
-  return Math.random().toString(36).substring(2) + Date.now().toString(36);
+  // Generate a proper UUID v4 so it's compatible with Supabase uuid columns
+  const hex = [...Array(32)]
+    .map(() => Math.floor(Math.random() * 16).toString(16))
+    .join('');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-${(8 + Math.floor(Math.random() * 4)).toString(16)}${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
 }
