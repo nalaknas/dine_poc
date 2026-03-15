@@ -9,6 +9,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useSocialStore } from '../../stores/socialStore';
 import { useBillSplitterStore } from '../../stores/billSplitterStore';
 import { analyzeReceipt } from '../../services/receipt-service';
+import { useToast } from '../../contexts/ToastContext';
 import { Image } from 'react-native';
 
 const OPTION = [
@@ -21,8 +22,10 @@ export function HomeScreen() {
   const navigation = useNavigation<any>();
   const { updateDraftPost, clearDraftPost } = useSocialStore();
   const { setReceipt, reset: resetBill } = useBillSplitterStore();
+  const { showToast } = useToast();
   const [images, setImages] = useState<string[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisFailed, setAnalysisFailed] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -103,6 +106,7 @@ export function HomeScreen() {
       return;
     }
     setIsAnalyzing(true);
+    setAnalysisFailed(false);
     try {
       const receipt = await analyzeReceipt(images);
       setReceipt(receipt);
@@ -110,7 +114,12 @@ export function HomeScreen() {
       navigation.navigate('ValidateReceipt');
     } catch (err: any) {
       console.error('Receipt analysis error:', err);
-      Alert.alert('Analysis Failed', err?.message ?? 'Could not read the receipt. Try again or enter manually.');
+      setAnalysisFailed(true);
+      showToast({
+        message: 'Could not read the receipt. Try again or enter manually.',
+        type: 'error',
+        action: { label: 'Retry', onPress: handleAnalyze },
+      });
     } finally {
       setIsAnalyzing(false);
     }
@@ -188,6 +197,29 @@ export function HomeScreen() {
               <Text className="text-white text-base font-semibold">Scan Receipt</Text>
             )}
           </TouchableOpacity>
+        )}
+
+        {/* Inline retry after OCR failure */}
+        {analysisFailed && !isAnalyzing && (
+          <View className="mt-4 bg-error/10 rounded-xl p-4">
+            <Text className="text-sm text-error text-center mb-3">
+              Receipt scan failed. You can try again or enter items manually.
+            </Text>
+            <View className="flex-row justify-center" style={{ gap: 12 }}>
+              <TouchableOpacity
+                onPress={handleAnalyze}
+                className="bg-accent rounded-lg px-4 py-2"
+              >
+                <Text className="text-white font-semibold text-sm">Retry Scan</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleManual}
+                className="bg-background-secondary border border-border rounded-lg px-4 py-2"
+              >
+                <Text className="text-text-primary font-semibold text-sm">Enter Manually</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         )}
       </ScrollView>
     </SafeAreaView>

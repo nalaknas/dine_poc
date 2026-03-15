@@ -39,10 +39,8 @@ export async function generateDishEmbedding(params: {
   notes?: string;
   userId: string;
 }): Promise<void> {
-  // Fire-and-forget — don't block the UI on this
-  supabase.functions
-    .invoke('generate-embedding', { body: params })
-    .catch((err) => console.warn('Embedding generation failed (non-critical):', err));
+  const { error } = await supabase.functions.invoke('generate-embedding', { body: params });
+  if (error) throw error;
 }
 
 /**
