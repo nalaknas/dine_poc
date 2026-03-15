@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, Alert, ActivityIndicator, ScrollView,
 } from 'react-native';
@@ -23,6 +23,36 @@ export function HomeScreen() {
   const { setReceipt, reset: resetBill } = useBillSplitterStore();
   const [images, setImages] = useState<string[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const billResult = await useBillSplitterStore.getState().loadDraft();
+      if (!billResult) return;
+
+      await useSocialStore.getState().loadDraft();
+
+      Alert.alert(
+        'Resume Draft?',
+        'You have an unfinished post. Would you like to continue where you left off?',
+        [
+          {
+            text: 'Discard',
+            style: 'destructive',
+            onPress: () => {
+              resetBill();
+              clearDraftPost();
+            },
+          },
+          {
+            text: 'Resume',
+            onPress: () => {
+              navigation.navigate(billResult.step);
+            },
+          },
+        ]
+      );
+    })();
+  }, []);
 
   const handlePickImage = async (source: 'camera' | 'library') => {
     const launch = source === 'camera'
