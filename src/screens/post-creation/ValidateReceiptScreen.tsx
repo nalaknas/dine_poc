@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View, Text, TextInput, ScrollView, TouchableOpacity,
-  Alert, KeyboardAvoidingView, Platform,
+  KeyboardAvoidingView, Platform,
 } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withSequence, withTiming } from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -12,6 +14,12 @@ import { formatCurrency, generateId } from '../../utils/format';
 export function ValidateReceiptScreen() {
   const navigation = useNavigation<any>();
   const { currentReceipt, updateReceiptItem, updateReceiptField, setReceipt } = useBillSplitterStore();
+  const [showErrors, setShowErrors] = useState(false);
+
+  const shakeX = useSharedValue(0);
+  const shakeStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: shakeX.value }],
+  }));
 
   if (!currentReceipt) {
     return (
@@ -38,15 +46,27 @@ export function ValidateReceiptScreen() {
     });
   };
 
+  const nameInvalid = showErrors && !currentReceipt.restaurantName.trim();
+  const itemsInvalid = showErrors && currentReceipt.items.length === 0;
+
   const handleContinue = () => {
-    if (!currentReceipt.restaurantName.trim()) {
-      Alert.alert('Required', 'Please enter the restaurant name.');
+    const isValid =
+      currentReceipt.restaurantName.trim().length > 0 &&
+      currentReceipt.items.length > 0;
+
+    if (!isValid) {
+      setShowErrors(true);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      shakeX.value = withSequence(
+        withTiming(-10, { duration: 50 }),
+        withTiming(10, { duration: 50 }),
+        withTiming(-10, { duration: 50 }),
+        withTiming(10, { duration: 50 }),
+        withTiming(0, { duration: 50 }),
+      );
       return;
     }
-    if (currentReceipt.items.length === 0) {
-      Alert.alert('Required', 'Add at least one item to split.');
-      return;
-    }
+    setShowErrors(false);
     navigation.navigate('SelectFriends');
   };
 
@@ -63,8 +83,11 @@ export function ValidateReceiptScreen() {
               onChangeText={(v) => updateReceiptField('restaurantName', v)}
               placeholder="Restaurant name"
               placeholderTextColor="#9CA3AF"
-              className="text-base font-semibold text-text-primary border-b border-border pb-2 mb-3"
+              className={`text-base font-semibold text-text-primary border-b pb-2 mb-1 ${nameInvalid ? 'border-red-500' : 'border-border'}`}
             />
+            {nameInvalid && (
+              <Text className="text-red-500 text-xs mb-2">Restaurant name is required</Text>
+            )}
             <View className="flex-row gap-2">
               <TextInput
                 value={currentReceipt.city}
@@ -123,8 +146,11 @@ export function ValidateReceiptScreen() {
           </View>
 
           {/* Items */}
-          <View className="bg-background-secondary rounded-xl p-4 mb-4">
+          <View className={`bg-background-secondary rounded-xl p-4 mb-4 ${itemsInvalid ? 'border border-red-500' : ''}`}>
             <Text className="text-sm font-semibold text-text-secondary mb-3">ITEMS</Text>
+            {itemsInvalid && (
+              <Text className="text-red-500 text-xs mb-2">Add at least one item to split</Text>
+            )}
             {currentReceipt.items.map((item, idx) => (
               <View key={item.id} className="flex-row items-center mb-2">
                 <TextInput
@@ -229,12 +255,14 @@ export function ValidateReceiptScreen() {
 
         {/* Continue button */}
         <View className="absolute bottom-0 left-0 right-0 bg-background border-t border-border-light px-4 py-4">
-          <TouchableOpacity
-            onPress={handleContinue}
-            className="bg-accent rounded-xl py-4 items-center"
-          >
-            <Text className="text-white text-base font-semibold">Continue → Select Friends</Text>
-          </TouchableOpacity>
+          <Animated.View style={shakeStyle}>
+            <TouchableOpacity
+              onPress={handleContinue}
+              className="bg-accent rounded-xl py-4 items-center"
+            >
+              <Text className="text-white text-base font-semibold">Continue → Select Friends</Text>
+            </TouchableOpacity>
+          </Animated.View>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
