@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { View, Text, TouchableOpacity, ActivityIndicator, Alert, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, CommonActions } from '@react-navigation/native';
@@ -22,6 +22,10 @@ export function PostPrivacyScreen() {
 
   const [isPublic, setIsPublic] = useState(true);
   const [isPosting, setIsPosting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
+  const [photoStatuses, setPhotoStatuses] = useState<('pending' | 'uploading' | 'done' | 'failed')[]>([]);
+  const [isFinalizing, setIsFinalizing] = useState(false);
+  const progressAnim = useRef(new Animated.Value(0)).current;
 
   const handlePublish = async () => {
     if (!user || !profile) return;
@@ -41,22 +45,45 @@ export function PostPrivacyScreen() {
         mealDate: currentReceipt?.date,
       } as CreatePostDraft;
 
-      // 1. Upload food photos
+      // 1. Upload food photos with progress tracking
+      const photos = draft.foodPhotos ?? [];
+      const totalPhotos = photos.length;
+      const localPhotoCount = photos.filter((u) => !u.startsWith('http')).length;
+
+      if (totalPhotos > 0) {
+        setPhotoStatuses(new Array(totalPhotos).fill('pending'));
+        setUploadProgress({ current: 0, total: localPhotoCount });
+      }
+
       const uploadedPhotos: string[] = [];
-      for (let i = 0; i < (draft.foodPhotos ?? []).length; i++) {
-        const uri = draft.foodPhotos![i];
+      let uploaded = 0;
+      for (let i = 0; i < totalPhotos; i++) {
+        const uri = photos[i];
         if (uri.startsWith('http')) {
           uploadedPhotos.push(uri);
+          setPhotoStatuses((prev) => { const next = [...prev]; next[i] = 'done'; return next; });
         } else {
+          setPhotoStatuses((prev) => { const next = [...prev]; next[i] = 'uploading'; return next; });
           try {
             const url = await uploadFoodPhoto(uri, user.id, `photo_${Date.now()}_${i}.jpg`);
             uploadedPhotos.push(url);
+            uploaded++;
+            setUploadProgress({ current: uploaded, total: localPhotoCount });
+            setPhotoStatuses((prev) => { const next = [...prev]; next[i] = 'done'; return next; });
+            Animated.timing(progressAnim, {
+              toValue: uploaded / localPhotoCount,
+              duration: 300,
+              useNativeDriver: false,
+            }).start();
           } catch (uploadErr: any) {
             console.warn('[publish] Photo upload failed:', uploadErr?.message);
+            setPhotoStatuses((prev) => { const next = [...prev]; next[i] = 'failed'; return next; });
           }
         }
       }
       draft.foodPhotos = uploadedPhotos;
+
+      setIsFinalizing(true);
 
       // 2. Create the post
       const post = await createPost(draft, user.id, personBreakdowns);
@@ -135,6 +162,10 @@ export function PostPrivacyScreen() {
       Alert.alert('Post Failed', err?.message ?? 'Could not publish your post. Please try again.');
     } finally {
       setIsPosting(false);
+      setIsFinalizing(false);
+      setUploadProgress({ current: 0, total: 0 });
+      setPhotoStatuses([]);
+      progressAnim.setValue(0);
     }
   };
 
@@ -185,6 +216,51 @@ export function PostPrivacyScreen() {
         </TouchableOpacity>
 
         <View className="mt-auto pb-6">
+          {/* Upload progress indicator */}
+          {isPosting && uploadProgress.total > 0 && !isFinalizing && (
+            <View className="mb-4">
+              <Text className="text-sm font-semibold text-text-primary text-center mb-2">
+                Uploading {uploadProgress.current}/{uploadProgress.total} photos...
+              </Text>
+              {/* Progress bar */}
+              <View className="h-2 bg-border rounded-full overflow-hidden mb-3">
+                <Animated.View
+                  className="h-full bg-accent rounded-full"
+                  style={{
+                    width: progressAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: ['0%', '100%'],
+                    }),
+                  }}
+                />
+              </View>
+              {/* Per-photo status dots */}
+              <View className="flex-row justify-center" style={{ gap: 6 }}>
+                {photoStatuses.map((status, i) => (
+                  <View
+                    key={i}
+                    className={`w-5 h-5 rounded-full items-center justify-center ${
+                      status === 'done' ? 'bg-green-500' :
+                      status === 'uploading' ? 'bg-accent' :
+                      status === 'failed' ? 'bg-red-400' :
+                      'bg-border'
+                    }`}
+                  >
+                    {status === 'done' && (
+                      <Ionicons name="checkmark" size={12} color="#fff" />
+                    )}
+                    {status === 'uploading' && (
+                      <ActivityIndicator size="small" color="#fff" style={{ transform: [{ scale: 0.5 }] }} />
+                    )}
+                    {status === 'failed' && (
+                      <Ionicons name="close" size={12} color="#fff" />
+                    )}
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+
           <TouchableOpacity
             onPress={handlePublish}
             disabled={isPosting}
@@ -193,7 +269,9 @@ export function PostPrivacyScreen() {
             {isPosting ? (
               <View className="flex-row items-center">
                 <ActivityIndicator color="#fff" />
-                <Text className="text-white font-semibold ml-2">Posting...</Text>
+                <Text className="text-white font-semibold ml-2">
+                  {isFinalizing ? 'Finishing up...' : uploadProgress.total === 0 ? 'Posting...' : 'Uploading...'}
+                </Text>
               </View>
             ) : (
               <Text className="text-base font-semibold text-white">
