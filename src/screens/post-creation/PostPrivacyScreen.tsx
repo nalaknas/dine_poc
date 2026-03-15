@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, Alert, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, CommonActions } from '@react-navigation/native';
@@ -11,12 +11,14 @@ import { createPost } from '../../services/post-service';
 import { useSplitHistoryStore } from '../../stores/splitHistoryStore';
 import { uploadFoodPhoto } from '../../services/receipt-service';
 import { generateDishEmbedding } from '../../services/recommendation-service';
+import { useToast } from '../../contexts/ToastContext';
 import type { CreatePostDraft } from '../../types';
 
 export function PostPrivacyScreen() {
   const navigation = useNavigation<any>();
   const { user } = useAuthStore();
   const { profile, incrementMealCount } = useUserProfileStore();
+  const { showToast } = useToast();
   const { draftPost, clearDraftPost, prependFeedPost, prependMyPost } = useSocialStore();
   const { personBreakdowns, currentReceipt, selectedFriends, itemAssignments, isFamilyStyle, reset: resetBill } = useBillSplitterStore();
 
@@ -95,16 +97,28 @@ export function PostPrivacyScreen() {
       }
 
       // 4. Trigger taste embeddings (background, non-blocking)
-      for (const rating of draft.dishRatings ?? []) {
-        if (rating.rating > 0) {
-          generateDishEmbedding({
-            dishRatingId: post.id,
-            dishName: rating.dishName,
-            rating: rating.rating,
-            notes: rating.notes,
-            userId: user.id,
-          });
-        }
+      const embeddingRatings = (draft.dishRatings ?? []).filter((r) => r.rating > 0);
+      if (embeddingRatings.length > 0) {
+        Promise.allSettled(
+          embeddingRatings.map((rating) =>
+            generateDishEmbedding({
+              dishRatingId: post.id,
+              dishName: rating.dishName,
+              rating: rating.rating,
+              notes: rating.notes,
+              userId: user.id,
+            })
+          )
+        ).then((results) => {
+          const failures = results.filter((r) => r.status === 'rejected');
+          if (failures.length > 0) {
+            showToast({
+              message: 'Taste profile update skipped. Your post was published successfully.',
+              type: 'info',
+              duration: 4000,
+            });
+          }
+        });
       }
 
       // 5. Update local state
@@ -159,7 +173,12 @@ export function PostPrivacyScreen() {
         tabNav?.getParent()?.navigate('MealDetail', { postId: post.id });
       }
     } catch (err: any) {
-      Alert.alert('Post Failed', err?.message ?? 'Could not publish your post. Please try again.');
+      showToast({
+        message: 'Something went wrong. Try again.',
+        type: 'error',
+        action: { label: 'Retry', onPress: handlePublish },
+        duration: 5000,
+      });
     } finally {
       setIsPosting(false);
       setIsFinalizing(false);
