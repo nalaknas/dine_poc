@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, TextInput, ScrollView, TouchableOpacity,
-  KeyboardAvoidingView, Platform,
+  KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withSequence, withTiming } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
@@ -10,6 +10,39 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useBillSplitterStore } from '../../stores/billSplitterStore';
 import { formatCurrency, generateId } from '../../utils/format';
+
+function PriceInput({
+  value,
+  onCommit,
+  style,
+  placeholder,
+  textAlign,
+}: {
+  value: number;
+  onCommit: (n: number) => void;
+  style?: string;
+  placeholder?: string;
+  textAlign?: 'left' | 'right';
+}) {
+  const [text, setText] = useState(value > 0 ? value.toString() : '');
+
+  useEffect(() => {
+    setText(value > 0 ? value.toString() : '');
+  }, [value]);
+
+  return (
+    <TextInput
+      value={text}
+      onChangeText={setText}
+      onBlur={() => onCommit(parseFloat(text) || 0)}
+      keyboardType="decimal-pad"
+      placeholder={placeholder ?? '0.00'}
+      placeholderTextColor="#9CA3AF"
+      textAlign={textAlign}
+      className={style}
+    />
+  );
+}
 
 export function ValidateReceiptScreen() {
   const navigation = useNavigation<any>();
@@ -67,6 +100,21 @@ export function ValidateReceiptScreen() {
       return;
     }
     setShowErrors(false);
+
+    const itemsTotal = currentReceipt.items.reduce((sum, i) => sum + i.price, 0);
+    const subtotal = currentReceipt.subtotal;
+    if (subtotal > 0 && Math.abs(itemsTotal - subtotal) > 0.02) {
+      Alert.alert(
+        'Items Total Mismatch',
+        `Your line items add up to ${formatCurrency(itemsTotal)}, but the subtotal is ${formatCurrency(subtotal)}. This may cause uneven splits.`,
+        [
+          { text: 'Edit Receipt', style: 'cancel' },
+          { text: 'Continue Anyway', onPress: () => navigation.navigate('SelectFriends') },
+        ],
+      );
+      return;
+    }
+
     navigation.navigate('SelectFriends');
   };
 
@@ -160,13 +208,11 @@ export function ValidateReceiptScreen() {
                   placeholderTextColor="#9CA3AF"
                   className="flex-1 text-base text-text-primary border border-border rounded-lg px-3 py-2 mr-2"
                 />
-                <TextInput
-                  value={item.price > 0 ? item.price.toString() : ''}
-                  onChangeText={(v) => updateReceiptItem(item.id, { price: parseFloat(v) || 0 })}
+                <PriceInput
+                  value={item.price}
+                  onCommit={(n) => updateReceiptItem(item.id, { price: n })}
                   placeholder="$0.00"
-                  placeholderTextColor="#9CA3AF"
-                  keyboardType="decimal-pad"
-                  className="w-20 text-base text-text-primary border border-border rounded-lg px-3 py-2 mr-2"
+                  style="w-20 text-base text-text-primary border border-border rounded-lg px-3 py-2 mr-2"
                 />
                 <TouchableOpacity onPress={() => removeItem(item.id)}>
                   <Ionicons name="trash-outline" size={18} color="#EF4444" />
@@ -192,13 +238,11 @@ export function ValidateReceiptScreen() {
             ].map((row) => (
               <View key={row.field} className="flex-row justify-between items-center mb-2">
                 <Text className="text-base text-text-secondary">{row.label}</Text>
-                <TextInput
-                  value={currentReceipt[row.field] > 0 ? currentReceipt[row.field].toString() : ''}
-                  onChangeText={(v) => updateReceiptField(row.field, parseFloat(v) || 0)}
-                  placeholder="0.00"
-                  placeholderTextColor="#9CA3AF"
-                  keyboardType="decimal-pad"
-                  className="w-24 text-right text-base text-text-primary border border-border rounded-lg px-3 py-1.5"
+                <PriceInput
+                  value={currentReceipt[row.field]}
+                  onCommit={(n) => updateReceiptField(row.field, n)}
+                  textAlign="right"
+                  style="w-24 text-right text-base text-text-primary border border-border rounded-lg px-3 py-1.5"
                 />
               </View>
             ))}
@@ -231,13 +275,11 @@ export function ValidateReceiptScreen() {
             </View>
             <View className="flex-row justify-between items-center">
               <Text className="text-base text-text-secondary">Custom</Text>
-              <TextInput
-                value={currentReceipt.tip > 0 ? currentReceipt.tip.toString() : ''}
-                onChangeText={(v) => updateReceiptField('tip', parseFloat(v) || 0)}
-                placeholder="0.00"
-                placeholderTextColor="#9CA3AF"
-                keyboardType="decimal-pad"
-                className="w-24 text-right text-base text-text-primary border border-border rounded-lg px-3 py-1.5"
+              <PriceInput
+                value={currentReceipt.tip}
+                onCommit={(n) => updateReceiptField('tip', n)}
+                textAlign="right"
+                style="w-24 text-right text-base text-text-primary border border-border rounded-lg px-3 py-1.5"
               />
             </View>
           </View>
