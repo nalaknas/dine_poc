@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, TextInput, ScrollView, TouchableOpacity,
   KeyboardAvoidingView, Platform, Alert,
@@ -25,16 +25,30 @@ function PriceInput({
   textAlign?: 'left' | 'right';
 }) {
   const [text, setText] = useState(value > 0 ? value.toString() : '');
+  const isFocused = useRef(false);
 
   useEffect(() => {
-    setText(value > 0 ? value.toString() : '');
+    // Only sync from external value when the field is not being edited,
+    // so mid-edit strings like "22." or "22.0" aren't overwritten by the store
+    if (!isFocused.current) {
+      setText(value > 0 ? value.toString() : '');
+    }
   }, [value]);
 
   return (
     <TextInput
       value={text}
-      onChangeText={setText}
-      onBlur={() => onCommit(parseFloat(text) || 0)}
+      onChangeText={(v) => {
+        setText(v);
+        // Commit on every change so the store is always current (fixes stale
+        // values when Continue is tapped without blurring the field)
+        onCommit(parseFloat(v) || 0);
+      }}
+      onFocus={() => { isFocused.current = true; }}
+      onBlur={() => {
+        isFocused.current = false;
+        onCommit(parseFloat(text) || 0);
+      }}
       keyboardType="decimal-pad"
       placeholder={placeholder ?? '0.00'}
       placeholderTextColor="#9CA3AF"
