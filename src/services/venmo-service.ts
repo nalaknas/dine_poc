@@ -11,14 +11,16 @@ export function buildVenmoDeepLink(params: {
   note: string;
 }): string {
   const { venmoUsername, amount, note } = params;
-  return `venmo://paycharge?txn=charge&recipients=${encodeURIComponent(venmoUsername)}&amount=${amount.toFixed(2)}&note=${encodeURIComponent(note)}`;
+  const cleanUsername = venmoUsername.replace(/^@+/, '');
+  return `venmo://paycharge?txn=charge&recipients=${encodeURIComponent(cleanUsername)}&amount=${amount.toFixed(2)}&note=${encodeURIComponent(note)}`;
 }
 
 /**
  * Fallback web URL if Venmo app is not installed.
  */
 export function buildVenmoWebUrl(venmoUsername: string): string {
-  return `https://venmo.com/${venmoUsername}`;
+  const cleanUsername = venmoUsername.replace(/^@+/, '');
+  return `https://venmo.com/${cleanUsername}`;
 }
 
 /**

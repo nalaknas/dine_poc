@@ -48,7 +48,7 @@ export function EditProfileScreen() {
         display_name: displayName.trim(),
         username: username.trim().toLowerCase(),
         bio: bio.trim() || undefined,
-        venmo_username: venmo.trim() || undefined,
+        venmo_username: venmo.trim().replace(/^@+/, '') || undefined,
         city: city.trim() || undefined,
         state: state.trim() || undefined,
         avatar_url: avatarUrl,
@@ -77,7 +77,7 @@ export function EditProfileScreen() {
             { label: 'Display Name', value: displayName, set: setDisplayName, placeholder: 'Your name' },
             { label: 'Username', value: username, set: (v: string) => setUsername(v.toLowerCase()), placeholder: '@handle', autoCapitalize: 'none' as const },
             { label: 'Bio', value: bio, set: setBio, placeholder: 'Tell people about yourself', multiline: true },
-            { label: 'Venmo Username', value: venmo, set: setVenmo, placeholder: '@venmo', autoCapitalize: 'none' as const },
+            { label: 'Venmo Username', value: venmo, set: (v: string) => setVenmo(v.replace(/^@+/, '')), placeholder: 'username', autoCapitalize: 'none' as const },
             { label: 'City', value: city, set: setCity, placeholder: 'New York' },
             { label: 'State', value: state, set: setState, placeholder: 'NY', maxLength: 2 },
           ].map((field) => (
