@@ -55,3 +55,31 @@ export function buildMealNote(restaurantName: string): string {
 export function getVenmoableBreakdowns(breakdowns: PersonBreakdown[]): PersonBreakdown[] {
   return breakdowns.filter((b) => b.friend.venmo_username && b.total > 0);
 }
+
+/**
+ * Opens the Venmo app so the user can view/copy their username.
+ * Returns false if Venmo is not installed.
+ */
+export async function openVenmoApp(): Promise<boolean> {
+  const canOpen = await Linking.canOpenURL('venmo://');
+  if (canOpen) {
+    await Linking.openURL('venmo://');
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Checks if a string is a valid Venmo username.
+ */
+export function isValidVenmoUsername(username: string): boolean {
+  const clean = username.replace(/^@+/, '').trim();
+  return /^[a-zA-Z0-9_-]{1,30}$/.test(clean);
+}
+
+/**
+ * Cleans a Venmo username: trims whitespace and strips leading @ symbols.
+ */
+export function cleanVenmoUsername(username: string): string {
+  return username.trim().replace(/^@+/, '');
+}

@@ -11,6 +11,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { useUserProfileStore } from '../../stores/userProfileStore';
 import { updateUserProfile } from '../../services/auth-service';
 import { uploadAvatar } from '../../services/receipt-service';
+import { VenmoConnectButton } from '../../components/ui/VenmoConnectButton';
 
 export function EditProfileScreen() {
   const navigation = useNavigation();
@@ -77,7 +78,6 @@ export function EditProfileScreen() {
             { label: 'Display Name', value: displayName, set: setDisplayName, placeholder: 'Your name' },
             { label: 'Username', value: username, set: (v: string) => setUsername(v.toLowerCase()), placeholder: '@handle', autoCapitalize: 'none' as const },
             { label: 'Bio', value: bio, set: setBio, placeholder: 'Tell people about yourself', multiline: true },
-            { label: 'Venmo Username', value: venmo, set: (v: string) => setVenmo(v.replace(/^@+/, '')), placeholder: 'username', autoCapitalize: 'none' as const },
             { label: 'City', value: city, set: setCity, placeholder: 'New York' },
             { label: 'State', value: state, set: setState, placeholder: 'NY', maxLength: 2 },
           ].map((field) => (
@@ -96,6 +96,16 @@ export function EditProfileScreen() {
               />
             </View>
           ))}
+
+          {/* Venmo */}
+          <View className="mb-4">
+            <Text className="text-sm font-medium text-text-secondary mb-1.5">Venmo</Text>
+            <VenmoConnectButton
+              currentUsername={venmo || undefined}
+              onUsernameConfirmed={setVenmo}
+              onDisconnect={() => setVenmo('')}
+            />
+          </View>
 
           <TouchableOpacity
             onPress={handleSave}

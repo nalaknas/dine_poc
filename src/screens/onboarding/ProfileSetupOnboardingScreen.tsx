@@ -14,6 +14,7 @@ import { useUserProfileStore } from '../../stores/userProfileStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { updateUserProfile } from '../../services/auth-service';
 import { uploadAvatar } from '../../services/receipt-service';
+import { VenmoConnectButton } from '../../components/ui/VenmoConnectButton';
 
 export function ProfileSetupOnboardingScreen() {
   const navigation = useNavigation<any>();
@@ -26,6 +27,7 @@ export function ProfileSetupOnboardingScreen() {
   const [avatarUri, setAvatarUri] = useState<string | null>(profile?.avatar_url ?? null);
   const [selectedCuisines, setSelectedCuisines] = useState<string[]>([]);
   const [selectedDietary, setSelectedDietary] = useState<string[]>([]);
+  const [venmoUsername, setVenmoUsername] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const pickAvatar = async () => {
@@ -74,6 +76,7 @@ export function ProfileSetupOnboardingScreen() {
         display_name: displayName.trim(),
         username: username.trim().toLowerCase(),
         avatar_url: avatarUrl,
+        venmo_username: venmoUsername || undefined,
         cuisine_preferences: selectedCuisines,
         dietary_restrictions: selectedDietary,
       });
@@ -130,6 +133,16 @@ export function ProfileSetupOnboardingScreen() {
                 placeholderTextColor="#9CA3AF"
                 className="bg-background-secondary border border-border rounded-xl px-4 py-3 text-base text-text-primary"
               />
+            </View>
+
+            {/* Venmo (optional) */}
+            <View className="mb-6">
+              <Text className="text-sm font-medium text-text-primary mb-1.5">Venmo</Text>
+              <VenmoConnectButton
+                currentUsername={venmoUsername || undefined}
+                onUsernameConfirmed={setVenmoUsername}
+              />
+              <Text className="text-xs text-text-secondary mt-1.5">Optional — you can add this later in Settings.</Text>
             </View>
 
             {/* Cuisine prefs */}

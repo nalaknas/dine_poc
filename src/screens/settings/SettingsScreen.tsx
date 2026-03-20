@@ -12,7 +12,7 @@ export function SettingsScreen() {
   const navigation = useNavigation();
   const { signOut } = useAuthStore();
   const { themePreference, setThemePreference, taxSplitMethod, setTaxSplitMethod, tipSplitMethod, setTipSplitMethod, defaultTipPercentage, setDefaultTipPercentage } = useSettingsStore();
-  const { reset: resetProfile } = useUserProfileStore();
+  const { profile, reset: resetProfile } = useUserProfileStore();
   const { reset: resetNotifications } = useNotificationsStore();
 
   const handleSignOut = () => {
@@ -74,6 +74,7 @@ export function SettingsScreen() {
 
         <Section title="Account">
           <Row label="Edit Profile" onPress={() => (navigation as any).navigate('EditProfile')} />
+          <Row label="Venmo" value={profile?.venmo_username ? `@${profile.venmo_username}` : 'Not connected'} onPress={() => (navigation as any).navigate('EditProfile')} />
           <Row label="Dining Partners" onPress={() => {}} />
           <Row label="Playlists" onPress={() => {}} last />
         </Section>
