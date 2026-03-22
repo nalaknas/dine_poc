@@ -67,6 +67,7 @@ export interface TaggedFriend {
   has_rated?: boolean;
   rated_at?: string;
   contributed_photos?: string[];
+  user?: { avatar_url?: string };
 }
 
 export interface ReceiptItem {

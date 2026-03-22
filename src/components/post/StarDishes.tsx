@@ -2,34 +2,42 @@ import React, { useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Avatar } from '../ui/Avatar';
 import type { DishRating } from '../../types';
+
+export interface UserInfo {
+  displayName: string;
+  avatarUrl?: string;
+}
 
 interface GroupedDish {
   dishName: string;
   avgRating: number;
-  ratings: { userId: string; displayName: string; rating: number; notes?: string }[];
+  ratings: { userId: string; displayName: string; avatarUrl?: string; rating: number; notes?: string }[];
 }
 
 interface StarDishesProps {
   dishRatings: DishRating[];
-  /** Map of user_id → display name. Built from post.author + post.tagged_friends. */
-  userDisplayNames?: Record<string, string>;
+  /** Map of user_id → { displayName, avatarUrl }. Built from post.author + post.tagged_friends. */
+  userInfo?: Record<string, UserInfo>;
 }
 
 const MAX_VISIBLE = 3;
 
 function groupDishRatings(
   dishRatings: DishRating[],
-  userDisplayNames: Record<string, string>,
+  userInfo: Record<string, UserInfo>,
 ): GroupedDish[] {
   const groups = new Map<string, GroupedDish>();
 
   for (const r of dishRatings) {
     const key = r.dish_name.toLowerCase().trim();
     const existing = groups.get(key);
+    const info = userInfo[r.user_id ?? ''];
     const entry = {
       userId: r.user_id ?? '',
-      displayName: userDisplayNames[r.user_id ?? ''] ?? 'Unknown',
+      displayName: info?.displayName ?? 'Unknown',
+      avatarUrl: info?.avatarUrl,
       rating: r.rating,
       notes: r.notes,
     };
@@ -50,11 +58,11 @@ function groupDishRatings(
   return [...groups.values()].sort((a, b) => b.avgRating - a.avgRating);
 }
 
-export function StarDishes({ dishRatings, userDisplayNames = {} }: StarDishesProps) {
+export function StarDishes({ dishRatings, userInfo = {} }: StarDishesProps) {
   const [expanded, setExpanded] = useState(false);
   const [expandedDish, setExpandedDish] = useState<string | null>(null);
 
-  const grouped = groupDishRatings(dishRatings, userDisplayNames);
+  const grouped = groupDishRatings(dishRatings, userInfo);
 
   // Star dishes: avg >= 7, or fallback to top dish
   let starDishes = grouped.filter((d) => d.avgRating >= 7);
@@ -98,22 +106,35 @@ export function StarDishes({ dishRatings, userDisplayNames = {} }: StarDishesPro
                   paddingVertical: 4,
                 }}
               >
-                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
-                  <Text
-                    style={{ fontSize: 13, color: '#1F2937', flex: 1 }}
-                    numberOfLines={1}
-                  >
-                    {dish.dishName}
-                  </Text>
-                  {hasMultipleRaters && (
-                    <Ionicons
-                      name={isOpen ? 'chevron-up' : 'chevron-down'}
-                      size={12}
-                      color="#9CA3AF"
-                      style={{ marginLeft: 4 }}
-                    />
+                <Text
+                  style={{ fontSize: 13, color: '#1F2937', flex: 1, marginRight: 6 }}
+                  numberOfLines={1}
+                >
+                  {dish.dishName}
+                </Text>
+
+                {/* Inline avatar stack */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 6 }}>
+                  {dish.ratings.slice(0, 3).map((r, i) => (
+                    <View key={r.userId} style={{ marginLeft: i > 0 ? -6 : 0, zIndex: 3 - i }}>
+                      <Avatar uri={r.avatarUrl} displayName={r.displayName} size={18} />
+                    </View>
+                  ))}
+                  {dish.ratings.length > 3 && (
+                    <Text style={{ fontSize: 10, color: '#9CA3AF', marginLeft: 2 }}>
+                      +{dish.ratings.length - 3}
+                    </Text>
                   )}
                 </View>
+
+                {hasMultipleRaters && (
+                  <Ionicons
+                    name={isOpen ? 'chevron-up' : 'chevron-down'}
+                    size={12}
+                    color="#9CA3AF"
+                    style={{ marginRight: 4 }}
+                  />
+                )}
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <Ionicons name="star" size={11} color="#F59E0B" />
                   <Text style={{ fontSize: 13, fontWeight: '600', color: '#F59E0B', marginLeft: 2 }}>
@@ -127,20 +148,27 @@ export function StarDishes({ dishRatings, userDisplayNames = {} }: StarDishesPro
                 </View>
               </Pressable>
 
-              {/* Per-user breakdown */}
+              {/* Per-user breakdown with avatars */}
               {isOpen && (
-                <View style={{ paddingLeft: 12, paddingBottom: 4 }}>
+                <View style={{ paddingLeft: 4, paddingBottom: 4 }}>
                   {dish.ratings.map((r) => (
                     <View
                       key={r.userId}
                       style={{
                         flexDirection: 'row',
-                        justifyContent: 'space-between',
                         alignItems: 'center',
-                        paddingVertical: 2,
+                        paddingVertical: 3,
                       }}
                     >
-                      <Text style={{ fontSize: 12, color: '#6B7280' }}>
+                      <Avatar
+                        uri={r.avatarUrl}
+                        displayName={r.displayName}
+                        size={20}
+                      />
+                      <Text
+                        style={{ fontSize: 12, color: '#6B7280', marginLeft: 6, flex: 1 }}
+                        numberOfLines={1}
+                      >
                         {r.displayName}
                       </Text>
                       <Text style={{ fontSize: 12, fontWeight: '500', color: '#D97706' }}>

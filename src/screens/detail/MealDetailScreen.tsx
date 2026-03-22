@@ -46,14 +46,20 @@ export function MealDetailScreen() {
     (f) => f.user_id === user?.id,
   )?.has_rated ?? false;
 
-  // Build userId → displayName map for StarDishes grouping
-  const userDisplayNames: Record<string, string> = {};
+  // Build userId → user info map for StarDishes grouping + avatars
+  const userInfo: Record<string, { displayName: string; avatarUrl?: string }> = {};
   if (post?.author) {
-    userDisplayNames[post.author_id] = post.author.display_name ?? post.author.username ?? 'Author';
+    userInfo[post.author_id] = {
+      displayName: post.author.display_name ?? post.author.username ?? 'Author',
+      avatarUrl: post.author.avatar_url,
+    };
   }
   for (const f of post?.tagged_friends ?? []) {
     if (f.user_id && f.display_name) {
-      userDisplayNames[f.user_id] = f.display_name;
+      userInfo[f.user_id] = {
+        displayName: f.display_name,
+        avatarUrl: f.user?.avatar_url,
+      };
     }
   }
 
@@ -297,7 +303,7 @@ export function MealDetailScreen() {
           {/* Star dishes with endorsements */}
           {post.dish_ratings && post.dish_ratings.length > 0 && (
             <View>
-              <StarDishes dishRatings={post.dish_ratings} userDisplayNames={userDisplayNames} />
+              <StarDishes dishRatings={post.dish_ratings} userInfo={userInfo} />
               {/* Endorsement buttons for each dish */}
               {post.dish_ratings.filter((d) => d.is_star_dish).length > 0 && (
                 <View className="mx-4 mb-3">

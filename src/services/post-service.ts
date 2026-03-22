@@ -28,7 +28,7 @@ export async function getFeedPosts(currentUserId: string, limit = 20): Promise<P
       *,
       author:users!posts_author_id_fkey(*),
       dish_ratings(*),
-      tagged_friends:post_tagged_friends(*)
+      tagged_friends:post_tagged_friends(*, user:users!post_tagged_friends_user_id_fkey(avatar_url))
     `)
     .eq('is_public', true)
     .order('created_at', { ascending: false })
@@ -84,7 +84,7 @@ export async function getUserPosts(userId: string, currentUserId?: string): Prom
   if (userId === currentUserId) {
     const { data, error } = await supabase
       .from('posts')
-      .select(`*, author:users!posts_author_id_fkey(*), dish_ratings(*), tagged_friends:post_tagged_friends(*)`)
+      .select(`*, author:users!posts_author_id_fkey(*), dish_ratings(*), tagged_friends:post_tagged_friends(*, user:users!post_tagged_friends_user_id_fkey(avatar_url))`)
       .eq('author_id', userId)
       .order('created_at', { ascending: false });
     if (error) throw error;
@@ -94,7 +94,7 @@ export async function getUserPosts(userId: string, currentUserId?: string): Prom
   // Viewing someone else's profile: public posts + private posts where viewer is tagged
   const { data: publicPosts, error: pubErr } = await supabase
     .from('posts')
-    .select(`*, author:users!posts_author_id_fkey(*), dish_ratings(*), tagged_friends:post_tagged_friends(*)`)
+    .select(`*, author:users!posts_author_id_fkey(*), dish_ratings(*), tagged_friends:post_tagged_friends(*, user:users!post_tagged_friends_user_id_fkey(avatar_url))`)
     .eq('author_id', userId)
     .eq('is_public', true)
     .order('created_at', { ascending: false });
@@ -113,7 +113,7 @@ export async function getUserPosts(userId: string, currentUserId?: string): Prom
 
   const { data: privatePosts } = await supabase
     .from('posts')
-    .select(`*, author:users!posts_author_id_fkey(*), dish_ratings(*), tagged_friends:post_tagged_friends(*)`)
+    .select(`*, author:users!posts_author_id_fkey(*), dish_ratings(*), tagged_friends:post_tagged_friends(*, user:users!post_tagged_friends_user_id_fkey(avatar_url))`)
     .eq('author_id', userId)
     .eq('is_public', false)
     .in('id', taggedPostIds)
@@ -137,7 +137,7 @@ export async function getTaggedPosts(userId: string): Promise<Post[]> {
   // Tagged friends can see both public and private posts they're tagged in
   const { data, error } = await supabase
     .from('posts')
-    .select(`*, author:users!posts_author_id_fkey(*), dish_ratings(*), tagged_friends:post_tagged_friends(*)`)
+    .select(`*, author:users!posts_author_id_fkey(*), dish_ratings(*), tagged_friends:post_tagged_friends(*, user:users!post_tagged_friends_user_id_fkey(avatar_url))`)
     .in('id', postIds)
     .order('created_at', { ascending: false });
 
@@ -154,7 +154,7 @@ export async function getPost(postId: string, currentUserId?: string): Promise<P
       *,
       author:users!posts_author_id_fkey(*),
       dish_ratings(*),
-      tagged_friends:post_tagged_friends(*),
+      tagged_friends:post_tagged_friends(*, user:users!post_tagged_friends_user_id_fkey(avatar_url)),
       receipt_items(*)
     `)
     .eq('id', postId)
