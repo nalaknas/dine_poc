@@ -19,12 +19,13 @@ import type { Notification, RootStackParamList } from '../../types';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
-const NOTIFICATION_ICONS = {
-  like: { name: 'heart' as const, color: '#EF4444' },
-  comment: { name: 'chatbubble' as const, color: '#007AFF' },
-  tag: { name: 'pricetag' as const, color: '#10B981' },
-  follow: { name: 'person-add' as const, color: '#F59E0B' },
-  recommendation: { name: 'star' as const, color: '#F59E0B' },
+const NOTIFICATION_ICONS: Record<string, { name: 'heart' | 'chatbubble' | 'pricetag' | 'person-add' | 'star'; color: string }> = {
+  like: { name: 'heart', color: '#EF4444' },
+  comment: { name: 'chatbubble', color: '#007AFF' },
+  comment_like: { name: 'heart', color: '#A855F7' },
+  tag: { name: 'pricetag', color: '#10B981' },
+  follow: { name: 'person-add', color: '#F59E0B' },
+  recommendation: { name: 'star', color: '#F59E0B' },
 };
 
 function groupNotifications(notifications: Notification[]) {

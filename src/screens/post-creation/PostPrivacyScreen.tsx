@@ -7,7 +7,7 @@ import { useSocialStore } from '../../stores/socialStore';
 import { useBillSplitterStore } from '../../stores/billSplitterStore';
 import { useAuthStore } from '../../stores/authStore';
 import { useUserProfileStore } from '../../stores/userProfileStore';
-import { createPost } from '../../services/post-service';
+import { createPost, notifyTaggedParticipants } from '../../services/post-service';
 import { useSplitHistoryStore } from '../../stores/splitHistoryStore';
 import { uploadFoodPhoto } from '../../services/receipt-service';
 import { generateDishEmbedding } from '../../services/recommendation-service';
@@ -90,7 +90,15 @@ export function PostPrivacyScreen() {
       // 2. Create the post
       const post = await createPost(draft, user.id, personBreakdowns);
 
-      // 3. Record split history (persist friends + venmo for future splits)
+      // 3. Notify tagged friends
+      notifyTaggedParticipants(
+        post.id,
+        user.id,
+        'tag',
+        `tagged you in a meal at ${currentReceipt?.restaurantName ?? draft.receiptData?.restaurantName ?? 'a restaurant'}`,
+      );
+
+      // 4. Record split history (persist friends + venmo for future splits)
       const friendsToRecord = selectedFriends.filter((f) => f.id !== user.id);
       if (friendsToRecord.length > 0) {
         useSplitHistoryStore.getState().recordSplit(friendsToRecord);

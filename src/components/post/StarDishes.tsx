@@ -2,25 +2,73 @@ import React, { useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Avatar } from '../ui/Avatar';
 import type { DishRating } from '../../types';
+
+export interface UserInfo {
+  displayName: string;
+  avatarUrl?: string;
+}
+
+interface GroupedDish {
+  dishName: string;
+  avgRating: number;
+  ratings: { userId: string; displayName: string; avatarUrl?: string; rating: number; notes?: string }[];
+}
 
 interface StarDishesProps {
   dishRatings: DishRating[];
+  /** Map of user_id → { displayName, avatarUrl }. Built from post.author + post.tagged_friends. */
+  userInfo?: Record<string, UserInfo>;
 }
 
 const MAX_VISIBLE = 3;
 
-export function StarDishes({ dishRatings }: StarDishesProps) {
+function groupDishRatings(
+  dishRatings: DishRating[],
+  userInfo: Record<string, UserInfo>,
+): GroupedDish[] {
+  const groups = new Map<string, GroupedDish>();
+
+  for (const r of dishRatings) {
+    const key = r.dish_name.toLowerCase().trim();
+    const existing = groups.get(key);
+    const info = userInfo[r.user_id ?? ''];
+    const entry = {
+      userId: r.user_id ?? '',
+      displayName: info?.displayName ?? 'Unknown',
+      avatarUrl: info?.avatarUrl,
+      rating: r.rating,
+      notes: r.notes,
+    };
+
+    if (existing) {
+      existing.ratings.push(entry);
+      existing.avgRating =
+        existing.ratings.reduce((sum, e) => sum + e.rating, 0) / existing.ratings.length;
+    } else {
+      groups.set(key, {
+        dishName: r.dish_name,
+        avgRating: r.rating,
+        ratings: [entry],
+      });
+    }
+  }
+
+  return [...groups.values()].sort((a, b) => b.avgRating - a.avgRating);
+}
+
+export function StarDishes({ dishRatings, userInfo = {} }: StarDishesProps) {
   const [expanded, setExpanded] = useState(false);
+  const [expandedDish, setExpandedDish] = useState<string | null>(null);
 
-  // Sort all dishes by rating descending
-  const sorted = [...dishRatings].sort((a, b) => b.rating - a.rating);
+  const grouped = groupDishRatings(dishRatings, userInfo);
 
-  // Filter star dishes (sorted) or fall back to top-rated
-  let starDishes = sorted.filter((d) => d.is_star_dish);
-  if (starDishes.length === 0 && sorted.length > 0) {
-    const top = sorted[0];
-    if (top.rating > 0) starDishes = [top];
+  // Star dishes: avg >= 7, or fallback to top dish
+  let starDishes = grouped.filter((d) => d.avgRating >= 7);
+  if (starDishes.length === 0 && grouped.length > 0) {
+    const top = grouped[0];
+    if (top.avgRating > 0) starDishes = [top];
   }
 
   if (starDishes.length === 0) return null;
@@ -42,30 +90,97 @@ export function StarDishes({ dishRatings }: StarDishesProps) {
             Star Dishes
           </Text>
         </View>
-        {visible.map((dish) => (
-          <View
-            key={dish.id}
-            style={{
-              flexDirection: 'row',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              paddingVertical: 4,
-            }}
-          >
-            <Text
-              style={{ fontSize: 13, color: '#1F2937', flex: 1, marginRight: 8 }}
-              numberOfLines={1}
-            >
-              {dish.dish_name}
-            </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Ionicons name="star" size={11} color="#F59E0B" />
-              <Text style={{ fontSize: 13, fontWeight: '600', color: '#F59E0B', marginLeft: 2 }}>
-                {dish.rating.toFixed(1)}
-              </Text>
+        {visible.map((dish) => {
+          const key = dish.dishName.toLowerCase().trim();
+          const hasMultipleRaters = dish.ratings.length > 1;
+          const isOpen = expandedDish === key;
+
+          return (
+            <View key={key}>
+              <Pressable
+                onPress={hasMultipleRaters ? () => setExpandedDish(isOpen ? null : key) : undefined}
+                style={{
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  paddingVertical: 4,
+                }}
+              >
+                <Text
+                  style={{ fontSize: 13, color: '#1F2937', flex: 1, marginRight: 6 }}
+                  numberOfLines={1}
+                >
+                  {dish.dishName}
+                </Text>
+
+                {/* Inline avatar stack */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 6 }}>
+                  {dish.ratings.slice(0, 3).map((r, i) => (
+                    <View key={r.userId} style={{ marginLeft: i > 0 ? -6 : 0, zIndex: 3 - i }}>
+                      <Avatar uri={r.avatarUrl} displayName={r.displayName} size={18} />
+                    </View>
+                  ))}
+                  {dish.ratings.length > 3 && (
+                    <Text style={{ fontSize: 10, color: '#9CA3AF', marginLeft: 2 }}>
+                      +{dish.ratings.length - 3}
+                    </Text>
+                  )}
+                </View>
+
+                {hasMultipleRaters && (
+                  <Ionicons
+                    name={isOpen ? 'chevron-up' : 'chevron-down'}
+                    size={12}
+                    color="#9CA3AF"
+                    style={{ marginRight: 4 }}
+                  />
+                )}
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Ionicons name="star" size={11} color="#F59E0B" />
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: '#F59E0B', marginLeft: 2 }}>
+                    {dish.avgRating.toFixed(1)}
+                  </Text>
+                  {hasMultipleRaters && (
+                    <Text style={{ fontSize: 10, color: '#9CA3AF', marginLeft: 4 }}>
+                      avg
+                    </Text>
+                  )}
+                </View>
+              </Pressable>
+
+              {/* Per-user breakdown with avatars */}
+              {isOpen && (
+                <View style={{ paddingLeft: 4, paddingBottom: 4 }}>
+                  {dish.ratings.map((r) => (
+                    <View
+                      key={r.userId}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        paddingVertical: 3,
+                      }}
+                    >
+                      <Avatar
+                        uri={r.avatarUrl}
+                        displayName={r.displayName}
+                        size={20}
+                      />
+                      <Text
+                        style={{ fontSize: 12, color: '#6B7280', marginLeft: 6, flex: 1 }}
+                        numberOfLines={1}
+                      >
+                        {r.displayName}
+                      </Text>
+                      <Text style={{ fontSize: 12, fontWeight: '500', color: '#D97706' }}>
+                        {r.rating.toFixed(1)}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              )}
             </View>
-          </View>
-        ))}
+          );
+        })}
         {hasMore && (
           <Pressable
             onPress={() => setExpanded((prev) => !prev)}

@@ -39,10 +39,21 @@ export interface UserStats {
 
 export interface DishRating {
   id: string;
+  post_id?: string;
+  user_id?: string;
   dish_name: string;
   rating: number;
   notes?: string;
   is_star_dish: boolean;
+  endorsements?: DishEndorsement[];
+}
+
+export interface DishEndorsement {
+  id: string;
+  dish_rating_id: string;
+  user_id: string;
+  emoji: string;
+  created_at: string;
 }
 
 export interface TaggedFriend {
@@ -53,6 +64,10 @@ export interface TaggedFriend {
   username?: string;
   venmo_username?: string;
   amount_owed?: number;
+  has_rated?: boolean;
+  rated_at?: string;
+  contributed_photos?: string[];
+  user?: { avatar_url?: string };
 }
 
 export interface ReceiptItem {
@@ -261,6 +276,7 @@ export type RootStackParamList = {
   RestaurantDetail: { name: string; city?: string; placeId?: string };
   Comments: { postId: string };
   EditPost: { postId: string };
+  TaggedRate: { postId: string };
   EditProfile: undefined;
   PlaylistDetail: { playlistId: string };
   CreatePlaylist: undefined;

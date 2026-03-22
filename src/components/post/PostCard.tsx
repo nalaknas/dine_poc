@@ -41,6 +41,23 @@ export function PostCard({ post, onLike, onComment }: PostCardProps) {
 
   const author = post.author;
 
+  // Build userInfo map for StarDishes avatars
+  const userInfo: Record<string, { displayName: string; avatarUrl?: string }> = {};
+  if (author) {
+    userInfo[post.author_id] = {
+      displayName: author.display_name ?? author.username ?? 'Author',
+      avatarUrl: author.avatar_url,
+    };
+  }
+  for (const f of post.tagged_friends ?? []) {
+    if (f.user_id && f.display_name) {
+      userInfo[f.user_id] = {
+        displayName: f.display_name,
+        avatarUrl: f.user?.avatar_url,
+      };
+    }
+  }
+
   return (
     <View
       style={[
@@ -158,7 +175,7 @@ export function PostCard({ post, onLike, onComment }: PostCardProps) {
 
       {/* Star dishes — always shown when present */}
       {post.dish_ratings && post.dish_ratings.length > 0 && (
-        <StarDishes dishRatings={post.dish_ratings} />
+        <StarDishes dishRatings={post.dish_ratings} userInfo={userInfo} />
       )}
 
       {/* Action bar */}

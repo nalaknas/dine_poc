@@ -10,18 +10,39 @@ export async function getFeedPosts(currentUserId: string, limit = 20): Promise<P
   const followingIds = await getFollowingIds(currentUserId);
   const authorIds = [currentUserId, ...followingIds];
 
-  const { data, error } = await supabase
+  // Find posts where a followed user is tagged (shared visibility)
+  const { data: taggedPostEntries } = await supabase
+    .from('post_tagged_friends')
+    .select('post_id')
+    .in('user_id', followingIds.length > 0 ? followingIds : ['__none__'])
+    .not('user_id', 'is', null)
+    .limit(100);
+
+  const taggedPostIds = [...new Set(
+    (taggedPostEntries ?? []).map((t: { post_id: string }) => t.post_id),
+  )];
+
+  let query = supabase
     .from('posts')
     .select(`
       *,
       author:users!posts_author_id_fkey(*),
       dish_ratings(*),
-      tagged_friends:post_tagged_friends(*)
+      tagged_friends:post_tagged_friends(*, user:users!post_tagged_friends_user_id_fkey(avatar_url))
     `)
-    .in('author_id', authorIds)
     .eq('is_public', true)
     .order('created_at', { ascending: false })
     .limit(limit);
+
+  if (taggedPostIds.length > 0) {
+    query = query.or(
+      `author_id.in.(${authorIds.join(',')}),id.in.(${taggedPostIds.join(',')})`,
+    );
+  } else {
+    query = query.in('author_id', authorIds);
+  }
+
+  const { data, error } = await query;
 
   if (error) throw error;
 
@@ -63,7 +84,7 @@ export async function getUserPosts(userId: string, currentUserId?: string): Prom
   if (userId === currentUserId) {
     const { data, error } = await supabase
       .from('posts')
-      .select(`*, author:users!posts_author_id_fkey(*), dish_ratings(*), tagged_friends:post_tagged_friends(*)`)
+      .select(`*, author:users!posts_author_id_fkey(*), dish_ratings(*), tagged_friends:post_tagged_friends(*, user:users!post_tagged_friends_user_id_fkey(avatar_url))`)
       .eq('author_id', userId)
       .order('created_at', { ascending: false });
     if (error) throw error;
@@ -73,7 +94,7 @@ export async function getUserPosts(userId: string, currentUserId?: string): Prom
   // Viewing someone else's profile: public posts + private posts where viewer is tagged
   const { data: publicPosts, error: pubErr } = await supabase
     .from('posts')
-    .select(`*, author:users!posts_author_id_fkey(*), dish_ratings(*), tagged_friends:post_tagged_friends(*)`)
+    .select(`*, author:users!posts_author_id_fkey(*), dish_ratings(*), tagged_friends:post_tagged_friends(*, user:users!post_tagged_friends_user_id_fkey(avatar_url))`)
     .eq('author_id', userId)
     .eq('is_public', true)
     .order('created_at', { ascending: false });
@@ -92,7 +113,7 @@ export async function getUserPosts(userId: string, currentUserId?: string): Prom
 
   const { data: privatePosts } = await supabase
     .from('posts')
-    .select(`*, author:users!posts_author_id_fkey(*), dish_ratings(*), tagged_friends:post_tagged_friends(*)`)
+    .select(`*, author:users!posts_author_id_fkey(*), dish_ratings(*), tagged_friends:post_tagged_friends(*, user:users!post_tagged_friends_user_id_fkey(avatar_url))`)
     .eq('author_id', userId)
     .eq('is_public', false)
     .in('id', taggedPostIds)
@@ -116,7 +137,7 @@ export async function getTaggedPosts(userId: string): Promise<Post[]> {
   // Tagged friends can see both public and private posts they're tagged in
   const { data, error } = await supabase
     .from('posts')
-    .select(`*, author:users!posts_author_id_fkey(*), dish_ratings(*)`)
+    .select(`*, author:users!posts_author_id_fkey(*), dish_ratings(*), tagged_friends:post_tagged_friends(*, user:users!post_tagged_friends_user_id_fkey(avatar_url))`)
     .in('id', postIds)
     .order('created_at', { ascending: false });
 
@@ -133,7 +154,7 @@ export async function getPost(postId: string, currentUserId?: string): Promise<P
       *,
       author:users!posts_author_id_fkey(*),
       dish_ratings(*),
-      tagged_friends:post_tagged_friends(*),
+      tagged_friends:post_tagged_friends(*, user:users!post_tagged_friends_user_id_fkey(avatar_url)),
       receipt_items(*)
     `)
     .eq('id', postId)
@@ -348,4 +369,108 @@ export async function updatePost(postId: string, updates: Partial<Post>): Promis
     .single();
   if (error) throw error;
   return data as Post;
+}
+
+// ─── Tagged User Ratings ─────────────────────────────────────────────────────
+
+export async function submitTaggedUserRatings(
+  postId: string,
+  userId: string,
+  dishRatings: { dishName: string; rating: number; notes?: string }[],
+): Promise<string[]> {
+  const ratingRows = dishRatings
+    .filter((r) => r.rating > 0)
+    .map((r) => ({
+      post_id: postId,
+      user_id: userId,
+      dish_name: r.dishName,
+      rating: r.rating,
+      notes: r.notes,
+    }));
+
+  if (ratingRows.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from('dish_ratings')
+    .upsert(ratingRows, { onConflict: 'post_id,user_id,dish_name' })
+    .select('id');
+  if (error) throw error;
+
+  // Mark tagged friend as rated
+  await supabase
+    .from('post_tagged_friends')
+    .update({ has_rated: true, rated_at: new Date().toISOString() })
+    .eq('post_id', postId)
+    .eq('user_id', userId);
+
+  return (data ?? []).map((r: { id: string }) => r.id);
+}
+
+// ─── Co-diner Photo Contributions ────────────────────────────────────────────
+
+export async function addTaggedUserPhoto(
+  postId: string,
+  userId: string,
+  photoUrl: string,
+): Promise<void> {
+  const { data } = await supabase
+    .from('post_tagged_friends')
+    .select('contributed_photos')
+    .eq('post_id', postId)
+    .eq('user_id', userId)
+    .single();
+
+  const existing = (data?.contributed_photos as string[] | null) ?? [];
+  await supabase
+    .from('post_tagged_friends')
+    .update({ contributed_photos: [...existing, photoUrl] })
+    .eq('post_id', postId)
+    .eq('user_id', userId);
+}
+
+// ─── Dish Endorsements ───────────────────────────────────────────────────────
+
+export async function toggleDishEndorsement(
+  dishRatingId: string,
+  userId: string,
+  emoji: string,
+): Promise<boolean> {
+  // Check if endorsement exists
+  const { data: existing } = await supabase
+    .from('dish_endorsements')
+    .select('id')
+    .eq('dish_rating_id', dishRatingId)
+    .eq('user_id', userId)
+    .single();
+
+  if (existing) {
+    await supabase.from('dish_endorsements').delete().eq('id', existing.id);
+    return false; // removed
+  }
+
+  await supabase.from('dish_endorsements').insert({
+    dish_rating_id: dishRatingId,
+    user_id: userId,
+    emoji,
+  });
+  return true; // added
+}
+
+export async function getDishEndorsements(
+  dishRatingIds: string[],
+): Promise<Record<string, { user_id: string; emoji: string }[]>> {
+  if (dishRatingIds.length === 0) return {};
+
+  const { data } = await supabase
+    .from('dish_endorsements')
+    .select('dish_rating_id, user_id, emoji')
+    .in('dish_rating_id', dishRatingIds);
+
+  const result: Record<string, { user_id: string; emoji: string }[]> = {};
+  for (const row of data ?? []) {
+    const key = row.dish_rating_id as string;
+    if (!result[key]) result[key] = [];
+    result[key].push({ user_id: row.user_id as string, emoji: row.emoji as string });
+  }
+  return result;
 }
