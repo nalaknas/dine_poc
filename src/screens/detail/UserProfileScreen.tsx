@@ -10,7 +10,7 @@ import { Avatar } from '../../components/ui/Avatar';
 import { useAuthStore } from '../../stores/authStore';
 import { useUserProfileStore } from '../../stores/userProfileStore';
 import { getUserById } from '../../services/auth-service';
-import { getUserPosts } from '../../services/post-service';
+import { getUserPosts, getTaggedPosts } from '../../services/post-service';
 import {
   isFollowing, followUser, unfollowUser,
   getFollowerCount, getFollowingCount,
@@ -30,9 +30,11 @@ export function UserProfileScreen() {
 
   const [profile, setProfile] = useState<User | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
+  const [taggedPosts, setTaggedPosts] = useState<Post[]>([]);
   const [followers, setFollowers] = useState(0);
   const [following, setFollowing] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'grid' | 'tagged'>('grid');
 
   const isMe = user?.id === params.userId;
   const currentlyFollowing = followMap[params.userId] ?? false;
@@ -44,15 +46,17 @@ export function UserProfileScreen() {
   const load = async () => {
     setIsLoading(true);
     try {
-      const [u, userPosts, followersCount, followingCount, followingStatus] = await Promise.all([
+      const [u, userPosts, followersCount, followingCount, followingStatus, tagged] = await Promise.all([
         getUserById(params.userId),
         getUserPosts(params.userId, user?.id),
         getFollowerCount(params.userId),
         getFollowingCount(params.userId),
         user && !isMe ? isFollowing(user.id, params.userId) : Promise.resolve(false),
+        getTaggedPosts(params.userId),
       ]);
       setProfile(u);
       setPosts(userPosts);
+      setTaggedPosts(tagged);
       setFollowers(followersCount);
       setFollowing(followingCount);
       if (!isMe) setIsFollowing(params.userId, followingStatus);
@@ -89,7 +93,7 @@ export function UserProfileScreen() {
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['bottom']}>
       <FlatList
-        data={posts}
+        data={activeTab === 'tagged' ? taggedPosts : posts}
         keyExtractor={(item) => item.id}
         numColumns={3}
         ListHeaderComponent={
@@ -137,8 +141,21 @@ export function UserProfileScreen() {
               )}
             </View>
 
-            <View className="border-t border-border-light py-2 px-4">
-              <Ionicons name="grid-outline" size={22} color="#1F2937" />
+            <View className="border-t border-border-light py-2 px-4 flex-row" style={{ gap: 24 }}>
+              <TouchableOpacity onPress={() => setActiveTab('grid')}>
+                <Ionicons
+                  name="grid-outline"
+                  size={22}
+                  color={activeTab === 'grid' ? '#1F2937' : '#9CA3AF'}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setActiveTab('tagged')}>
+                <Ionicons
+                  name="pricetag-outline"
+                  size={22}
+                  color={activeTab === 'tagged' ? '#1F2937' : '#9CA3AF'}
+                />
+              </TouchableOpacity>
             </View>
           </View>
         }

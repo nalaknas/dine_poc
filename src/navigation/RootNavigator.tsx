@@ -17,6 +17,7 @@ import { UserProfileScreen } from '../screens/detail/UserProfileScreen';
 import { RestaurantDetailScreen } from '../screens/detail/RestaurantDetailScreen';
 import { CommentsScreen } from '../screens/detail/CommentsScreen';
 import { EditPostScreen } from '../screens/detail/EditPostScreen';
+import { TaggedRateScreen } from '../screens/detail/TaggedRateScreen';
 import { EditProfileScreen } from '../screens/detail/EditProfileScreen';
 import { PlaylistDetailScreen } from '../screens/playlists/PlaylistDetailScreen';
 import { CreatePlaylistScreen } from '../screens/playlists/CreatePlaylistScreen';
@@ -102,6 +103,11 @@ export function RootNavigator() {
               name="EditPost"
               component={EditPostScreen}
               options={{ headerShown: true, title: 'Edit Post' }}
+            />
+            <Stack.Screen
+              name="TaggedRate"
+              component={TaggedRateScreen}
+              options={{ headerShown: true, title: 'Rate This Meal' }}
             />
             <Stack.Screen
               name="EditProfile"

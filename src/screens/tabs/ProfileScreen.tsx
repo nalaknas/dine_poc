@@ -16,7 +16,8 @@ import { Shadows } from '../../constants/shadows';
 import { useAuthStore } from '../../stores/authStore';
 import { useUserProfileStore } from '../../stores/userProfileStore';
 import { useSocialStore } from '../../stores/socialStore';
-import { getUserPosts } from '../../services/post-service';
+import { getUserPosts, getTaggedPosts } from '../../services/post-service';
+import type { Post } from '../../types';
 import { getFollowerCount, getFollowingCount } from '../../services/user-service';
 import type { RootStackParamList } from '../../types';
 
@@ -32,18 +33,21 @@ export function ProfileScreen() {
   const { myPosts, setMyPosts } = useSocialStore();
   const [isLoading, setIsLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState<'grid' | 'list' | 'map'>('grid');
+  const [activeTab, setActiveTab] = useState<'grid' | 'list' | 'map' | 'tagged'>('grid');
+  const [taggedPosts, setTaggedPosts] = useState<Post[]>([]);
 
   const loadProfile = useCallback(async () => {
     if (!user) return;
     setIsLoading(true);
     try {
-      const [posts, followers, following] = await Promise.allSettled([
+      const [posts, followers, following, tagged] = await Promise.allSettled([
         getUserPosts(user.id, user.id),
         getFollowerCount(user.id),
         getFollowingCount(user.id),
+        getTaggedPosts(user.id),
       ]);
       if (posts.status === 'fulfilled') setMyPosts(posts.value);
+      if (tagged.status === 'fulfilled') setTaggedPosts(tagged.value);
       setFollowCounts(
         followers.status === 'fulfilled' ? followers.value : 0,
         following.status === 'fulfilled' ? following.value : 0,
@@ -164,6 +168,7 @@ export function ProfileScreen() {
             { key: 'grid' as const, icon: 'grid-outline' },
             { key: 'list' as const, icon: 'list-outline' },
             { key: 'map' as const, icon: 'map-outline' },
+            { key: 'tagged' as const, icon: 'pricetag-outline' },
           ]).map((tab) => (
             <Pressable
               key={tab.key}
@@ -201,46 +206,78 @@ export function ProfileScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF' }} edges={['top']}>
       <FlatList
-        data={myPosts}
+        data={activeTab === 'tagged' ? taggedPosts : myPosts}
         keyExtractor={(item) => item.id}
         numColumns={3}
         ListHeaderComponent={header}
         columnWrapperStyle={{ paddingHorizontal: 16, gap: 4 }}
-        renderItem={({ item }) => (
-          <AnimatedPressable
-            onPress={() => navigation.navigate('MealDetail', { postId: item.id })}
-            style={{ width: PHOTO_SIZE, height: PHOTO_SIZE, marginBottom: 4, borderRadius: 8, overflow: 'hidden' }}
-          >
-            {item.food_photos?.length > 0 ? (
-              <Image
-                source={{ uri: item.food_photos[0] }}
-                style={{ flex: 1 }}
-                resizeMode="cover"
-              />
-            ) : (
-              <LinearGradient
-                colors={['#F3F4F6', '#E5E7EB']}
-                style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
-              >
-                <Ionicons name="receipt-outline" size={28} color="#9CA3AF" />
-                <Text style={{ fontSize: 10, color: '#9CA3AF', marginTop: 2 }} numberOfLines={1}>
-                  {item.restaurant_name || 'Meal'}
-                </Text>
-              </LinearGradient>
-            )}
-          </AnimatedPressable>
-        )}
+        renderItem={({ item }) => {
+          // For tagged tab, check if unrated
+          const tagEntry = activeTab === 'tagged'
+            ? item.tagged_friends?.find((f) => f.user_id === user?.id)
+            : undefined;
+          const isUnrated = tagEntry && !tagEntry.has_rated;
+
+          return (
+            <AnimatedPressable
+              onPress={() => {
+                if (isUnrated) {
+                  navigation.navigate('TaggedRate', { postId: item.id });
+                } else {
+                  navigation.navigate('MealDetail', { postId: item.id });
+                }
+              }}
+              style={{ width: PHOTO_SIZE, height: PHOTO_SIZE, marginBottom: 4, borderRadius: 8, overflow: 'hidden' }}
+            >
+              {item.food_photos?.length > 0 ? (
+                <Image
+                  source={{ uri: item.food_photos[0] }}
+                  style={{ flex: 1 }}
+                  resizeMode="cover"
+                />
+              ) : (
+                <LinearGradient
+                  colors={['#F3F4F6', '#E5E7EB']}
+                  style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <Ionicons name="receipt-outline" size={28} color="#9CA3AF" />
+                  <Text style={{ fontSize: 10, color: '#9CA3AF', marginTop: 2 }} numberOfLines={1}>
+                    {item.restaurant_name || 'Meal'}
+                  </Text>
+                </LinearGradient>
+              )}
+              {/* Unrated badge overlay */}
+              {isUnrated && (
+                <View style={{
+                  position: 'absolute', bottom: 4, right: 4,
+                  backgroundColor: '#10B981', borderRadius: 6,
+                  paddingHorizontal: 6, paddingVertical: 2,
+                }}>
+                  <Text style={{ fontSize: 9, fontWeight: '700', color: '#fff' }}>RATE</Text>
+                </View>
+              )}
+            </AnimatedPressable>
+          );
+        }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#007AFF" />
         }
         ListEmptyComponent={
-          <EmptyState
-            icon="restaurant-outline"
-            title="No meals yet"
-            description="Create your first post to build your dining journal."
-            actionLabel="Add Meal"
-            onAction={() => navigation.navigate('PostCreation' as any)}
-          />
+          activeTab === 'tagged' ? (
+            <EmptyState
+              icon="pricetag-outline"
+              title="No tagged meals"
+              description="When friends tag you in their meals, they'll appear here."
+            />
+          ) : (
+            <EmptyState
+              icon="restaurant-outline"
+              title="No meals yet"
+              description="Create your first post to build your dining journal."
+              actionLabel="Add Meal"
+              onAction={() => navigation.navigate('PostCreation' as any)}
+            />
+          )
         }
         contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
