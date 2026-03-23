@@ -43,6 +43,12 @@ module.exports = {
         },
       ],
       'expo-secure-store',
+      [
+        'expo-contacts',
+        {
+          contactsPermission: 'Dine uses your contacts to help you find and tag friends you dine with.',
+        },
+      ],
     ],
     extra: {
       supabaseUrl: process.env.SUPABASE_URL,

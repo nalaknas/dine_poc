@@ -137,8 +137,27 @@ export interface Friend {
   username?: string;
   avatar_url?: string;
   venmo_username?: string;
+  phone_number?: string;
   user_id?: string;
+  contact_id?: string;
   is_app_user: boolean;
+}
+
+// ─── Contact ─────────────────────────────────────────────────────────────────
+
+export interface Contact {
+  id: string;
+  owner_id: string;
+  phone_number?: string;
+  display_name: string;
+  venmo_username?: string;
+  linked_user_id?: string;
+  split_count: number;
+  last_split_at?: string;
+  created_at: string;
+  updated_at: string;
+  // Joined from users table when linked
+  linked_user?: User;
 }
 
 export interface PersonBreakdown {
