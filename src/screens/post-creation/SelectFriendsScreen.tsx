@@ -7,12 +7,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { Avatar } from '../../components/ui/Avatar';
 import { useBillSplitterStore } from '../../stores/billSplitterStore';
-import { useSplitHistoryStore } from '../../stores/splitHistoryStore';
+import { useContactsStore, contactToFriend } from '../../stores/contactsStore';
 import { searchUsers, getFrequentFriends } from '../../services/user-service';
 import { useAuthStore } from '../../stores/authStore';
 import { useUserProfileStore } from '../../stores/userProfileStore';
-import type { User, Friend } from '../../types';
-import type { SplitHistoryEntry } from '../../stores/splitHistoryStore';
+import type { User, Friend, Contact } from '../../types';
 import { generateId } from '../../utils/format';
 
 function userToFriend(u: User): Friend {
@@ -22,20 +21,9 @@ function userToFriend(u: User): Friend {
     username: u.username,
     avatar_url: u.avatar_url,
     venmo_username: u.venmo_username,
+    phone_number: u.phone_number,
     user_id: u.id,
     is_app_user: true,
-  };
-}
-
-function historyToFriend(entry: SplitHistoryEntry): Friend {
-  return {
-    id: entry.id,
-    display_name: entry.display_name,
-    username: entry.username,
-    avatar_url: entry.avatar_url,
-    venmo_username: entry.venmo_username,
-    user_id: entry.user_id,
-    is_app_user: entry.is_app_user,
   };
 }
 
@@ -44,7 +32,10 @@ export function SelectFriendsScreen() {
   const { user } = useAuthStore();
   const { profile } = useUserProfileStore();
   const { selectedFriends, addSelectedFriend, removeSelectedFriend } = useBillSplitterStore();
-  const { loaded: historyLoaded, loadHistory, updateVenmo } = useSplitHistoryStore();
+  const {
+    isLoaded: contactsLoaded, loadContacts,
+    addContact, updateContact, importFromPhone,
+  } = useContactsStore();
 
   // Auto-include current user ("You") in the bill split on mount
   useEffect(() => {
@@ -61,19 +52,21 @@ export function SelectFriendsScreen() {
     }
   }, []);
 
-  // Load split history on mount
+  // Load contacts from server on mount
   useEffect(() => {
-    if (!historyLoaded) {
-      loadHistory();
+    if (user && !contactsLoaded) {
+      loadContacts(user.id);
     }
-  }, [historyLoaded]);
+  }, [user, contactsLoaded]);
 
   const [query, setQuery] = useState('');
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [frequentFriends, setFrequentFriends] = useState<User[]>([]);
   const [showManualModal, setShowManualModal] = useState(false);
   const [manualName, setManualName] = useState('');
+  const [manualPhone, setManualPhone] = useState('');
   const [manualVenmo, setManualVenmo] = useState('');
+  const [isImporting, setIsImporting] = useState(false);
   // Venmo editing
   const [editingVenmoId, setEditingVenmoId] = useState<string | null>(null);
   const [editingVenmoValue, setEditingVenmoValue] = useState('');
@@ -85,9 +78,9 @@ export function SelectFriendsScreen() {
     }
   }, [user]);
 
-  // Top split friends (from local history, excludes self)
-  const topSplitFriends = useSplitHistoryStore.getState().getTopFriends(10)
-    .filter((e) => e.user_id !== user?.id);
+  // Top contacts (from server-side contacts, excludes self)
+  const topContacts = useContactsStore.getState().getTopContacts(10)
+    .filter((c) => c.linked_user_id !== user?.id);
 
   const handleSearch = useCallback(async (text: string) => {
     setQuery(text);
@@ -108,60 +101,99 @@ export function SelectFriendsScreen() {
     }
   };
 
-  const toggleHistoryFriend = (entry: SplitHistoryEntry) => {
+  const toggleContact = (contact: Contact) => {
+    const friend = contactToFriend(contact);
     const existing = selectedFriends.find((f) =>
-      entry.user_id ? f.user_id === entry.user_id || f.id === entry.user_id : f.id === entry.id
+      contact.linked_user_id
+        ? f.user_id === contact.linked_user_id || f.id === contact.linked_user_id
+        : f.contact_id === contact.id || f.id === contact.id
     );
     if (existing) {
       removeSelectedFriend(existing.id);
     } else {
-      addSelectedFriend(historyToFriend(entry));
+      addSelectedFriend(friend);
     }
   };
 
-  const isHistoryFriendSelected = (entry: SplitHistoryEntry) => {
+  const isContactSelected = (contact: Contact) => {
     return selectedFriends.some((f) =>
-      entry.user_id ? f.user_id === entry.user_id || f.id === entry.user_id : f.id === entry.id
+      contact.linked_user_id
+        ? f.user_id === contact.linked_user_id || f.id === contact.linked_user_id
+        : f.contact_id === contact.id || f.id === contact.id
     );
   };
 
-  const addManualFriend = (name?: string, venmo?: string) => {
-    const friendName = name ?? manualName;
-    const friendVenmo = venmo ?? manualVenmo;
-    if (!friendName.trim()) {
+  const addManualFriend = async () => {
+    if (!manualName.trim()) {
       Alert.alert('Required', 'Please enter a name.');
       return;
     }
-    addSelectedFriend({
-      id: generateId(),
-      display_name: friendName.trim(),
-      venmo_username: friendVenmo.trim() || undefined,
-      is_app_user: false,
-    });
+    if (!user) return;
+
+    try {
+      // Save to server-side contacts
+      const contact = await addContact({
+        owner_id: user.id,
+        display_name: manualName.trim(),
+        phone_number: manualPhone.trim() || undefined,
+        venmo_username: manualVenmo.trim() || undefined,
+      });
+
+      // Add to selected friends for this bill split
+      addSelectedFriend(contactToFriend(contact));
+    } catch {
+      // Fallback: add as ephemeral friend if contact creation fails
+      addSelectedFriend({
+        id: generateId(),
+        display_name: manualName.trim(),
+        phone_number: manualPhone.trim() || undefined,
+        venmo_username: manualVenmo.trim() || undefined,
+        is_app_user: false,
+      });
+    }
+
     setManualName('');
+    setManualPhone('');
     setManualVenmo('');
     setShowManualModal(false);
     setQuery('');
     setSearchResults([]);
   };
 
-  const startEditVenmo = (entry: SplitHistoryEntry) => {
-    setEditingVenmoId(entry.id);
-    setEditingVenmoValue(entry.venmo_username ?? '');
+  const startEditVenmo = (contact: Contact) => {
+    setEditingVenmoId(contact.id);
+    setEditingVenmoValue(contact.venmo_username ?? '');
   };
 
-  const saveEditVenmo = () => {
+  const saveEditVenmo = async () => {
     if (editingVenmoId) {
-      updateVenmo(editingVenmoId, editingVenmoValue.trim());
-      // Also update in selectedFriends if this friend is currently selected
-      const selected = selectedFriends.find((f) => f.id === editingVenmoId || f.user_id === editingVenmoId);
+      const venmo = editingVenmoValue.trim();
+      await updateContact(editingVenmoId, { venmo_username: venmo || undefined });
+      // Also update in selectedFriends if this contact is currently selected
+      const selected = selectedFriends.find((f) => f.contact_id === editingVenmoId);
       if (selected) {
         removeSelectedFriend(selected.id);
-        addSelectedFriend({ ...selected, venmo_username: editingVenmoValue.trim() || undefined });
+        addSelectedFriend({ ...selected, venmo_username: venmo || undefined });
       }
     }
     setEditingVenmoId(null);
     setEditingVenmoValue('');
+  };
+
+  const handleImportContacts = async () => {
+    if (!user) return;
+    setIsImporting(true);
+    try {
+      const count = await importFromPhone(user.id);
+      if (count > 0) {
+        Alert.alert('Imported', `${count} contact${count === 1 ? '' : 's'} added.`);
+      } else {
+        Alert.alert('Up to date', 'No new contacts to import.');
+      }
+    } catch {
+      Alert.alert('Error', 'Could not import contacts. Please check permissions in Settings.');
+    }
+    setIsImporting(false);
   };
 
   // Check if search query has no matching results (for "add manually" inline prompt)
@@ -223,32 +255,59 @@ export function SelectFriendsScreen() {
         </View>
       </View>
 
-      {/* Top split friends — people you've split with before */}
-      {topSplitFriends.length > 0 && query.length === 0 && (
+      {/* Import from Contacts button */}
+      {query.length === 0 && (
+        <View className="px-4 pb-2">
+          <TouchableOpacity
+            onPress={handleImportContacts}
+            disabled={isImporting}
+            className="flex-row items-center bg-accent/10 border border-accent/30 rounded-xl px-4 py-3 mb-3"
+          >
+            <View className="w-9 h-9 bg-accent/20 rounded-full items-center justify-center mr-3">
+              <Ionicons name="people" size={18} color="#007AFF" />
+            </View>
+            <View className="flex-1">
+              <Text className="text-sm font-semibold text-accent">
+                {isImporting ? 'Importing...' : 'Import from Contacts'}
+              </Text>
+              <Text className="text-xs text-text-secondary">Add friends from your phone</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#007AFF" />
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Your Contacts — people you've added or split with before */}
+      {topContacts.length > 0 && query.length === 0 && (
         <View className="px-4 pb-2">
           <Text className="text-xs font-semibold text-text-secondary mb-2 uppercase tracking-wide">
-            Top Split Friends
+            Your Contacts
           </Text>
-          {topSplitFriends.map((entry) => {
-            const selected = isHistoryFriendSelected(entry);
-            const isEditingThis = editingVenmoId === entry.id;
+          {topContacts.map((contact) => {
+            const selected = isContactSelected(contact);
+            const isEditingThis = editingVenmoId === contact.id;
+            const displayName = contact.linked_user?.display_name ?? contact.display_name;
+            const username = contact.linked_user?.username;
+            const avatarUrl = contact.linked_user?.avatar_url;
             return (
-              <View key={entry.id} className="flex-row items-center py-2.5 border-b border-border-light">
+              <View key={contact.id} className="flex-row items-center py-2.5 border-b border-border-light">
                 <TouchableOpacity
-                  onPress={() => toggleHistoryFriend(entry)}
+                  onPress={() => toggleContact(contact)}
                   className="flex-row items-center flex-1"
                   activeOpacity={0.7}
                 >
-                  <Avatar uri={entry.avatar_url} displayName={entry.display_name} size={42} />
+                  <Avatar uri={avatarUrl} displayName={displayName} size={42} />
                   <View className="flex-1 ml-3">
-                    <Text className="text-base font-semibold text-text-primary">{entry.display_name}</Text>
+                    <Text className="text-base font-semibold text-text-primary">{displayName}</Text>
                     <View className="flex-row items-center">
-                      {entry.username && (
-                        <Text className="text-sm text-text-secondary">@{entry.username}</Text>
+                      {username && (
+                        <Text className="text-sm text-text-secondary">@{username}</Text>
                       )}
-                      <Text className="text-xs text-text-tertiary ml-1">
-                        · {entry.split_count} {entry.split_count === 1 ? 'split' : 'splits'}
-                      </Text>
+                      {contact.split_count > 0 && (
+                        <Text className="text-xs text-text-tertiary ml-1">
+                          · {contact.split_count} {contact.split_count === 1 ? 'split' : 'splits'}
+                        </Text>
+                      )}
                     </View>
                   </View>
                 </TouchableOpacity>
@@ -273,13 +332,13 @@ export function SelectFriendsScreen() {
                   </View>
                 ) : (
                   <TouchableOpacity
-                    onPress={() => startEditVenmo(entry)}
+                    onPress={() => startEditVenmo(contact)}
                     className="flex-row items-center mr-2"
                     activeOpacity={0.7}
                   >
-                    {entry.venmo_username ? (
+                    {contact.venmo_username ? (
                       <View className="flex-row items-center bg-blue-50 rounded-full px-2 py-0.5">
-                        <Text className="text-xs text-accent font-medium">@{entry.venmo_username}</Text>
+                        <Text className="text-xs text-accent font-medium">@{contact.venmo_username}</Text>
                         <Ionicons name="pencil" size={10} color="#007AFF" style={{ marginLeft: 3 }} />
                       </View>
                     ) : (
@@ -364,7 +423,7 @@ export function SelectFriendsScreen() {
                 </View>
                 <View className="flex-1">
                   <Text className="text-base font-semibold text-accent">Add "{query.trim()}" manually</Text>
-                  <Text className="text-xs text-text-secondary">Not on Dine? Add them with their Venmo</Text>
+                  <Text className="text-xs text-text-secondary">Not on Dine? Add them with their phone number</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={18} color="#007AFF" />
               </TouchableOpacity>
@@ -405,11 +464,11 @@ export function SelectFriendsScreen() {
         keyboardShouldPersistTaps="handled"
       />
 
-      {/* Manual add modal */}
+      {/* Manual add modal — Name + Phone + Venmo */}
       <Modal visible={showManualModal} animationType="slide" transparent>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1 justify-end">
           <View className="bg-background rounded-t-2xl p-6 shadow-lg">
-            <Text className="text-xl font-bold text-text-primary mb-4">Add Friend Manually</Text>
+            <Text className="text-xl font-bold text-text-primary mb-4">Add Friend</Text>
             <TextInput
               value={manualName}
               onChangeText={setManualName}
@@ -418,6 +477,17 @@ export function SelectFriendsScreen() {
               autoFocus
               className="bg-background-secondary border border-border rounded-xl px-4 py-3 text-base text-text-primary mb-3"
             />
+            <TextInput
+              value={manualPhone}
+              onChangeText={setManualPhone}
+              placeholder="Phone number"
+              keyboardType="phone-pad"
+              placeholderTextColor="#9CA3AF"
+              className="bg-background-secondary border border-border rounded-xl px-4 py-3 text-base text-text-primary mb-1"
+            />
+            <Text className="text-xs text-text-tertiary mb-3 ml-1">
+              Add their number so they can join Dine later
+            </Text>
             <TextInput
               value={manualVenmo}
               onChangeText={setManualVenmo}
@@ -428,13 +498,13 @@ export function SelectFriendsScreen() {
             />
             <View className="flex-row gap-3">
               <TouchableOpacity
-                onPress={() => { setShowManualModal(false); setManualName(''); setManualVenmo(''); }}
+                onPress={() => { setShowManualModal(false); setManualName(''); setManualPhone(''); setManualVenmo(''); }}
                 className="flex-1 border border-border rounded-xl py-3 items-center"
               >
                 <Text className="text-base font-semibold text-text-primary">Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                onPress={() => addManualFriend()}
+                onPress={addManualFriend}
                 className="flex-1 bg-accent rounded-xl py-3 items-center"
               >
                 <Text className="text-base font-semibold text-white">Add</Text>

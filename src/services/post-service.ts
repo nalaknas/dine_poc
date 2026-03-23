@@ -244,7 +244,7 @@ export async function createPost(
     }
   }
 
-  // 4. Insert tagged friends
+  // 4. Insert tagged friends (include phone_number for future backfill)
   if (breakdowns.length > 0) {
     const friendRows = breakdowns.map((b) => ({
       post_id: postId,
@@ -252,10 +252,24 @@ export async function createPost(
       display_name: b.friend.display_name,
       username: b.friend.username,
       venmo_username: b.friend.venmo_username,
+      phone_number: b.friend.phone_number ?? null,
       amount_owed: b.total,
     }));
     const { error: friendsError } = await supabase.from('post_tagged_friends').insert(friendRows);
     if (friendsError) console.error('[createPost] post_tagged_friends insert failed:', friendsError.message);
+
+    // Increment split counts for server-side contacts
+    const contactIds = breakdowns
+      .filter((b) => b.friend.contact_id)
+      .map((b) => b.friend.contact_id!);
+    if (contactIds.length > 0) {
+      try {
+        const { bulkIncrementSplitCounts } = await import('./contact-service');
+        await bulkIncrementSplitCounts(contactIds);
+      } catch {
+        console.error('[createPost] Failed to increment contact split counts');
+      }
+    }
   }
 
   return post as Post;
