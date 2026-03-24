@@ -5,6 +5,7 @@ module.exports = {
     name: 'Dine',
     slug: 'dine',
     version: '1.0.0',
+    scheme: 'dine',
     orientation: 'portrait',
     icon: './assets/icon-gold.png',
     userInterfaceStyle: 'automatic',
@@ -16,6 +17,7 @@ module.exports = {
     ios: {
       supportsTablet: false,
       bundleIdentifier: 'com.nalaknas.dine',
+      associatedDomains: ['applinks:dine.app'],
       infoPlist: {
         NSCameraUsageDescription: 'Dine needs camera access to scan receipts and take food photos.',
         NSPhotoLibraryUsageDescription: 'Dine needs photo library access to upload food photos.',

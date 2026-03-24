@@ -301,7 +301,7 @@ export type RootStackParamList = {
   CreatePlaylist: undefined;
   Settings: undefined;
   Recommendations: undefined;
-  VenmoRequests: { breakdowns: PersonBreakdown[]; restaurantName: string };
+  VenmoRequests: { breakdowns?: PersonBreakdown[]; restaurantName?: string; splitId?: string };
 };
 
 export type TabParamList = {

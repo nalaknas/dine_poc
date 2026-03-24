@@ -13,9 +13,31 @@ type VenmoRoute = RouteProp<RootStackParamList, 'VenmoRequests'>;
 export function VenmoRequestsScreen() {
   const navigation = useNavigation<any>();
   const { params } = useRoute<VenmoRoute>();
-  const { breakdowns, restaurantName } = params;
+  const { breakdowns, restaurantName, splitId } = params;
 
   const [requested, setRequested] = useState<Set<string>>(new Set());
+
+  // Arrived via deep link (dine://split/:splitId) — breakdowns not yet loaded.
+  // TODO: fetch split data from Supabase using splitId when split persistence is implemented.
+  if (!breakdowns) {
+    return (
+      <SafeAreaView className="flex-1 bg-background items-center justify-center" edges={['bottom']}>
+        <Ionicons name="card-outline" size={48} color="#007AFF" />
+        <Text className="text-lg font-semibold text-text-primary mt-4">Bill Split Invite</Text>
+        <Text className="text-sm text-text-secondary mt-2 text-center px-8">
+          {splitId
+            ? `Split #${splitId} could not be loaded. Ask the sender to share again from within the app.`
+            : 'No split data found.'}
+        </Text>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Main')}
+          className="mt-6 bg-accent rounded-xl px-8 py-3"
+        >
+          <Text className="text-base font-semibold text-white">Go to Feed</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
 
   const handleRequest = async (breakdown: PersonBreakdown) => {
     if (!breakdown.friend.venmo_username) return;
