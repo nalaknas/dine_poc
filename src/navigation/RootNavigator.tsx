@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
-import { View, ActivityIndicator } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import React, { useEffect, useRef } from 'react';
+import { View, ActivityIndicator, Linking } from 'react-native';
+import { NavigationContainer, LinkingOptions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuthStore } from '../stores/authStore';
 import { useSettingsStore } from '../stores/settingsStore';
@@ -28,10 +28,39 @@ import type { RootStackParamList } from '../types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+const linking: LinkingOptions<RootStackParamList> = {
+  prefixes: ['dine://', 'https://dine.app'],
+  config: {
+    screens: {
+      Main: {
+        screens: {
+          Feed: 'feed',
+          Explore: 'explore',
+          Profile: 'my-profile',
+        },
+      },
+      MealDetail: 'post/:postId',
+      UserProfile: 'profile/:userId',
+      RestaurantDetail: 'restaurant/:name',
+      VenmoRequests: 'split/:splitId',
+    },
+  },
+};
+
 export function RootNavigator() {
   const { user, isInitialized, initialize } = useAuthStore();
   const { hasCompletedOnboarding, loadSettings } = useSettingsStore();
   const { profile, setProfile } = useUserProfileStore();
+
+  // Capture deep link URLs that arrive before auth is ready.
+  // TODO: implement post-auth replay by reading pendingDeepLink.current
+  //       in a useEffect that watches `user`, then navigate programmatically.
+  const pendingDeepLink = useRef<string | null>(null);
+  useEffect(() => {
+    Linking.getInitialURL().then(url => {
+      if (url) pendingDeepLink.current = url;
+    });
+  }, []);
 
   useEffect(() => {
     loadSettings().then(() => initialize());
@@ -55,7 +84,7 @@ export function RootNavigator() {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer linking={linking}>
       <Stack.Navigator screenOptions={{
         headerShown: false,
         headerTintColor: '#007AFF',
