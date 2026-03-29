@@ -195,8 +195,9 @@ export function SelectFriendsScreen() {
       } else {
         Alert.alert('Up to date', 'No new contacts to import.');
       }
-    } catch {
-      Alert.alert('Error', 'Could not import contacts. Please check permissions in Settings.');
+    } catch (err) {
+      console.error('Import contacts error:', err);
+      Alert.alert('Error', `Could not import contacts: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
     setIsImporting(false);
   };
