@@ -33,13 +33,13 @@ CREATE TABLE IF NOT EXISTS public.contacts (
 );
 
 -- One contact per phone per owner (only enforced when phone is present)
-CREATE UNIQUE INDEX contacts_owner_phone_unique
+CREATE UNIQUE INDEX IF NOT EXISTS contacts_owner_phone_unique
   ON public.contacts (owner_id, phone_number) WHERE phone_number IS NOT NULL;
 
-CREATE INDEX contacts_owner_id ON public.contacts (owner_id);
-CREATE INDEX contacts_phone_number ON public.contacts (phone_number) WHERE phone_number IS NOT NULL;
-CREATE INDEX contacts_linked_user_id ON public.contacts (linked_user_id) WHERE linked_user_id IS NOT NULL;
-CREATE INDEX contacts_owner_split ON public.contacts (owner_id, split_count DESC);
+CREATE INDEX IF NOT EXISTS contacts_owner_id ON public.contacts (owner_id);
+CREATE INDEX IF NOT EXISTS contacts_phone_number ON public.contacts (phone_number) WHERE phone_number IS NOT NULL;
+CREATE INDEX IF NOT EXISTS contacts_linked_user_id ON public.contacts (linked_user_id) WHERE linked_user_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS contacts_owner_split ON public.contacts (owner_id, split_count DESC);
 
 -- ─── ALTER post_tagged_friends: add phone_number for backfill matching ───────
 ALTER TABLE public.post_tagged_friends
@@ -55,26 +55,23 @@ CREATE UNIQUE INDEX IF NOT EXISTS users_phone_number_unique
 -- ─── RLS for contacts ────────────────────────────────────────────────────────
 ALTER TABLE public.contacts ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can view their own contacts"
-  ON public.contacts FOR SELECT
-  USING (auth.uid() = owner_id);
-
-CREATE POLICY "Users can insert their own contacts"
-  ON public.contacts FOR INSERT
-  WITH CHECK (auth.uid() = owner_id);
-
-CREATE POLICY "Users can update their own contacts"
-  ON public.contacts FOR UPDATE
-  USING (auth.uid() = owner_id);
-
-CREATE POLICY "Users can delete their own contacts"
-  ON public.contacts FOR DELETE
-  USING (auth.uid() = owner_id);
-
--- Allow tagged users to update their own tagged-friend rows (for rating, etc.)
-CREATE POLICY "Tagged friends can update their own rows"
-  ON public.post_tagged_friends FOR UPDATE
-  USING (auth.uid() = user_id);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can view their own contacts' AND tablename = 'contacts') THEN
+    CREATE POLICY "Users can view their own contacts" ON public.contacts FOR SELECT USING (auth.uid() = owner_id);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can insert their own contacts' AND tablename = 'contacts') THEN
+    CREATE POLICY "Users can insert their own contacts" ON public.contacts FOR INSERT WITH CHECK (auth.uid() = owner_id);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can update their own contacts' AND tablename = 'contacts') THEN
+    CREATE POLICY "Users can update their own contacts" ON public.contacts FOR UPDATE USING (auth.uid() = owner_id);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can delete their own contacts' AND tablename = 'contacts') THEN
+    CREATE POLICY "Users can delete their own contacts" ON public.contacts FOR DELETE USING (auth.uid() = owner_id);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Tagged friends can update their own rows' AND tablename = 'post_tagged_friends') THEN
+    CREATE POLICY "Tagged friends can update their own rows" ON public.post_tagged_friends FOR UPDATE USING (auth.uid() = user_id);
+  END IF;
+END $$;
 
 -- ─── Trigger: normalize phone + set updated_at on contacts ───────────────────
 CREATE OR REPLACE FUNCTION public.contacts_normalize_phone_trigger()
@@ -86,6 +83,7 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS contacts_normalize_phone ON public.contacts;
 CREATE TRIGGER contacts_normalize_phone
   BEFORE INSERT OR UPDATE ON public.contacts
   FOR EACH ROW EXECUTE FUNCTION public.contacts_normalize_phone_trigger();
@@ -112,6 +110,7 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS contacts_auto_link ON public.contacts;
 CREATE TRIGGER contacts_auto_link
   BEFORE INSERT ON public.contacts
   FOR EACH ROW EXECUTE FUNCTION public.contacts_auto_link_trigger();
@@ -144,6 +143,7 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS user_phone_backfill ON public.users;
 CREATE TRIGGER user_phone_backfill
   BEFORE INSERT OR UPDATE OF phone_number ON public.users
   FOR EACH ROW EXECUTE FUNCTION public.on_user_phone_registered();

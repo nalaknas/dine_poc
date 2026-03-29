@@ -113,7 +113,9 @@ export const useContactsStore = create<ContactsState>((set, get) => ({
 
   importFromPhone: async (userId: string) => {
     const granted = await requestContactsPermission();
-    if (!granted) return 0;
+    if (!granted) {
+      throw new Error('Contacts permission not granted. Please enable in Settings.');
+    }
 
     const deviceContacts = await getDeviceContacts();
     const imported = await importFromDeviceContacts(userId, deviceContacts);
