@@ -12,6 +12,7 @@ import { searchUsers, getFrequentFriends } from '../../services/user-service';
 import { useAuthStore } from '../../stores/authStore';
 import { useUserProfileStore } from '../../stores/userProfileStore';
 import type { User, Friend, Contact } from '../../types';
+import { trackFriendInvited } from '../../lib/analytics';
 import { generateId } from '../../utils/format';
 
 function userToFriend(u: User): Friend {
@@ -97,6 +98,7 @@ export function SelectFriendsScreen() {
     if (existing) {
       removeSelectedFriend(u.id);
     } else {
+      trackFriendInvited('app_user');
       addSelectedFriend(userToFriend(u));
     }
   };
@@ -111,6 +113,7 @@ export function SelectFriendsScreen() {
     if (existing) {
       removeSelectedFriend(existing.id);
     } else {
+      trackFriendInvited('contact');
       addSelectedFriend(friend);
     }
   };
@@ -140,9 +143,11 @@ export function SelectFriendsScreen() {
       });
 
       // Add to selected friends for this bill split
+      trackFriendInvited('manual');
       addSelectedFriend(contactToFriend(contact));
     } catch {
       // Fallback: add as ephemeral friend if contact creation fails
+      trackFriendInvited('manual');
       addSelectedFriend({
         id: generateId(),
         display_name: manualName.trim(),

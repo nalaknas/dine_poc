@@ -11,6 +11,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { getOrCreateUserProfile } from '../../services/auth-service';
 import { useUserProfileStore } from '../../stores/userProfileStore';
 import { Button } from '../../components/ui/Button';
+import { trackSignUp, trackSignIn } from '../../lib/analytics';
 import type { RootStackParamList } from '../../types';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -57,6 +58,14 @@ export function AuthScreen() {
       // Fetch/create profile after auth
       const { user } = useAuthStore.getState();
       if (user) {
+        // Track auth event
+        const trimmedEmail = email.trim().toLowerCase();
+        if (mode === 'signup') {
+          trackSignUp({ userId: user.id, email: trimmedEmail, signupMethod: 'email' });
+        } else {
+          trackSignIn({ userId: user.id, loginMethod: 'email', success: true });
+        }
+
         const profile = await getOrCreateUserProfile(user.id, user.email);
         setProfile(profile);
       }

@@ -12,6 +12,7 @@ import { Shadows } from '../../constants/shadows';
 import { useSocialStore } from '../../stores/socialStore';
 import { useAuthStore } from '../../stores/authStore';
 import { getFeedPosts, likePost, unlikePost } from '../../services/post-service';
+import { trackPostLiked } from '../../lib/analytics';
 import type { Post, RootStackParamList } from '../../types';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -52,6 +53,7 @@ export function FeedScreen() {
       if (post.is_liked) {
         await unlikePost(post.id, user.id);
       } else {
+        trackPostLiked(post.id, post.author_id);
         await likePost(post.id, user.id, post.author_id);
       }
     } catch {

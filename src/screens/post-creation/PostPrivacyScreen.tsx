@@ -12,6 +12,7 @@ import { useSplitHistoryStore } from '../../stores/splitHistoryStore';
 import { uploadFoodPhoto } from '../../services/receipt-service';
 import { generateDishEmbedding } from '../../services/recommendation-service';
 import { useToast } from '../../contexts/ToastContext';
+import { trackPostCreated, trackBillSplitCompleted } from '../../lib/analytics';
 import type { CreatePostDraft } from '../../types';
 
 export function PostPrivacyScreen() {
@@ -89,6 +90,27 @@ export function PostPrivacyScreen() {
 
       // 2. Create the post
       const post = await createPost(draft, user.id, personBreakdowns);
+
+      // 2b. Track post_created
+      trackPostCreated({
+        postId: post.id,
+        isPublic,
+        friendCount: selectedFriends.length,
+        photoCount: draft.foodPhotos?.length ?? 0,
+        dishRatingCount: (draft.dishRatings ?? []).length,
+        restaurantName: currentReceipt?.restaurantName,
+      });
+
+      // 2c. Track bill_split_completed if friends were involved
+      if (selectedFriends.filter((f) => f.id !== user.id).length > 0) {
+        const venmoable = personBreakdowns.filter((b) => b.friend.venmo_username && b.total > 0);
+        trackBillSplitCompleted({
+          friendCount: selectedFriends.filter((f) => f.id !== user.id).length,
+          totalAmount: personBreakdowns.reduce((sum, b) => sum + b.total, 0),
+          restaurantName: currentReceipt?.restaurantName,
+          venmoRequestsSent: venmoable.length,
+        });
+      }
 
       // 3. Notify tagged friends
       notifyTaggedParticipants(

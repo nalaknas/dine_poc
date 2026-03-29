@@ -1,6 +1,7 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import { View, ActivityIndicator, Linking } from 'react-native';
-import { NavigationContainer, LinkingOptions } from '@react-navigation/native';
+import { NavigationContainer, LinkingOptions, NavigationState } from '@react-navigation/native';
+import { identifyUser, resetAnalytics, trackScreen } from '../lib/analytics';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuthStore } from '../stores/authStore';
 import { useSettingsStore } from '../stores/settingsStore';
@@ -75,6 +76,37 @@ export function RootNavigator() {
     }
   }, [user, profile]);
 
+  // Identify user for analytics when authenticated
+  useEffect(() => {
+    if (user) {
+      identifyUser(user.id, {
+        email: user.email ?? undefined,
+        name: profile?.display_name ?? undefined,
+        avatar_url: profile?.avatar_url ?? undefined,
+      });
+    } else {
+      resetAnalytics();
+    }
+  }, [user, profile]);
+
+  // Track screen views on navigation state change
+  const routeNameRef = useRef<string | undefined>(undefined);
+
+  const getActiveRouteName = (state: NavigationState | undefined): string | undefined => {
+    if (!state) return undefined;
+    const route = state.routes[state.index];
+    if (route.state) return getActiveRouteName(route.state as NavigationState);
+    return route.name;
+  };
+
+  const onNavigationStateChange = useCallback((state: NavigationState | undefined) => {
+    const currentRouteName = getActiveRouteName(state);
+    if (currentRouteName && currentRouteName !== routeNameRef.current) {
+      trackScreen(currentRouteName);
+      routeNameRef.current = currentRouteName;
+    }
+  }, []);
+
   if (!isInitialized) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' }}>
@@ -84,7 +116,7 @@ export function RootNavigator() {
   }
 
   return (
-    <NavigationContainer linking={linking}>
+    <NavigationContainer linking={linking} onStateChange={onNavigationStateChange}>
       <Stack.Navigator screenOptions={{
         headerShown: false,
         headerTintColor: '#007AFF',
