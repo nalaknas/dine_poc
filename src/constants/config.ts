@@ -14,4 +14,7 @@ export const Config = {
   yelp: {
     apiKey: (extra.yelpApiKey as string) ?? '',
   },
+  mixpanel: {
+    token: (extra.mixpanelToken as string) ?? '',
+  },
 } as const;

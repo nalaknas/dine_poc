@@ -14,6 +14,7 @@ import { Shadows } from '../../constants/shadows';
 import { searchUsers, followUser, unfollowUser } from '../../services/user-service';
 import { useAuthStore } from '../../stores/authStore';
 import { useUserProfileStore } from '../../stores/userProfileStore';
+import { trackSearch } from '../../lib/analytics';
 import type { User, RootStackParamList } from '../../types';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -41,7 +42,9 @@ export function ExploreScreen() {
     setHasSearched(true);
     try {
       const users = await searchUsers(text.trim());
-      setResults(users.filter((u) => u.id !== user?.id));
+      const filtered = users.filter((u) => u.id !== user?.id);
+      trackSearch({ searchQuery: text.trim(), resultsCount: filtered.length });
+      setResults(filtered);
     } catch {
       setResults([]);
     } finally {

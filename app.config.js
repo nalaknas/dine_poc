@@ -58,6 +58,7 @@ module.exports = {
       googlePlacesApiKey: process.env.GOOGLE_PLACES_API_KEY,
       yelpApiKey: process.env.YELP_API_KEY,
       googleOAuthClientId: process.env.GOOGLE_OAUTH_CLIENT_ID,
+      mixpanelToken: process.env.MIXPANEL_TOKEN,
       eas: {
         projectId: process.env.EAS_PROJECT_ID || 'a11c2f5e-73df-446c-b361-cc1f36bf4cdf',
       },

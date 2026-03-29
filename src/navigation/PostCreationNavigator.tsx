@@ -12,6 +12,7 @@ import { AddCaptionScreen } from '../screens/post-creation/AddCaptionScreen';
 import { PostPrivacyScreen } from '../screens/post-creation/PostPrivacyScreen';
 import { useBillSplitterStore } from '../stores/billSplitterStore';
 import { useSocialStore } from '../stores/socialStore';
+import { trackPostCreationStep, trackPostAbandoned } from '../lib/analytics';
 import type { PostCreationParamList } from '../types';
 
 const Stack = createNativeStackNavigator<PostCreationParamList>();
@@ -50,9 +51,13 @@ export function PostCreationNavigator() {
       screenListeners={{
         focus: (e) => {
           const routeName = e.target?.split('-')[0] as keyof PostCreationParamList;
-          if (routeName && routeName !== 'Home') {
-            useBillSplitterStore.getState().persistDraft(routeName);
-            useSocialStore.getState().persistDraft();
+          if (routeName) {
+            const stepIndex = STEPS.indexOf(routeName);
+            if (stepIndex >= 0) trackPostCreationStep(routeName, stepIndex);
+            if (routeName !== 'Home') {
+              useBillSplitterStore.getState().persistDraft(routeName);
+              useSocialStore.getState().persistDraft();
+            }
           }
         },
       }}
@@ -73,6 +78,9 @@ export function PostCreationNavigator() {
           title: 'New Post',
           headerLeft: () => (
             <TouchableOpacity onPress={() => {
+              // Track abandonment — the current route is always 'Home' here (step 0)
+              // but the user may have navigated back, so track from Home
+              trackPostAbandoned('Home', 0);
               useBillSplitterStore.getState().reset();
               useSocialStore.getState().clearDraftPost();
               navigation.getParent()?.navigate('Feed');
