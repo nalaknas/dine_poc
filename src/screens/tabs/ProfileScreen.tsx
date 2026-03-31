@@ -163,6 +163,25 @@ export function ProfileScreen() {
           <Ionicons name="sparkles" size={16} color="#007AFF" />
           <Text style={{ fontSize: 14, fontWeight: '600', color: '#007AFF', marginLeft: 4 }}>For You</Text>
         </AnimatedPressable>
+
+        {/* Credits CTA */}
+        <AnimatedPressable
+          onPress={() => navigation.navigate('CreditDashboard')}
+          style={{
+            marginTop: 8,
+            backgroundColor: 'rgba(245,158,11,0.08)',
+            borderWidth: 1,
+            borderColor: 'rgba(245,158,11,0.15)',
+            borderRadius: 10,
+            paddingVertical: 8,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Ionicons name="trophy-outline" size={16} color="#F59E0B" />
+          <Text style={{ fontSize: 14, fontWeight: '600', color: '#F59E0B', marginLeft: 4 }}>View Credits</Text>
+        </AnimatedPressable>
       </LinearGradient>
 
       {/* Grid tabs */}
