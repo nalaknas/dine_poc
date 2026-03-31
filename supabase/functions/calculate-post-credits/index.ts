@@ -21,12 +21,21 @@ interface CreditBreakdown {
   total: number;
 }
 
-<<<<<<< HEAD
 interface StreakInfo {
   weeks: number;
   multiplier: number;
   bonusCredits: number;
 }
+
+interface DiscoveryResult {
+  isDiscoverer: boolean;
+  discoveryCredits: number;
+  attributionCredits: number;
+}
+
+const DISCOVERY_CREDITS = 15;
+const ATTRIBUTION_CREDITS = 10;
+const MAX_ATTRIBUTION_PER_RESTAURANT = 500;
 
 function getISOWeek(date: Date): string {
   const d = new Date(date);
@@ -46,33 +55,18 @@ function getStreakMultiplier(weeks: number): number {
 
 /** Returns the ISO week string for the week after the given one (e.g. "2026-W13" → "2026-W14"). */
 function nextISOWeek(weekStr: string): string {
-  // Parse "YYYY-WNN"
   const [yearStr, wPart] = weekStr.split('-W');
   const year = parseInt(yearStr, 10);
   const week = parseInt(wPart, 10);
 
-  // Find the Monday of the given ISO week
-  // Jan 4 is always in ISO week 1
   const jan4 = new Date(year, 0, 4);
-  const jan4Day = (jan4.getDay() + 6) % 7; // 0=Mon
+  const jan4Day = (jan4.getDay() + 6) % 7;
   const monday = new Date(jan4.getTime());
   monday.setDate(jan4.getDate() - jan4Day + (week - 1) * 7);
 
-  // Add 7 days to get next week's Monday
   const nextMonday = new Date(monday.getTime() + 7 * 86400000);
   return getISOWeek(nextMonday);
 }
-=======
-interface DiscoveryResult {
-  isDiscoverer: boolean;
-  discoveryCredits: number;
-  attributionCredits: number;
-}
-
-const DISCOVERY_CREDITS = 15;
-const ATTRIBUTION_CREDITS = 10;
-const MAX_ATTRIBUTION_PER_RESTAURANT = 500;
->>>>>>> d2847e1 (Credit system discovery credit with race-safe unique index (ENG-42))
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -89,7 +83,6 @@ serve(async (req) => {
       );
     }
 
-    // Create an anon client to verify the caller's JWT
     const anonClient = createClient(SUPABASE_URL, Deno.env.get('SUPABASE_ANON_KEY')!, {
       global: { headers: { Authorization: authHeader } },
     });
@@ -174,38 +167,30 @@ serve(async (req) => {
       total: 0,
     };
 
-    // +5 if all dishes rated (not just overall)
-    // "All dishes rated" means every receipt item has a corresponding dish rating
     if (receiptItems.length > 0 && dishRatings.length >= receiptItems.length) {
       breakdown.allDishesRated = 5;
     } else if (receiptItems.length === 0 && dishRatings.length > 0) {
-      // No receipt items but user still rated dishes — count as all rated
       breakdown.allDishesRated = 5;
     }
 
-    // +3 if notes written on any dish
     const hasNotes = dishRatings.some((r) => r.notes && r.notes.trim().length > 0);
     if (hasNotes) {
       breakdown.dishNotes = 3;
     }
 
-    // +5 if 3+ food photos uploaded
     if (foodPhotos.length >= 3) {
       breakdown.photos = 5;
     }
 
-    // +2 if caption > 50 chars
     if (caption.length > 50) {
       breakdown.caption = 2;
     }
 
-    // +5 if star dishes identified (rating >= 7)
     const hasStarDish = dishRatings.some((r) => r.rating >= 7);
     if (hasStarDish) {
       breakdown.starDishes = 5;
     }
 
-    // Cap at MAX_CREDITS
     const rawTotal =
       breakdown.base +
       breakdown.allDishesRated +
@@ -218,13 +203,11 @@ serve(async (req) => {
     // ── Streak tracking (atomic via SQL to prevent race conditions) ─────────
     const currentWeek = getISOWeek(new Date());
 
-    // Atomic read-modify-write using a raw SQL query with row locking
     const { data: streakResult, error: streakError } = await supabase.rpc(
       'update_streak',
       { p_user_id: post.author_id, p_current_week: currentWeek }
     );
 
-    // Fallback if RPC doesn't exist yet — read without lock
     let streakWeeks = 0;
     let previousStreak = 0;
     if (streakError) {
@@ -272,7 +255,6 @@ serve(async (req) => {
       (m) => streakWeeks >= m && previousStreak < m,
     );
     if (reachedMilestone) {
-      // Award bonus credits based on milestone
       const bonusMap: Record<number, number> = { 2: 10, 4: 25, 8: 50 };
       bonusCredits = bonusMap[reachedMilestone] ?? 0;
     }
@@ -297,7 +279,6 @@ serve(async (req) => {
       throw new Error(`Failed to award credits: ${creditError.message}`);
     }
 
-<<<<<<< HEAD
     // Award streak milestone bonus credits if applicable
     if (bonusCredits > 0) {
       const { error: bonusError } = await supabase.rpc('add_credits', {
@@ -310,7 +291,9 @@ serve(async (req) => {
 
       if (bonusError) {
         console.error('Failed to award streak bonus:', bonusError.message);
-=======
+      }
+    }
+
     // ── Discovery credit logic ──────────────────────────────────────────────
 
     const discovery: DiscoveryResult = {
@@ -320,11 +303,10 @@ serve(async (req) => {
     };
 
     const restaurantName = (post.restaurant_name ?? '') as string;
-    // Escape ilike wildcards to prevent injection (e.g. "100% Natural")
     const escapedName = restaurantName.replace(/%/g, '\\%').replace(/_/g, '\\_');
 
     if (restaurantName.trim().length > 0) {
-      // ── Idempotency: check if discovery/attribution credits already awarded for this post
+      // Idempotency: check if discovery/attribution credits already awarded for this post
       const { data: existingDiscovery } = await supabase
         .from('credit_events')
         .select('id')
@@ -344,9 +326,7 @@ serve(async (req) => {
           .maybeSingle();
 
         if (!discovererPost) {
-          // ── FIRST post for this restaurant — mark as discoverer ──────────
-          // The unique partial index on lower(restaurant_name) WHERE is_discoverer=true
-          // prevents race conditions — only one concurrent writer will succeed.
+          // FIRST post for this restaurant — unique partial index prevents race conditions
           const { error: updateErr } = await supabase
             .from('posts')
             .update({ is_discoverer: true })
@@ -369,11 +349,10 @@ serve(async (req) => {
               console.error('Failed to award discovery credits:', discErr.message);
             }
           } else {
-            // Unique index violation — another post beat us. Fall through to attribution.
             console.warn('Discoverer race: another post won, skipping discovery credits');
           }
         } else if (discovererPost.author_id !== post.author_id) {
-          // ── NOT the first post — check if current author is new to this restaurant
+          // Check if current author is new to this restaurant
           const { count: authorPriorPosts } = await supabase
             .from('posts')
             .select('id', { count: 'exact', head: true })
@@ -414,16 +393,11 @@ serve(async (req) => {
             }
           }
         }
->>>>>>> d2847e1 (Credit system discovery credit with race-safe unique index (ENG-42))
       }
     }
 
     return new Response(
-<<<<<<< HEAD
-      JSON.stringify({ credits: multipliedTotal, breakdown, streak }),
-=======
-      JSON.stringify({ credits: breakdown.total, breakdown, discovery }),
->>>>>>> d2847e1 (Credit system discovery credit with race-safe unique index (ENG-42))
+      JSON.stringify({ credits: multipliedTotal, breakdown, streak, discovery }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
   } catch (error: any) {
