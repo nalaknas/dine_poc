@@ -14,6 +14,7 @@ import { Shadows } from '../../constants/shadows';
 import { useNotificationsStore } from '../../stores/notificationsStore';
 import { useAuthStore } from '../../stores/authStore';
 import { getUserNotifications, markAllNotificationsRead } from '../../services/user-service';
+import { clearBadge } from '../../lib/pushNotifications';
 import { formatTimeAgo } from '../../utils/format';
 import type { Notification, RootStackParamList } from '../../types';
 
@@ -72,12 +73,13 @@ export function ActivityScreen() {
     loadNotifications();
   }, [loadNotifications]);
 
-  // Auto-mark all as read whenever the user views this screen
+  // Auto-mark all as read and clear badge whenever the user views this screen
   useFocusEffect(
     useCallback(() => {
       if (!user) return;
       markAllAsRead();
       markAllNotificationsRead(user.id);
+      clearBadge();
     }, [user, markAllAsRead])
   );
 

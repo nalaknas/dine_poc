@@ -6,10 +6,17 @@ import { StatusBar } from 'expo-status-bar';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { ToastProvider } from './src/contexts/ToastContext';
 import { initAnalytics } from './src/lib/analytics';
+import { addNotificationResponseListener } from './src/lib/pushNotifications';
 
 export default function App() {
   useEffect(() => {
     initAnalytics();
+  }, []);
+
+  // Handle push notification taps → deep link navigation
+  useEffect(() => {
+    const subscription = addNotificationResponseListener();
+    return () => subscription.remove();
   }, []);
 
   return (
