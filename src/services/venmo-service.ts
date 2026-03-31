@@ -44,9 +44,14 @@ export async function openVenmoRequest(params: {
 
 /**
  * Builds the payment note for a meal split request.
+ * Includes a deep link back to Dine for viral growth.
  */
-export function buildMealNote(restaurantName: string): string {
-  return `Dine: Dinner at ${restaurantName}`;
+export function buildMealNote(restaurantName: string, splitId?: string): string {
+  const base = `Split from ${restaurantName} on Dine`;
+  if (splitId) {
+    return `${base} — dine.app/split/${splitId}`;
+  }
+  return base;
 }
 
 /**
