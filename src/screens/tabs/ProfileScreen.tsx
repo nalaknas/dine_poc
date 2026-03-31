@@ -12,6 +12,7 @@ import { Avatar } from '../../components/ui/Avatar';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { AnimatedPressable } from '../../components/ui/AnimatedPressable';
 import { ProfileSkeleton } from '../../components/ui/Skeleton';
+import { TierBadge } from '../../components/ui/TierBadge';
 import { Shadows } from '../../constants/shadows';
 import { useAuthStore } from '../../stores/authStore';
 import { useUserProfileStore } from '../../stores/userProfileStore';
@@ -111,7 +112,10 @@ export function ProfileScreen() {
 
         {/* Name + bio */}
         <View style={{ marginTop: 12 }}>
-          <Text style={{ fontSize: 16, fontWeight: '600', color: '#1F2937' }}>{profile?.display_name}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={{ fontSize: 16, fontWeight: '600', color: '#1F2937' }}>{profile?.display_name}</Text>
+            {profile?.current_tier && <TierBadge tier={profile.current_tier} variant="profile" className="ml-2" />}
+          </View>
           {profile?.bio ? (
             <Text style={{ fontSize: 13, color: '#6B7280', marginTop: 2 }}>{profile.bio}</Text>
           ) : null}

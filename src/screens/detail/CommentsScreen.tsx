@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRoute, useNavigation, type RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Avatar } from '../../components/ui/Avatar';
+import { TierBadge } from '../../components/ui/TierBadge';
 import { useAuthStore } from '../../stores/authStore';
 import { supabase } from '../../lib/supabase';
 import { createNotification } from '../../services/user-service';
@@ -174,7 +175,10 @@ export function CommentsScreen() {
                 <View className="flex-1 ml-2">
                   <View className="bg-background-secondary rounded-2xl rounded-tl-sm px-3 py-2">
                     <Pressable onPress={() => navigation.navigate('UserProfile', { userId: item.author_id })}>
-                      <Text className="text-sm font-semibold text-text-primary">{item.author?.username}</Text>
+                      <View className="flex-row items-center">
+                        <Text className="text-sm font-semibold text-text-primary">{item.author?.username}</Text>
+                        {item.author?.current_tier && <TierBadge tier={item.author.current_tier} variant="inline" />}
+                      </View>
                     </Pressable>
                     <Text className="text-sm text-text-primary mt-0.5">{item.content}</Text>
                   </View>
