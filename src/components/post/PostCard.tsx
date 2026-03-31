@@ -109,6 +109,27 @@ export function PostCard({ post, onLike, onComment }: PostCardProps) {
                 </Text>
               </View>
             </Pressable>
+            {post.is_discoverer && (
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: 'rgba(245,158,11,0.12)',
+                  paddingHorizontal: 6,
+                  paddingVertical: 2,
+                  borderRadius: 6,
+                  alignSelf: 'flex-start',
+                  marginTop: 2,
+                }}
+              >
+                <Ionicons name="compass" size={10} color="#D97706" />
+                <Text
+                  style={{ fontSize: 10, color: '#D97706', marginLeft: 2, fontWeight: '700' }}
+                >
+                  Discoverer
+                </Text>
+              </View>
+            )}
           </View>
         </AnimatedPressable>
 

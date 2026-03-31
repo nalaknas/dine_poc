@@ -113,6 +113,8 @@ export interface Post {
   receipt_tip?: number;
   receipt_discount?: number;
   receipt_total?: number;
+  // Discovery
+  is_discoverer?: boolean;
   // Client-side
   is_liked?: boolean;
   recent_comments?: Comment[];
