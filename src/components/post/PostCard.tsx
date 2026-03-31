@@ -1,5 +1,5 @@
 import React, { useCallback, useState, useEffect, useRef } from 'react';
-import { View, Text, Pressable } from 'react-native';
+import { View, Text, Pressable, Share } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -11,6 +11,7 @@ import { LikeButton } from './LikeButton';
 import { AnimatedPressable } from '../ui/AnimatedPressable';
 import { TierBadge } from '../ui/TierBadge';
 import { PlaylistPickerModal } from '../ui/PlaylistPickerModal';
+import { ShareCard, type ShareCardHandle } from './ShareCard';
 import { Shadows } from '../../constants/shadows';
 import { toggleBookmark, isRestaurantBookmarked } from '../../services/bookmark-service';
 import { useAuthStore } from '../../stores/authStore';
@@ -31,6 +32,29 @@ export function PostCard({ post, onLike, onComment }: PostCardProps) {
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [showPlaylistPicker, setShowPlaylistPicker] = useState(false);
   const isTogglingRef = useRef(false);
+  const shareCardRef = useRef<ShareCardHandle>(null);
+  const [showShareCard, setShowShareCard] = useState(false);
+
+  const handleShare = useCallback(async () => {
+    // Lazy mount: show ShareCard, wait for render, then capture
+    setShowShareCard(true);
+    // Allow a tick for the ViewShot + image to render
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    try {
+      if (shareCardRef.current) {
+        const uri = await shareCardRef.current.capture();
+        await Share.share({ url: uri });
+      } else {
+        await Share.share({
+          message: `Check out ${post.restaurant_name} on Dine! dine.app/post/${post.id}`,
+        });
+      }
+    } catch {
+      // User cancelled share
+    } finally {
+      setShowShareCard(false);
+    }
+  }, [post]);
 
   // Initialize bookmark state from server
   useEffect(() => {
@@ -254,7 +278,7 @@ export function PostCard({ post, onLike, onComment }: PostCardProps) {
             <Text style={{ fontSize: 13, color: '#6B7280', marginLeft: 4 }}>{post.comment_count}</Text>
           )}
         </Pressable>
-        <Pressable style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 16 }}>
+        <Pressable onPress={handleShare} style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 16 }}>
           <Ionicons name="paper-plane-outline" size={22} color="#6B7280" />
         </Pressable>
         {/* Bookmark on far right */}
@@ -267,6 +291,9 @@ export function PostCard({ post, onLike, onComment }: PostCardProps) {
           />
         </Pressable>
       </View>
+
+      {/* ShareCard (lazy mount — only rendered when user taps share) */}
+      {showShareCard && <ShareCard ref={shareCardRef} post={post} />}
 
       {/* Playlist picker modal (long press bookmark) */}
       {user && (
