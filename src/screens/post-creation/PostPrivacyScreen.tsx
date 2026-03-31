@@ -153,10 +153,17 @@ export function PostPrivacyScreen() {
 
       // 5. Calculate and award post credits (background, non-blocking)
       calculatePostCredits(post.id)
-        .then(({ credits }) => {
+        .then(({ credits, streak }) => {
           if (credits > 0) {
+            let message = `You earned ${credits} credits!`;
+            if (streak && streak.multiplier > 1) {
+              message = `You earned ${credits} credits! \uD83D\uDD25 ${streak.weeks}-week streak (${streak.multiplier}x)`;
+            }
+            if (streak && streak.bonusCredits > 0) {
+              message += ` +${streak.bonusCredits} streak bonus!`;
+            }
             showToast({
-              message: `You earned ${credits} credits!`,
+              message,
               type: 'success',
               duration: 4000,
             });
