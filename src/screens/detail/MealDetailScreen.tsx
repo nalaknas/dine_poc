@@ -19,6 +19,7 @@ import {
 import { uploadFoodPhoto } from '../../services/receipt-service';
 import { createNotification } from '../../services/user-service';
 import { supabase } from '../../lib/supabase';
+import { MentionText } from '../../components/ui/MentionText';
 import { formatTimeAgo, formatCurrency } from '../../utils/format';
 import type { Post, Comment, RootStackParamList } from '../../types';
 
@@ -296,8 +297,10 @@ export function MealDetailScreen() {
           <View className="px-4 pt-2">
             <Text className="text-base text-text-primary">
               <Text className="font-semibold">{post.author?.username} </Text>
-              {post.caption}
             </Text>
+            {post.caption ? (
+              <MentionText text={post.caption} style={{ fontSize: 16, color: '#1F2937' }} />
+            ) : null}
           </View>
 
           {/* Star dishes with endorsements */}
