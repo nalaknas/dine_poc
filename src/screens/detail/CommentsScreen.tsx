@@ -9,10 +9,13 @@ import { useRoute, useNavigation, type RouteProp } from '@react-navigation/nativ
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Avatar } from '../../components/ui/Avatar';
 import { TierBadge } from '../../components/ui/TierBadge';
+import { MentionInput } from '../../components/ui/MentionInput';
+import { MentionText } from '../../components/ui/MentionText';
 import { useAuthStore } from '../../stores/authStore';
 import { supabase } from '../../lib/supabase';
 import { createNotification } from '../../services/user-service';
 import { likeComment, unlikeComment, notifyTaggedParticipants } from '../../services/post-service';
+import { createMentionNotifications } from '../../services/mention-service';
 import { formatTimeAgo } from '../../utils/format';
 import type { Comment, RootStackParamList } from '../../types';
 
@@ -99,6 +102,9 @@ export function CommentsScreen() {
           'comment',
           'commented on a post you were part of',
         );
+
+        // Notify @mentioned users
+        createMentionNotifications(content, user.id, params.postId);
       }
     } else {
       Alert.alert('Error', 'Could not post comment.');
@@ -180,7 +186,7 @@ export function CommentsScreen() {
                         {item.author?.current_tier && <TierBadge tier={item.author.current_tier} variant="inline" />}
                       </View>
                     </Pressable>
-                    <Text className="text-sm text-text-primary mt-0.5">{item.content}</Text>
+                    <MentionText text={item.content} style={{ fontSize: 14, color: '#1F2937', marginTop: 2 }} />
                   </View>
                   {/* Timestamp + like row */}
                   <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, paddingHorizontal: 4, gap: 12 }}>
@@ -211,19 +217,23 @@ export function CommentsScreen() {
           />
         )}
 
-        <View className="flex-row items-center px-4 py-3 border-t border-border-light">
-          <TextInput
-            value={text}
-            onChangeText={setText}
-            placeholder="Add a comment..."
-            placeholderTextColor="#9CA3AF"
-            className="flex-1 mr-3 text-base text-text-primary"
-            multiline
-            maxLength={500}
-          />
-          <TouchableOpacity onPress={sendComment} disabled={!text.trim() || isSending}>
-            <Ionicons name="send" size={22} color={text.trim() ? '#007AFF' : '#D1D5DB'} />
-          </TouchableOpacity>
+        <View className="px-4 py-3 border-t border-border-light">
+          <View className="flex-row items-end">
+            <View className="flex-1 mr-3">
+              <MentionInput
+                value={text}
+                onChangeText={setText}
+                placeholder="Add a comment..."
+                placeholderTextColor="#9CA3AF"
+                className="text-base text-text-primary"
+                multiline
+                maxLength={500}
+              />
+            </View>
+            <TouchableOpacity onPress={sendComment} disabled={!text.trim() || isSending} className="pb-1">
+              <Ionicons name="send" size={22} color={text.trim() ? '#007AFF' : '#D1D5DB'} />
+            </TouchableOpacity>
+          </View>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>

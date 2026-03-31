@@ -19,6 +19,8 @@ import {
 import { uploadFoodPhoto } from '../../services/receipt-service';
 import { createNotification } from '../../services/user-service';
 import { supabase } from '../../lib/supabase';
+import { MentionText } from '../../components/ui/MentionText';
+import { MentionInput } from '../../components/ui/MentionInput';
 import { formatTimeAgo, formatCurrency } from '../../utils/format';
 import type { Post, Comment, RootStackParamList } from '../../types';
 
@@ -296,8 +298,10 @@ export function MealDetailScreen() {
           <View className="px-4 pt-2">
             <Text className="text-base text-text-primary">
               <Text className="font-semibold">{post.author?.username} </Text>
-              {post.caption}
             </Text>
+            {post.caption ? (
+              <MentionText text={post.caption} style={{ fontSize: 16, color: '#1F2937' }} />
+            ) : null}
           </View>
 
           {/* Star dishes with endorsements */}
@@ -376,8 +380,8 @@ export function MealDetailScreen() {
                 <View className="flex-1 ml-2">
                   <Text className="text-sm text-text-primary">
                     <Text className="font-semibold">{c.author?.username ?? 'user'} </Text>
-                    {c.content}
                   </Text>
+                  <MentionText text={c.content} style={{ fontSize: 14, color: '#1F2937' }} />
                   <Text className="text-xs text-text-secondary mt-0.5">{formatTimeAgo(c.created_at)}</Text>
                 </View>
               </View>
@@ -389,24 +393,26 @@ export function MealDetailScreen() {
         </ScrollView>
 
         {/* Comment input */}
-        <View className="flex-row items-center px-4 py-3 border-t border-border-light">
-          <Avatar uri={undefined} displayName={user?.email ?? 'Me'} size={32} />
-          <TextInput
-            value={commentText}
-            onChangeText={setCommentText}
-            placeholder="Add a comment..."
-            placeholderTextColor="#9CA3AF"
-            className="flex-1 mx-3 text-base text-text-primary"
-            returnKeyType="send"
-            onSubmitEditing={handleComment}
-          />
-          <TouchableOpacity onPress={handleComment} disabled={!commentText.trim() || isCommenting}>
-            <Ionicons
-              name="send"
-              size={22}
-              color={commentText.trim() ? '#007AFF' : '#D1D5DB'}
-            />
-          </TouchableOpacity>
+        <View className="px-4 py-3 border-t border-border-light">
+          <View className="flex-row items-end">
+            <Avatar uri={undefined} displayName={user?.email ?? 'Me'} size={32} />
+            <View className="flex-1 mx-3">
+              <MentionInput
+                value={commentText}
+                onChangeText={setCommentText}
+                placeholder="Add a comment..."
+                placeholderTextColor="#9CA3AF"
+                className="text-base text-text-primary"
+              />
+            </View>
+            <TouchableOpacity onPress={handleComment} disabled={!commentText.trim() || isCommenting} className="pb-1">
+              <Ionicons
+                name="send"
+                size={22}
+                color={commentText.trim() ? '#007AFF' : '#D1D5DB'}
+              />
+            </TouchableOpacity>
+          </View>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>

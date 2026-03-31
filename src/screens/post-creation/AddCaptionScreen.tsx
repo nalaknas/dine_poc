@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useNavigation } from '@react-navigation/native';
 import { TagChip } from '../../components/ui/TagChip';
+import { MentionInput } from '../../components/ui/MentionInput';
 import { useSocialStore } from '../../stores/socialStore';
 import { useBillSplitterStore } from '../../stores/billSplitterStore';
 import { MEAL_TYPES, CUISINES, OCCASIONS } from '../../constants/tags';
@@ -165,10 +166,10 @@ export function AddCaptionScreen() {
           {/* Caption */}
           <View className="mb-5">
             <Text className="text-sm font-semibold text-text-secondary mb-2">CAPTION</Text>
-            <TextInput
+            <MentionInput
               value={caption}
               onChangeText={setCaption}
-              placeholder={`Share your thoughts about ${currentReceipt?.restaurantName ?? 'this meal'}...`}
+              placeholder={`Share your thoughts about ${currentReceipt?.restaurantName ?? 'this meal'}... Use @ to mention friends`}
               placeholderTextColor="#9CA3AF"
               multiline
               numberOfLines={4}
