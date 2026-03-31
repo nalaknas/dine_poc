@@ -343,6 +343,7 @@ export type RootStackParamList = {
   Recommendations: undefined;
   VenmoRequests: { breakdowns?: PersonBreakdown[]; restaurantName?: string; splitId?: string };
   CreditDashboard: undefined;
+  SavedRestaurants: undefined;
 };
 
 export type TabParamList = {

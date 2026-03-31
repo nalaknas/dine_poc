@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -10,7 +10,10 @@ import { StarDishes } from './StarDishes';
 import { LikeButton } from './LikeButton';
 import { AnimatedPressable } from '../ui/AnimatedPressable';
 import { TierBadge } from '../ui/TierBadge';
+import { PlaylistPickerModal } from '../ui/PlaylistPickerModal';
 import { Shadows } from '../../constants/shadows';
+import { toggleBookmark, isRestaurantBookmarked } from '../../services/bookmark-service';
+import { useAuthStore } from '../../stores/authStore';
 import type { Post, RootStackParamList } from '../../types';
 import { formatTimeAgo } from '../../utils/format';
 
@@ -24,6 +27,35 @@ type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 export function PostCard({ post, onLike, onComment }: PostCardProps) {
   const navigation = useNavigation<Nav>();
+  const { user } = useAuthStore();
+  const [isBookmarked, setIsBookmarked] = useState(false);
+  const [showPlaylistPicker, setShowPlaylistPicker] = useState(false);
+  const isTogglingRef = useRef(false);
+
+  // Initialize bookmark state from server
+  useEffect(() => {
+    if (!user || !post.restaurant_name) return;
+    isRestaurantBookmarked(user.id, post.restaurant_name)
+      .then(setIsBookmarked)
+      .catch(() => {});
+  }, [user, post.restaurant_name]);
+
+  const handleBookmarkPress = useCallback(async () => {
+    if (!user || isTogglingRef.current) return;
+    isTogglingRef.current = true;
+    try {
+      const result = await toggleBookmark(
+        user.id, post.restaurant_name, post.city, post.state, post.cuisine_type,
+      );
+      setIsBookmarked(result);
+    } finally {
+      isTogglingRef.current = false;
+    }
+  }, [user, post]);
+
+  const handleBookmarkLongPress = useCallback(() => {
+    setShowPlaylistPicker(true);
+  }, []);
 
   const handleAuthorPress = useCallback(() => {
     navigation.navigate('UserProfile', { userId: post.author_id });
@@ -227,10 +259,27 @@ export function PostCard({ post, onLike, onComment }: PostCardProps) {
         </Pressable>
         {/* Bookmark on far right */}
         <View style={{ flex: 1 }} />
-        <Pressable>
-          <Ionicons name="bookmark-outline" size={22} color="#6B7280" />
+        <Pressable onPress={handleBookmarkPress} onLongPress={handleBookmarkLongPress}>
+          <Ionicons
+            name={isBookmarked ? 'bookmark' : 'bookmark-outline'}
+            size={22}
+            color={isBookmarked ? '#007AFF' : '#6B7280'}
+          />
         </Pressable>
       </View>
+
+      {/* Playlist picker modal (long press bookmark) */}
+      {user && (
+        <PlaylistPickerModal
+          visible={showPlaylistPicker}
+          userId={user.id}
+          restaurantName={post.restaurant_name}
+          city={post.city}
+          state={post.state}
+          cuisineType={post.cuisine_type}
+          onDismiss={() => setShowPlaylistPicker(false)}
+        />
+      )}
 
       {/* Caption */}
       {post.caption ? (

@@ -27,6 +27,7 @@ import { NotificationPreferencesScreen } from '../screens/settings/NotificationP
 import { RecommendationsScreen } from '../screens/recommendations/RecommendationsScreen';
 import { VenmoRequestsScreen } from '../screens/post-creation/VenmoRequestsScreen';
 import { CreditDashboardScreen } from '../screens/credits/CreditDashboardScreen';
+import { SavedRestaurantsScreen } from '../screens/profile/SavedRestaurantsScreen';
 import type { RootStackParamList } from '../types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -216,6 +217,11 @@ export function RootNavigator() {
               name="CreditDashboard"
               component={CreditDashboardScreen}
               options={{ headerShown: true, title: 'Credits' }}
+            />
+            <Stack.Screen
+              name="SavedRestaurants"
+              component={SavedRestaurantsScreen}
+              options={{ headerShown: true, title: 'Saved Restaurants' }}
             />
           </>
         )}
