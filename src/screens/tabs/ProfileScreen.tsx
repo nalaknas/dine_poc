@@ -164,6 +164,25 @@ export function ProfileScreen() {
           <Text style={{ fontSize: 14, fontWeight: '600', color: '#007AFF', marginLeft: 4 }}>For You</Text>
         </AnimatedPressable>
 
+        {/* Saved Restaurants CTA */}
+        <AnimatedPressable
+          onPress={() => navigation.navigate('SavedRestaurants')}
+          style={{
+            marginTop: 8,
+            backgroundColor: 'rgba(0,122,255,0.04)',
+            borderWidth: 1,
+            borderColor: 'rgba(0,122,255,0.1)',
+            borderRadius: 10,
+            paddingVertical: 8,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Ionicons name="bookmark-outline" size={16} color="#007AFF" />
+          <Text style={{ fontSize: 14, fontWeight: '600', color: '#007AFF', marginLeft: 4 }}>Saved Restaurants</Text>
+        </AnimatedPressable>
+
         {/* Credits CTA */}
         <AnimatedPressable
           onPress={() => navigation.navigate('CreditDashboard')}
