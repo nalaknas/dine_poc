@@ -21,6 +21,47 @@ interface CreditBreakdown {
   total: number;
 }
 
+interface StreakInfo {
+  weeks: number;
+  multiplier: number;
+  bonusCredits: number;
+}
+
+function getISOWeek(date: Date): string {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7));
+  const week1 = new Date(d.getFullYear(), 0, 4);
+  const weekNum = 1 + Math.round(((d.getTime() - week1.getTime()) / 86400000 - 3 + ((week1.getDay() + 6) % 7)) / 7);
+  return `${d.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
+}
+
+function getStreakMultiplier(weeks: number): number {
+  if (weeks >= 8) return 2;
+  if (weeks >= 4) return 1.5;
+  if (weeks >= 2) return 1.2;
+  return 1;
+}
+
+/** Returns the ISO week string for the week after the given one (e.g. "2026-W13" → "2026-W14"). */
+function nextISOWeek(weekStr: string): string {
+  // Parse "YYYY-WNN"
+  const [yearStr, wPart] = weekStr.split('-W');
+  const year = parseInt(yearStr, 10);
+  const week = parseInt(wPart, 10);
+
+  // Find the Monday of the given ISO week
+  // Jan 4 is always in ISO week 1
+  const jan4 = new Date(year, 0, 4);
+  const jan4Day = (jan4.getDay() + 6) % 7; // 0=Mon
+  const monday = new Date(jan4.getTime());
+  monday.setDate(jan4.getDate() - jan4Day + (week - 1) * 7);
+
+  // Add 7 days to get next week's Monday
+  const nextMonday = new Date(monday.getTime() + 7 * 86400000);
+  return getISOWeek(nextMonday);
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -161,22 +202,105 @@ serve(async (req) => {
       breakdown.starDishes;
     breakdown.total = Math.min(rawTotal, MAX_CREDITS);
 
+    // ── Streak tracking (atomic via SQL to prevent race conditions) ─────────
+    const currentWeek = getISOWeek(new Date());
+
+    // Atomic read-modify-write using a raw SQL query with row locking
+    const { data: streakResult, error: streakError } = await supabase.rpc(
+      'update_streak',
+      { p_user_id: post.author_id, p_current_week: currentWeek }
+    );
+
+    // Fallback if RPC doesn't exist yet — read without lock
+    let streakWeeks = 0;
+    let previousStreak = 0;
+    if (streakError) {
+      console.warn('update_streak RPC not available, falling back:', streakError.message);
+      const { data: userData } = await supabase
+        .from('users')
+        .select('streak_weeks, last_post_week')
+        .eq('id', post.author_id)
+        .single();
+
+      if (userData) {
+        const lastPostWeek: string | null = userData.last_post_week;
+        streakWeeks = userData.streak_weeks ?? 0;
+        previousStreak = streakWeeks;
+
+        if (lastPostWeek === currentWeek) {
+          // Same week — no streak change
+        } else if (lastPostWeek && nextISOWeek(lastPostWeek) === currentWeek) {
+          streakWeeks += 1;
+        } else {
+          streakWeeks = 1;
+        }
+
+        await supabase
+          .from('users')
+          .update({ streak_weeks: streakWeeks, last_post_week: currentWeek })
+          .eq('id', post.author_id);
+      }
+    } else {
+      streakWeeks = streakResult?.new_streak ?? 0;
+      previousStreak = streakResult?.previous_streak ?? 0;
+    }
+
+    // Apply streak multiplier to post quality credits (capped at MAX_CREDITS)
+    const multiplier = getStreakMultiplier(streakWeeks);
+    const multipliedTotal = Math.min(
+      Math.round(breakdown.total * multiplier),
+      MAX_CREDITS,
+    );
+
+    // Check for streak milestone bonuses
+    const streakMilestones = [2, 4, 8];
+    let bonusCredits = 0;
+    const reachedMilestone = streakMilestones.find(
+      (m) => streakWeeks >= m && previousStreak < m,
+    );
+    if (reachedMilestone) {
+      // Award bonus credits based on milestone
+      const bonusMap: Record<number, number> = { 2: 10, 4: 25, 8: 50 };
+      bonusCredits = bonusMap[reachedMilestone] ?? 0;
+    }
+
+    const streak: StreakInfo = {
+      weeks: streakWeeks,
+      multiplier,
+      bonusCredits,
+    };
+
     // ── Award credits via add_credits RPC ────────────────────────────────────
 
     const { error: creditError } = await supabase.rpc('add_credits', {
       p_user_id: post.author_id,
       p_type: 'post_quality',
-      p_amount: breakdown.total,
+      p_amount: multipliedTotal,
       p_source_post_id: postId,
-      p_metadata: breakdown,
+      p_metadata: { ...breakdown, streak },
     });
 
     if (creditError) {
       throw new Error(`Failed to award credits: ${creditError.message}`);
     }
 
+    // Award streak milestone bonus credits if applicable
+    if (bonusCredits > 0) {
+      const { error: bonusError } = await supabase.rpc('add_credits', {
+        p_user_id: post.author_id,
+        p_type: 'streak',
+        p_amount: bonusCredits,
+        p_source_post_id: postId,
+        p_metadata: { milestone: reachedMilestone, streakWeeks },
+      });
+
+      if (bonusError) {
+        console.error('Failed to award streak bonus:', bonusError.message);
+      }
+    }
+
     return new Response(
-      JSON.stringify({ credits: breakdown.total, breakdown }),
+      JSON.stringify({ credits: multipliedTotal, breakdown, streak }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
   } catch (error: any) {

@@ -474,13 +474,21 @@ export async function toggleDishEndorsement(
 
 export async function calculatePostCredits(
   postId: string,
-): Promise<{ credits: number; breakdown: Record<string, number> }> {
+): Promise<{
+  credits: number;
+  breakdown: Record<string, number>;
+  streak?: { weeks: number; multiplier: number; bonusCredits: number };
+}> {
   const { data, error } = await supabase.functions.invoke('calculate-post-credits', {
     body: { postId },
   });
 
   if (error) throw new Error(`Credit calculation failed: ${error.message}`);
-  return { credits: data?.credits ?? 0, breakdown: data?.breakdown ?? {} };
+  return {
+    credits: data?.credits ?? 0,
+    breakdown: data?.breakdown ?? {},
+    streak: data?.streak,
+  };
 }
 
 export async function getDishEndorsements(
