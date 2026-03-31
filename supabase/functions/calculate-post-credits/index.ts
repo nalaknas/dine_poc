@@ -21,6 +21,7 @@ interface CreditBreakdown {
   total: number;
 }
 
+<<<<<<< HEAD
 interface StreakInfo {
   weeks: number;
   multiplier: number;
@@ -61,6 +62,17 @@ function nextISOWeek(weekStr: string): string {
   const nextMonday = new Date(monday.getTime() + 7 * 86400000);
   return getISOWeek(nextMonday);
 }
+=======
+interface DiscoveryResult {
+  isDiscoverer: boolean;
+  discoveryCredits: number;
+  attributionCredits: number;
+}
+
+const DISCOVERY_CREDITS = 15;
+const ATTRIBUTION_CREDITS = 10;
+const MAX_ATTRIBUTION_PER_RESTAURANT = 500;
+>>>>>>> d2847e1 (Credit system discovery credit with race-safe unique index (ENG-42))
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -103,6 +115,7 @@ serve(async (req) => {
       .select(`
         id,
         author_id,
+        restaurant_name,
         caption,
         food_photos,
         overall_rating,
@@ -284,6 +297,7 @@ serve(async (req) => {
       throw new Error(`Failed to award credits: ${creditError.message}`);
     }
 
+<<<<<<< HEAD
     // Award streak milestone bonus credits if applicable
     if (bonusCredits > 0) {
       const { error: bonusError } = await supabase.rpc('add_credits', {
@@ -296,11 +310,120 @@ serve(async (req) => {
 
       if (bonusError) {
         console.error('Failed to award streak bonus:', bonusError.message);
+=======
+    // ── Discovery credit logic ──────────────────────────────────────────────
+
+    const discovery: DiscoveryResult = {
+      isDiscoverer: false,
+      discoveryCredits: 0,
+      attributionCredits: 0,
+    };
+
+    const restaurantName = (post.restaurant_name ?? '') as string;
+    // Escape ilike wildcards to prevent injection (e.g. "100% Natural")
+    const escapedName = restaurantName.replace(/%/g, '\\%').replace(/_/g, '\\_');
+
+    if (restaurantName.trim().length > 0) {
+      // ── Idempotency: check if discovery/attribution credits already awarded for this post
+      const { data: existingDiscovery } = await supabase
+        .from('credit_events')
+        .select('id')
+        .eq('source_post_id', postId)
+        .in('type', ['discovery', 'attribution'])
+        .limit(1)
+        .maybeSingle();
+
+      if (!existingDiscovery) {
+        // Find the discoverer post for this restaurant (if any)
+        const { data: discovererPost } = await supabase
+          .from('posts')
+          .select('id, author_id')
+          .ilike('restaurant_name', escapedName)
+          .eq('is_discoverer', true)
+          .limit(1)
+          .maybeSingle();
+
+        if (!discovererPost) {
+          // ── FIRST post for this restaurant — mark as discoverer ──────────
+          // The unique partial index on lower(restaurant_name) WHERE is_discoverer=true
+          // prevents race conditions — only one concurrent writer will succeed.
+          const { error: updateErr } = await supabase
+            .from('posts')
+            .update({ is_discoverer: true })
+            .eq('id', postId);
+
+          if (!updateErr) {
+            discovery.isDiscoverer = true;
+            discovery.discoveryCredits = DISCOVERY_CREDITS;
+
+            const { error: discErr } = await supabase.rpc('add_credits', {
+              p_user_id: post.author_id,
+              p_type: 'discovery',
+              p_amount: DISCOVERY_CREDITS,
+              p_source_post_id: postId,
+              p_source_user_id: post.author_id,
+              p_metadata: { restaurant_name: restaurantName },
+            });
+
+            if (discErr) {
+              console.error('Failed to award discovery credits:', discErr.message);
+            }
+          } else {
+            // Unique index violation — another post beat us. Fall through to attribution.
+            console.warn('Discoverer race: another post won, skipping discovery credits');
+          }
+        } else if (discovererPost.author_id !== post.author_id) {
+          // ── NOT the first post — check if current author is new to this restaurant
+          const { count: authorPriorPosts } = await supabase
+            .from('posts')
+            .select('id', { count: 'exact', head: true })
+            .ilike('restaurant_name', escapedName)
+            .eq('author_id', post.author_id)
+            .neq('id', postId);
+
+          if ((authorPriorPosts ?? 0) === 0) {
+            // New unique user — check attribution cap using SUM of actual credits
+            const { data: capData } = await supabase
+              .from('credit_events')
+              .select('credits')
+              .eq('type', 'attribution')
+              .eq('source_post_id', discovererPost.id);
+
+            const currentAttributionTotal = (capData ?? []).reduce(
+              (sum: number, e: { credits: number }) => sum + e.credits, 0,
+            );
+
+            if (currentAttributionTotal < MAX_ATTRIBUTION_PER_RESTAURANT) {
+              discovery.attributionCredits = ATTRIBUTION_CREDITS;
+
+              const { error: attrErr } = await supabase.rpc('add_credits', {
+                p_user_id: discovererPost.author_id,
+                p_type: 'attribution',
+                p_amount: ATTRIBUTION_CREDITS,
+                p_source_post_id: discovererPost.id,
+                p_source_user_id: post.author_id,
+                p_metadata: {
+                  restaurant_name: restaurantName,
+                  new_poster_id: post.author_id,
+                },
+              });
+
+              if (attrErr) {
+                console.error('Failed to award attribution credits:', attrErr.message);
+              }
+            }
+          }
+        }
+>>>>>>> d2847e1 (Credit system discovery credit with race-safe unique index (ENG-42))
       }
     }
 
     return new Response(
+<<<<<<< HEAD
       JSON.stringify({ credits: multipliedTotal, breakdown, streak }),
+=======
+      JSON.stringify({ credits: breakdown.total, breakdown, discovery }),
+>>>>>>> d2847e1 (Credit system discovery credit with race-safe unique index (ENG-42))
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
   } catch (error: any) {
