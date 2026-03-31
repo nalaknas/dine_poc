@@ -267,7 +267,7 @@ serve(async (req) => {
 
     // ── Award credits via add_credits RPC ────────────────────────────────────
 
-    const { error: creditError } = await supabase.rpc('add_credits', {
+    const { data: creditResult, error: creditError } = await supabase.rpc('add_credits', {
       p_user_id: post.author_id,
       p_type: 'post_quality',
       p_amount: multipliedTotal,
@@ -279,9 +279,12 @@ serve(async (req) => {
       throw new Error(`Failed to award credits: ${creditError.message}`);
     }
 
+    // Extract the new tier after credits were awarded
+    let newTier: string = creditResult?.[0]?.new_tier ?? 'rock';
+
     // Award streak milestone bonus credits if applicable
     if (bonusCredits > 0) {
-      const { error: bonusError } = await supabase.rpc('add_credits', {
+      const { data: bonusResult, error: bonusError } = await supabase.rpc('add_credits', {
         p_user_id: post.author_id,
         p_type: 'streak',
         p_amount: bonusCredits,
@@ -291,6 +294,10 @@ serve(async (req) => {
 
       if (bonusError) {
         console.error('Failed to award streak bonus:', bonusError.message);
+      } else {
+        // Streak bonus may push user to a higher tier — use the latest tier
+        const bonusTier = bonusResult?.[0]?.new_tier;
+        if (bonusTier) newTier = bonusTier;
       }
     }
 
@@ -397,7 +404,7 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ credits: multipliedTotal, breakdown, streak, discovery }),
+      JSON.stringify({ credits: multipliedTotal, breakdown, streak, discovery, newTier }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
   } catch (error: any) {

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,7 +13,8 @@ import { uploadFoodPhoto } from '../../services/receipt-service';
 import { generateDishEmbedding } from '../../services/recommendation-service';
 import { useToast } from '../../contexts/ToastContext';
 import { trackPostCreated, trackBillSplitCompleted } from '../../lib/analytics';
-import type { CreatePostDraft } from '../../types';
+import { TierUpCelebration } from '../../components/ui/TierUpCelebration';
+import type { CreatePostDraft, UserTier } from '../../types';
 
 export function PostPrivacyScreen() {
   const navigation = useNavigation<any>();
@@ -29,6 +30,11 @@ export function PostPrivacyScreen() {
   const [photoStatuses, setPhotoStatuses] = useState<('pending' | 'uploading' | 'done' | 'failed')[]>([]);
   const [isFinalizing, setIsFinalizing] = useState(false);
   const progressAnim = useRef(new Animated.Value(0)).current;
+
+  // Tier-up celebration state
+  const [showTierUp, setShowTierUp] = useState(false);
+  const [newTier, setNewTier] = useState<UserTier>('rock');
+  const pendingNavigationRef = useRef<(() => void) | null>(null);
 
   const handlePublish = async () => {
     if (!user || !profile) return;
@@ -151,27 +157,41 @@ export function PostPrivacyScreen() {
         });
       }
 
-      // 5. Calculate and award post credits (background, non-blocking)
-      calculatePostCredits(post.id)
-        .then(({ credits, streak }) => {
-          if (credits > 0) {
-            let message = `You earned ${credits} credits!`;
-            if (streak && streak.multiplier > 1) {
-              message = `You earned ${credits} credits! \uD83D\uDD25 ${streak.weeks}-week streak (${streak.multiplier}x)`;
-            }
-            if (streak && streak.bonusCredits > 0) {
-              message += ` +${streak.bonusCredits} streak bonus!`;
-            }
-            showToast({
-              message,
-              type: 'success',
-              duration: 4000,
-            });
+      // 5. Calculate and award post credits
+      const oldTier = profile.current_tier ?? 'rock';
+      let tierChanged = false;
+
+      try {
+        const creditResult = await calculatePostCredits(post.id);
+        const { credits, streak } = creditResult;
+
+        if (credits > 0) {
+          let message = `You earned ${credits} credits!`;
+          if (streak && streak.multiplier > 1) {
+            message = `You earned ${credits} credits! \uD83D\uDD25 ${streak.weeks}-week streak (${streak.multiplier}x)`;
           }
-        })
-        .catch((err) => {
-          console.warn('[publish] Credit calculation failed:', err?.message);
-        });
+          if (streak && streak.bonusCredits > 0) {
+            message += ` +${streak.bonusCredits} streak bonus!`;
+          }
+          showToast({
+            message,
+            type: 'success',
+            duration: 4000,
+          });
+        }
+
+        // Check for tier change
+        if (creditResult.newTier && creditResult.newTier !== oldTier) {
+          tierChanged = true;
+          setNewTier(creditResult.newTier);
+          // Update the profile store with the new tier
+          useUserProfileStore.getState().updateProfile({
+            current_tier: creditResult.newTier,
+          });
+        }
+      } catch (err: any) {
+        console.warn('[publish] Credit calculation failed:', err?.message);
+      }
 
       // 6. Update local state
       incrementMealCount();
@@ -183,46 +203,51 @@ export function PostPrivacyScreen() {
       clearDraftPost();
       resetBill();
 
-      // 8. Exit post creation flow
+      // 8. Build navigation action
       const venmoableBreakdowns = personBreakdowns.filter(
         (b) => b.friend.venmo_username && b.total > 0
       );
 
-      // Get tab navigator to switch tabs, then reset PostCreation stack
       const tabNav = navigation.getParent();
 
-      if (venmoableBreakdowns.length > 0) {
-        // Go to Venmo requests (root stack screen)
-        navigation.dispatch(
-          CommonActions.reset({
-            index: 0,
-            routes: [{ name: 'Home' }],
-          })
-        );
-        // Navigate to VenmoRequests on root stack
-        tabNav?.getParent()?.navigate('VenmoRequests', {
-          breakdowns: venmoableBreakdowns,
-          restaurantName: currentReceipt?.restaurantName ?? 'Dinner',
-        });
-      } else if (isPublic) {
-        // Public → go to Feed so user sees their post
-        navigation.dispatch(
-          CommonActions.reset({
-            index: 0,
-            routes: [{ name: 'Home' }],
-          })
-        );
-        tabNav?.navigate('Feed');
+      const navigateAway = () => {
+        if (venmoableBreakdowns.length > 0) {
+          navigation.dispatch(
+            CommonActions.reset({
+              index: 0,
+              routes: [{ name: 'Home' }],
+            })
+          );
+          tabNav?.getParent()?.navigate('VenmoRequests', {
+            breakdowns: venmoableBreakdowns,
+            restaurantName: currentReceipt?.restaurantName ?? 'Dinner',
+          });
+        } else if (isPublic) {
+          navigation.dispatch(
+            CommonActions.reset({
+              index: 0,
+              routes: [{ name: 'Home' }],
+            })
+          );
+          tabNav?.navigate('Feed');
+        } else {
+          navigation.dispatch(
+            CommonActions.reset({
+              index: 0,
+              routes: [{ name: 'Home' }],
+            })
+          );
+          tabNav?.navigate('Profile');
+          tabNav?.getParent()?.navigate('MealDetail', { postId: post.id });
+        }
+      };
+
+      // 9. Show tier-up celebration or navigate immediately
+      if (tierChanged) {
+        pendingNavigationRef.current = navigateAway;
+        setShowTierUp(true);
       } else {
-        // Private → go to the meal detail card
-        navigation.dispatch(
-          CommonActions.reset({
-            index: 0,
-            routes: [{ name: 'Home' }],
-          })
-        );
-        tabNav?.navigate('Profile');
-        tabNav?.getParent()?.navigate('MealDetail', { postId: post.id });
+        navigateAway();
       }
     } catch (err: any) {
       showToast({
@@ -240,8 +265,22 @@ export function PostPrivacyScreen() {
     }
   };
 
+  const handleTierUpDismiss = useCallback(() => {
+    setShowTierUp(false);
+    // Execute deferred navigation
+    if (pendingNavigationRef.current) {
+      pendingNavigationRef.current();
+      pendingNavigationRef.current = null;
+    }
+  }, []);
+
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['bottom']}>
+      <TierUpCelebration
+        visible={showTierUp}
+        newTier={newTier}
+        onDismiss={handleTierUpDismiss}
+      />
       <View className="flex-1 px-6 pt-8">
         <Text className="text-2xl font-bold text-text-primary mb-2">Almost Done!</Text>
         <Text className="text-base text-text-secondary mb-8">
