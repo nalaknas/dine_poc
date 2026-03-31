@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -12,7 +12,7 @@ import { AnimatedPressable } from '../ui/AnimatedPressable';
 import { TierBadge } from '../ui/TierBadge';
 import { PlaylistPickerModal } from '../ui/PlaylistPickerModal';
 import { Shadows } from '../../constants/shadows';
-import { toggleBookmark } from '../../services/bookmark-service';
+import { toggleBookmark, isRestaurantBookmarked } from '../../services/bookmark-service';
 import { useAuthStore } from '../../stores/authStore';
 import type { Post, RootStackParamList } from '../../types';
 import { formatTimeAgo } from '../../utils/format';
@@ -30,13 +30,27 @@ export function PostCard({ post, onLike, onComment }: PostCardProps) {
   const { user } = useAuthStore();
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [showPlaylistPicker, setShowPlaylistPicker] = useState(false);
+  const isTogglingRef = useRef(false);
+
+  // Initialize bookmark state from server
+  useEffect(() => {
+    if (!user || !post.restaurant_name) return;
+    isRestaurantBookmarked(user.id, post.restaurant_name)
+      .then(setIsBookmarked)
+      .catch(() => {});
+  }, [user, post.restaurant_name]);
 
   const handleBookmarkPress = useCallback(async () => {
-    if (!user) return;
-    const result = await toggleBookmark(
-      user.id, post.restaurant_name, post.city, post.state, post.cuisine_type,
-    );
-    setIsBookmarked(result);
+    if (!user || isTogglingRef.current) return;
+    isTogglingRef.current = true;
+    try {
+      const result = await toggleBookmark(
+        user.id, post.restaurant_name, post.city, post.state, post.cuisine_type,
+      );
+      setIsBookmarked(result);
+    } finally {
+      isTogglingRef.current = false;
+    }
   }, [user, post]);
 
   const handleBookmarkLongPress = useCallback(() => {

@@ -57,19 +57,28 @@ export function PlaylistPickerModal({
     const wasSelected = selectedIds.has(playlistId);
     const next = new Set(selectedIds);
 
+    // Optimistic update
     if (wasSelected) {
       next.delete(playlistId);
-      setSelectedIds(next);
-      await removeRestaurantFromPlaylist(playlistId, restaurantName);
     } else {
       next.add(playlistId);
-      setSelectedIds(next);
-      await addRestaurantToPlaylist(playlistId, {
-        restaurant_name: restaurantName,
-        city,
-        state,
-        cuisine_type: cuisineType,
-      });
+    }
+    setSelectedIds(next);
+
+    try {
+      if (wasSelected) {
+        await removeRestaurantFromPlaylist(playlistId, restaurantName);
+      } else {
+        await addRestaurantToPlaylist(playlistId, {
+          restaurant_name: restaurantName,
+          city,
+          state,
+          cuisine_type: cuisineType,
+        });
+      }
+    } catch {
+      // Rollback on error
+      setSelectedIds(selectedIds);
     }
   };
 

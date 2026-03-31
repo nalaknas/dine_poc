@@ -3,10 +3,26 @@ import type { Playlist, PlaylistRestaurant } from '../types';
 
 const DEFAULT_PLAYLIST_NAME = 'Saved';
 
+// In-flight guard to prevent race conditions on concurrent calls
+const inflightDefault = new Map<string, Promise<Playlist>>();
+
 // ─── Default Playlist ────────────────────────────────────────────────────────
 
-/** Get or create the user's default "Saved" playlist. */
+/** Get or create the user's default "Saved" playlist. Concurrent-safe. */
 export async function getOrCreateDefaultPlaylist(userId: string): Promise<Playlist> {
+  const inflight = inflightDefault.get(userId);
+  if (inflight) return inflight;
+
+  const promise = _getOrCreateDefaultPlaylist(userId);
+  inflightDefault.set(userId, promise);
+  try {
+    return await promise;
+  } finally {
+    inflightDefault.delete(userId);
+  }
+}
+
+async function _getOrCreateDefaultPlaylist(userId: string): Promise<Playlist> {
   const { data: existing } = await supabase
     .from('playlists')
     .select('*, restaurants:playlist_restaurants(*)')
