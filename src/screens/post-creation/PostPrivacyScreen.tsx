@@ -7,7 +7,7 @@ import { useSocialStore } from '../../stores/socialStore';
 import { useBillSplitterStore } from '../../stores/billSplitterStore';
 import { useAuthStore } from '../../stores/authStore';
 import { useUserProfileStore } from '../../stores/userProfileStore';
-import { createPost, notifyTaggedParticipants } from '../../services/post-service';
+import { createPost, notifyTaggedParticipants, calculatePostCredits } from '../../services/post-service';
 import { useSplitHistoryStore } from '../../stores/splitHistoryStore';
 import { uploadFoodPhoto } from '../../services/receipt-service';
 import { generateDishEmbedding } from '../../services/recommendation-service';
@@ -151,17 +151,32 @@ export function PostPrivacyScreen() {
         });
       }
 
-      // 5. Update local state
+      // 5. Calculate and award post credits (background, non-blocking)
+      calculatePostCredits(post.id)
+        .then(({ credits }) => {
+          if (credits > 0) {
+            showToast({
+              message: `You earned ${credits} credits!`,
+              type: 'success',
+              duration: 4000,
+            });
+          }
+        })
+        .catch((err) => {
+          console.warn('[publish] Credit calculation failed:', err?.message);
+        });
+
+      // 6. Update local state
       incrementMealCount();
       const fullPost = { ...post, author: profile };
       if (isPublic) prependFeedPost(fullPost);
       prependMyPost(fullPost);
 
-      // 6. Clear draft
+      // 7. Clear draft
       clearDraftPost();
       resetBill();
 
-      // 7. Exit post creation flow
+      // 8. Exit post creation flow
       const venmoableBreakdowns = personBreakdowns.filter(
         (b) => b.friend.venmo_username && b.total > 0
       );
