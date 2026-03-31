@@ -24,6 +24,10 @@ export interface User {
   cities_explored: number;
   cuisine_preferences: string[];
   dietary_restrictions: string[];
+  credit_balance: number;
+  current_tier: UserTier;
+  streak_weeks: number;
+  last_post_week?: string;
   created_at: string;
 }
 
@@ -282,6 +286,37 @@ export interface RestaurantRecommendation {
   match_score: number;
 }
 
+// ─── Credits & Tiers ─────────────────────────────────────────────────────────
+
+export type CreditEventType =
+  | 'post_quality'
+  | 'streak'
+  | 'discovery'
+  | 'referral'
+  | 'attribution';
+
+export type UserTier = 'rock' | 'bronze' | 'silver' | 'gold' | 'platinum' | 'black';
+
+export const TierThresholds: Record<UserTier, number> = {
+  rock: 0,
+  bronze: 100,
+  silver: 500,
+  gold: 2000,
+  platinum: 10000,
+  black: 50000,
+} as const;
+
+export interface CreditEvent {
+  id: string;
+  user_id: string;
+  type: CreditEventType;
+  credits: number;
+  source_post_id?: string;
+  source_user_id?: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
 // ─── Navigation ───────────────────────────────────────────────────────────────
 
 export type RootStackParamList = {
@@ -303,6 +338,7 @@ export type RootStackParamList = {
   NotificationPreferences: undefined;
   Recommendations: undefined;
   VenmoRequests: { breakdowns?: PersonBreakdown[]; restaurantName?: string; splitId?: string };
+  CreditDashboard: undefined;
 };
 
 export type TabParamList = {
