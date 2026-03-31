@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import * as MediaLibrary from 'expo-media-library';
+import { registerForPushNotifications } from '../../lib/pushNotifications';
 
 const PERMISSIONS = [
   {
@@ -43,6 +44,9 @@ export function PermissionsOnboardingScreen() {
       } else if (key === 'photos') {
         const result = await MediaLibrary.requestPermissionsAsync();
         status = result.status;
+      } else if (key === 'notifications') {
+        const token = await registerForPushNotifications();
+        status = token ? 'granted' : 'denied';
       }
       setGranted((prev) => ({ ...prev, [key]: status === 'granted' }));
     } catch {

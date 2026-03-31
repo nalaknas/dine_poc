@@ -300,6 +300,7 @@ export type RootStackParamList = {
   PlaylistDetail: { playlistId: string };
   CreatePlaylist: undefined;
   Settings: undefined;
+  NotificationPreferences: undefined;
   Recommendations: undefined;
   VenmoRequests: { breakdowns?: PersonBreakdown[]; restaurantName?: string; splitId?: string };
 };

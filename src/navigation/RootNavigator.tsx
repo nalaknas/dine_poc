@@ -23,6 +23,7 @@ import { EditProfileScreen } from '../screens/detail/EditProfileScreen';
 import { PlaylistDetailScreen } from '../screens/playlists/PlaylistDetailScreen';
 import { CreatePlaylistScreen } from '../screens/playlists/CreatePlaylistScreen';
 import { SettingsScreen } from '../screens/settings/SettingsScreen';
+import { NotificationPreferencesScreen } from '../screens/settings/NotificationPreferencesScreen';
 import { RecommendationsScreen } from '../screens/recommendations/RecommendationsScreen';
 import { VenmoRequestsScreen } from '../screens/post-creation/VenmoRequestsScreen';
 import type { RootStackParamList } from '../types';
@@ -194,6 +195,11 @@ export function RootNavigator() {
               name="Settings"
               component={SettingsScreen}
               options={{ headerShown: true, title: 'Settings' }}
+            />
+            <Stack.Screen
+              name="NotificationPreferences"
+              component={NotificationPreferencesScreen}
+              options={{ headerShown: true, title: 'Notifications' }}
             />
             <Stack.Screen
               name="Recommendations"

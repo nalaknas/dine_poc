@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
+import { registerForPushNotifications, unregisterPushToken } from '../lib/pushNotifications';
 import type { AuthUser } from '../types';
 
 interface AuthState {
@@ -35,6 +36,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
     set({ isInitialized: true });
 
+    // Register push token if user is already signed in
+    if (session) {
+      registerForPushNotifications().catch(() => {});
+    }
+
     // Listen for auth state changes
     supabase.auth.onAuthStateChange((_event, session) => {
       if (session) {
@@ -45,6 +51,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             accessToken: session.access_token,
           },
         });
+        // Register push token on sign in
+        registerForPushNotifications().catch(() => {});
       } else {
         set({ user: null });
       }
@@ -74,6 +82,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   signOut: async () => {
     set({ isLoading: true });
     try {
+      await unregisterPushToken();
       await supabase.auth.signOut();
       set({ user: null });
     } finally {
