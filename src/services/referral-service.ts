@@ -1,8 +1,5 @@
 import { supabase } from '../lib/supabase';
 
-const REFERRAL_CREDITS = 25;
-const REQUIRED_POSTS_FOR_REFERRAL = 3;
-
 /**
  * Records that a user was invited by another user via bill split.
  * Called when a new user signs up after following a split deep link.
@@ -28,58 +25,11 @@ export async function recordReferral(
 }
 
 /**
- * Checks if a referral should be credited (invitee has 3+ posts).
- * Called after each post creation to check pending referrals.
- */
-export async function checkAndAwardReferralCredits(
-  inviteeId: string,
-): Promise<void> {
-  // Check if this user was referred
-  const { data: referral } = await supabase
-    .from('referrals')
-    .select('id, inviter_id, credited')
-    .eq('invitee_id', inviteeId)
-    .eq('credited', false)
-    .limit(1)
-    .maybeSingle();
-
-  if (!referral) return;
-
-  // Count invitee's posts
-  const { count } = await supabase
-    .from('posts')
-    .select('id', { count: 'exact', head: true })
-    .eq('author_id', inviteeId);
-
-  if ((count ?? 0) < REQUIRED_POSTS_FOR_REFERRAL) return;
-
-  // Award referral credits to inviter
-  const { error: creditError } = await supabase.rpc('add_credits', {
-    p_user_id: referral.inviter_id,
-    p_type: 'referral',
-    p_amount: REFERRAL_CREDITS,
-    p_source_post_id: null,
-    p_source_user_id: inviteeId,
-    p_metadata: { source: 'bill_split', invitee_id: inviteeId },
-  });
-
-  if (creditError) {
-    console.error('[referral] Failed to award credits:', creditError.message);
-    return;
-  }
-
-  // Mark referral as credited
-  await supabase
-    .from('referrals')
-    .update({ credited: true, credited_at: new Date().toISOString() })
-    .eq('id', referral.id);
-}
-
-/**
  * Creates a persisted split record for deep link landing pages.
+ * Note: postId can be null if the split is created before the post.
  */
 export async function createSplitRecord(
-  postId: string,
+  postId: string | null,
   restaurantName: string,
   date: string,
   inviterId: string,

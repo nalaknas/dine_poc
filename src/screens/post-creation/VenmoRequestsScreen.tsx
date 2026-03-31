@@ -25,15 +25,15 @@ export function VenmoRequestsScreen() {
   React.useEffect(() => {
     if (!breakdowns || !user || activeSplitId) return;
     createSplitRecord(
-      '', // postId not available here yet
+      null,
       restaurantName ?? 'Dinner',
       new Date().toISOString().split('T')[0],
       user.id,
       breakdowns.map((b) => ({ displayName: b.friend.display_name, amount: b.total })),
     )
       .then(setActiveSplitId)
-      .catch(() => {});
-  }, [breakdowns, user]);
+      .catch((err) => console.warn('[VenmoRequests] Failed to create split record:', err?.message));
+  }, [breakdowns, user, activeSplitId]);
 
   // Arrived via deep link (dine://split/:splitId) — breakdowns not yet loaded.
   // TODO: fetch split data from Supabase using splitId when split persistence is implemented.

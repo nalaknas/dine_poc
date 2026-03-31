@@ -403,6 +403,58 @@ serve(async (req) => {
       }
     }
 
+    // ── Referral credit check (server-side, atomic) ───────────────────────────
+    // After each post, check if this author was referred and has hit 3+ posts
+    const REFERRAL_CREDITS = 25;
+    const REQUIRED_POSTS = 3;
+
+    try {
+      const { data: referral } = await supabase
+        .from('referrals')
+        .select('id, inviter_id')
+        .eq('invitee_id', post.author_id)
+        .eq('credited', false)
+        .limit(1)
+        .maybeSingle();
+
+      if (referral) {
+        const { count: postCount } = await supabase
+          .from('posts')
+          .select('id', { count: 'exact', head: true })
+          .eq('author_id', post.author_id);
+
+        if ((postCount ?? 0) >= REQUIRED_POSTS) {
+          // Idempotency: check if referral credit already awarded
+          const { data: existingReferralCredit } = await supabase
+            .from('credit_events')
+            .select('id')
+            .eq('type', 'referral')
+            .eq('source_user_id', post.author_id)
+            .eq('user_id', referral.inviter_id)
+            .limit(1)
+            .maybeSingle();
+
+          if (!existingReferralCredit) {
+            await supabase.rpc('add_credits', {
+              p_user_id: referral.inviter_id,
+              p_type: 'referral',
+              p_amount: REFERRAL_CREDITS,
+              p_source_post_id: postId,
+              p_source_user_id: post.author_id,
+              p_metadata: { source: 'bill_split', invitee_id: post.author_id },
+            });
+
+            await supabase
+              .from('referrals')
+              .update({ credited: true, credited_at: new Date().toISOString() })
+              .eq('id', referral.id);
+          }
+        }
+      }
+    } catch (refErr: any) {
+      console.warn('Referral credit check failed:', refErr?.message);
+    }
+
     return new Response(
       JSON.stringify({ credits: multipliedTotal, breakdown, streak, discovery, newTier }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },

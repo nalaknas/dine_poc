@@ -18,6 +18,12 @@ CREATE POLICY "Users can view their own referrals"
   ON public.referrals FOR SELECT
   USING (auth.uid() = inviter_id OR auth.uid() = invitee_id);
 
+CREATE POLICY "Users can record referrals for themselves"
+  ON public.referrals FOR INSERT
+  WITH CHECK (auth.uid() = invitee_id);
+
+-- UPDATE/DELETE on referrals handled server-side only (Edge Functions with service role)
+
 -- ─── SPLIT INVITES ────────────────────────────────────────────────────────
 -- Persisted split data for deep link landing pages
 CREATE TABLE IF NOT EXISTS public.split_invites (
@@ -32,10 +38,10 @@ CREATE TABLE IF NOT EXISTS public.split_invites (
 
 ALTER TABLE public.split_invites ENABLE ROW LEVEL SECURITY;
 
--- Anyone can view split invites (needed for deep link landing)
-CREATE POLICY "Split invites are publicly viewable"
+-- Authenticated users can view split invites (for deep link landing)
+CREATE POLICY "Authenticated users can view split invites"
   ON public.split_invites FOR SELECT
-  USING (true);
+  USING (auth.uid() IS NOT NULL);
 
 CREATE POLICY "Users can create their own split invites"
   ON public.split_invites FOR INSERT
