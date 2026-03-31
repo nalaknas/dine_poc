@@ -1,6 +1,6 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import {
-  View, Text, TextInput, FlatList, TouchableOpacity, Alert, Modal, KeyboardAvoidingView, Platform,
+  View, Text, TextInput, FlatList, TouchableOpacity, Alert, Modal, KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -34,7 +34,7 @@ export function SelectFriendsScreen() {
   const { profile } = useUserProfileStore();
   const { selectedFriends, addSelectedFriend, removeSelectedFriend } = useBillSplitterStore();
   const {
-    isLoaded: contactsLoaded, loadContacts,
+    contacts, isLoaded: contactsLoaded, loadContacts,
     addContact, updateContact, importFromPhone,
   } = useContactsStore();
 
@@ -79,9 +79,23 @@ export function SelectFriendsScreen() {
     }
   }, [user]);
 
-  // Top contacts (from server-side contacts, excludes self)
-  const topContacts = useContactsStore.getState().getTopContacts(10)
-    .filter((c) => c.linked_user_id !== user?.id);
+  // All contacts sorted by split_count, excluding self
+  const allContacts = useMemo(() => {
+    return [...contacts]
+      .filter((c) => c.linked_user_id !== user?.id)
+      .sort((a, b) => b.split_count - a.split_count);
+  }, [contacts, user?.id]);
+
+  // Filter contacts locally when there's a search query
+  const filteredContacts = useMemo(() => {
+    if (query.trim().length < 2) return allContacts;
+    const lower = query.toLowerCase();
+    return allContacts.filter((c) =>
+      c.display_name.toLowerCase().includes(lower) ||
+      (c.linked_user?.username?.toLowerCase().includes(lower) ?? false) ||
+      (c.phone_number?.includes(query) ?? false),
+    );
+  }, [allContacts, query]);
 
   const handleSearch = useCallback(async (text: string) => {
     setQuery(text);
@@ -202,9 +216,87 @@ export function SelectFriendsScreen() {
     setIsImporting(false);
   };
 
-  // Check if search query has no matching results (for "add manually" inline prompt)
-  const showInlineAddManual = query.trim().length >= 2 && searchResults.length === 0;
-  const showAddAsManualInResults = query.trim().length >= 2 && searchResults.length > 0;
+  const isSearching = query.trim().length >= 2;
+  const showInlineAddManual = isSearching && searchResults.length === 0;
+
+  const renderContactRow = (contact: Contact) => {
+    const selected = isContactSelected(contact);
+    const isEditingThis = editingVenmoId === contact.id;
+    const displayName = contact.linked_user?.display_name ?? contact.display_name;
+    const username = contact.linked_user?.username;
+    const avatarUrl = contact.linked_user?.avatar_url;
+    return (
+      <View key={contact.id} className="flex-row items-center py-2.5 border-b border-border-light mx-4">
+        <TouchableOpacity
+          onPress={() => toggleContact(contact)}
+          className="flex-row items-center flex-1"
+          activeOpacity={0.7}
+        >
+          <Avatar uri={avatarUrl} displayName={displayName} size={42} />
+          <View className="flex-1 ml-3">
+            <Text className="text-base font-semibold text-text-primary">{displayName}</Text>
+            <View className="flex-row items-center">
+              {username && (
+                <Text className="text-sm text-text-secondary">@{username}</Text>
+              )}
+              {contact.phone_number && !username && (
+                <Text className="text-sm text-text-secondary">{contact.phone_number}</Text>
+              )}
+              {contact.split_count > 0 && (
+                <Text className="text-xs text-text-tertiary ml-1">
+                  · {contact.split_count} {contact.split_count === 1 ? 'split' : 'splits'}
+                </Text>
+              )}
+            </View>
+          </View>
+        </TouchableOpacity>
+
+        {/* Venmo badge / edit */}
+        {isEditingThis ? (
+          <View className="flex-row items-center">
+            <TextInput
+              value={editingVenmoValue}
+              onChangeText={setEditingVenmoValue}
+              placeholder="venmo"
+              autoCapitalize="none"
+              autoFocus
+              placeholderTextColor="#9CA3AF"
+              className="bg-background-secondary border border-border rounded-lg px-2 py-1 text-sm text-text-primary"
+              style={{ width: 100 }}
+              onSubmitEditing={saveEditVenmo}
+            />
+            <TouchableOpacity onPress={saveEditVenmo} className="ml-1.5">
+              <Ionicons name="checkmark-circle" size={22} color="#007AFF" />
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <TouchableOpacity
+            onPress={() => startEditVenmo(contact)}
+            className="flex-row items-center mr-2"
+            activeOpacity={0.7}
+          >
+            {contact.venmo_username ? (
+              <View className="flex-row items-center bg-blue-50 rounded-full px-2 py-0.5">
+                <Text className="text-xs text-accent font-medium">@{contact.venmo_username}</Text>
+                <Ionicons name="pencil" size={10} color="#007AFF" style={{ marginLeft: 3 }} />
+              </View>
+            ) : (
+              <View className="flex-row items-center bg-background-secondary rounded-full px-2 py-0.5">
+                <Text className="text-xs text-text-tertiary">+ venmo</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        )}
+
+        {/* Selection indicator */}
+        <View className={`w-6 h-6 rounded-full border-2 items-center justify-center ${
+          selected ? 'bg-accent border-accent' : 'border-border'
+        }`}>
+          {selected && <Ionicons name="checkmark" size={14} color="#fff" />}
+        </View>
+      </View>
+    );
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['bottom']}>
@@ -249,7 +341,7 @@ export function SelectFriendsScreen() {
           <TextInput
             value={query}
             onChangeText={handleSearch}
-            placeholder="Search or add friend by name..."
+            placeholder="Search by name or phone number..."
             placeholderTextColor="#9CA3AF"
             className="flex-1 ml-2 text-base text-text-primary"
           />
@@ -261,214 +353,156 @@ export function SelectFriendsScreen() {
         </View>
       </View>
 
-      {/* Import from Contacts button */}
-      {query.length === 0 && (
-        <View className="px-4 pb-2">
-          <TouchableOpacity
-            onPress={handleImportContacts}
-            disabled={isImporting}
-            className="flex-row items-center bg-accent/10 border border-accent/30 rounded-xl px-4 py-3 mb-3"
-          >
-            <View className="w-9 h-9 bg-accent/20 rounded-full items-center justify-center mr-3">
-              <Ionicons name="people" size={18} color="#007AFF" />
-            </View>
-            <View className="flex-1">
-              <Text className="text-sm font-semibold text-accent">
-                {isImporting ? 'Importing...' : 'Import from Contacts'}
-              </Text>
-              <Text className="text-xs text-text-secondary">Add friends from your phone</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color="#007AFF" />
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Your Contacts — people you've added or split with before */}
-      {topContacts.length > 0 && query.length === 0 && (
-        <View className="px-4 pb-2">
-          <Text className="text-xs font-semibold text-text-secondary mb-2 uppercase tracking-wide">
-            Your Contacts
-          </Text>
-          {topContacts.map((contact) => {
-            const selected = isContactSelected(contact);
-            const isEditingThis = editingVenmoId === contact.id;
-            const displayName = contact.linked_user?.display_name ?? contact.display_name;
-            const username = contact.linked_user?.username;
-            const avatarUrl = contact.linked_user?.avatar_url;
-            return (
-              <View key={contact.id} className="flex-row items-center py-2.5 border-b border-border-light">
-                <TouchableOpacity
-                  onPress={() => toggleContact(contact)}
-                  className="flex-row items-center flex-1"
-                  activeOpacity={0.7}
-                >
-                  <Avatar uri={avatarUrl} displayName={displayName} size={42} />
-                  <View className="flex-1 ml-3">
-                    <Text className="text-base font-semibold text-text-primary">{displayName}</Text>
-                    <View className="flex-row items-center">
-                      {username && (
-                        <Text className="text-sm text-text-secondary">@{username}</Text>
-                      )}
-                      {contact.split_count > 0 && (
-                        <Text className="text-xs text-text-tertiary ml-1">
-                          · {contact.split_count} {contact.split_count === 1 ? 'split' : 'splits'}
-                        </Text>
-                      )}
-                    </View>
-                  </View>
-                </TouchableOpacity>
-
-                {/* Venmo badge / edit */}
-                {isEditingThis ? (
-                  <View className="flex-row items-center">
-                    <TextInput
-                      value={editingVenmoValue}
-                      onChangeText={setEditingVenmoValue}
-                      placeholder="venmo"
-                      autoCapitalize="none"
-                      autoFocus
-                      placeholderTextColor="#9CA3AF"
-                      className="bg-background-secondary border border-border rounded-lg px-2 py-1 text-sm text-text-primary"
-                      style={{ width: 100 }}
-                      onSubmitEditing={saveEditVenmo}
-                    />
-                    <TouchableOpacity onPress={saveEditVenmo} className="ml-1.5">
-                      <Ionicons name="checkmark-circle" size={22} color="#007AFF" />
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <TouchableOpacity
-                    onPress={() => startEditVenmo(contact)}
-                    className="flex-row items-center mr-2"
-                    activeOpacity={0.7}
-                  >
-                    {contact.venmo_username ? (
-                      <View className="flex-row items-center bg-blue-50 rounded-full px-2 py-0.5">
-                        <Text className="text-xs text-accent font-medium">@{contact.venmo_username}</Text>
-                        <Ionicons name="pencil" size={10} color="#007AFF" style={{ marginLeft: 3 }} />
-                      </View>
-                    ) : (
-                      <View className="flex-row items-center bg-background-secondary rounded-full px-2 py-0.5">
-                        <Text className="text-xs text-text-tertiary">+ venmo</Text>
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                )}
-
-                {/* Selection indicator */}
-                <View className={`w-6 h-6 rounded-full border-2 items-center justify-center ${
-                  selected ? 'bg-accent border-accent' : 'border-border'
-                }`}>
-                  {selected && <Ionicons name="checkmark" size={14} color="#fff" />}
-                </View>
-              </View>
-            );
-          })}
-        </View>
-      )}
-
-      {/* Frequent friends — quick add (from Supabase tagged history) */}
-      {frequentFriends.length > 0 && query.length === 0 && (
-        <View className="px-4 pb-2">
-          <Text className="text-xs font-semibold text-text-secondary mb-2 uppercase tracking-wide">Frequent</Text>
-          <View className="flex-row flex-wrap">
-            {frequentFriends
-              .filter((f) => !selectedFriends.some((s) => s.id === f.id))
-              .map((friend) => (
-                <TouchableOpacity
-                  key={friend.id}
-                  onPress={() => addSelectedFriend(userToFriend(friend))}
-                  className="flex-row items-center bg-background-secondary border border-border rounded-full px-3 py-1.5 mr-2 mb-2"
-                >
-                  <Avatar uri={friend.avatar_url} displayName={friend.display_name} size={22} />
-                  <Text className="text-sm font-semibold text-text-primary ml-1.5">{friend.display_name.split(' ')[0]}</Text>
-                  <Ionicons name="add" size={16} color="#007AFF" style={{ marginLeft: 4 }} />
-                </TouchableOpacity>
-              ))}
-          </View>
-        </View>
-      )}
-
-      {/* Search results + inline add */}
-      <FlatList
-        data={searchResults}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => {
-          const isSelected = selectedFriends.some((f) => f.id === item.id);
-          return (
-            <TouchableOpacity
-              onPress={() => toggleUser(item)}
-              className="flex-row items-center px-4 py-3 border-b border-border-light"
-            >
-              <Avatar uri={item.avatar_url} displayName={item.display_name} size={42} />
-              <View className="flex-1 ml-3">
-                <Text className="text-base font-semibold text-text-primary">{item.display_name}</Text>
-                <Text className="text-sm text-text-secondary">@{item.username}</Text>
-              </View>
-              <View className={`w-6 h-6 rounded-full border-2 items-center justify-center ${
-                isSelected ? 'bg-accent border-accent' : 'border-border'
-              }`}>
-                {isSelected && <Ionicons name="checkmark" size={14} color="#fff" />}
-              </View>
-            </TouchableOpacity>
-          );
-        }}
-        ListHeaderComponent={
-          showInlineAddManual ? (
-            <View className="px-4 py-3">
-              <Text className="text-sm text-text-secondary mb-2">No users found for "{query}"</Text>
-              <TouchableOpacity
-                onPress={() => {
-                  setManualName(query.trim());
-                  setShowManualModal(true);
-                }}
-                className="flex-row items-center bg-accent/10 border border-accent/30 rounded-xl px-4 py-3"
-              >
-                <View className="w-10 h-10 bg-accent/20 rounded-full items-center justify-center mr-3">
-                  <Ionicons name="person-add" size={20} color="#007AFF" />
-                </View>
-                <View className="flex-1">
-                  <Text className="text-base font-semibold text-accent">Add "{query.trim()}" manually</Text>
-                  <Text className="text-xs text-text-secondary">Not on Dine? Add them with their phone number</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color="#007AFF" />
-              </TouchableOpacity>
-            </View>
-          ) : null
-        }
-        ListFooterComponent={
-          <View>
-            {/* Inline "Add manually" in search results */}
-            {showAddAsManualInResults && (
-              <TouchableOpacity
-                onPress={() => {
-                  setManualName(query.trim());
-                  setShowManualModal(true);
-                }}
-                className="flex-row items-center px-4 py-3 border-b border-border-light"
-              >
-                <View className="w-10 h-10 bg-background-secondary rounded-full items-center justify-center mr-3">
-                  <Ionicons name="person-add-outline" size={20} color="#007AFF" />
-                </View>
-                <Text className="text-base font-semibold text-accent">
-                  Add "{query.trim()}" manually
-                </Text>
-              </TouchableOpacity>
-            )}
-            {/* Always show manual add option */}
+      {/* Scrollable content area */}
+      <ScrollView className="flex-1" keyboardShouldPersistTaps="handled">
+        {/* Action buttons — always visible when not searching */}
+        {!isSearching && (
+          <View className="px-4 pb-2 flex-row gap-2">
             <TouchableOpacity
               onPress={() => setShowManualModal(true)}
-              className="flex-row items-center px-4 py-4"
+              className="flex-1 flex-row items-center bg-accent/10 border border-accent/30 rounded-xl px-3 py-3"
             >
-              <View className="w-10 h-10 bg-background-secondary rounded-full items-center justify-center mr-3">
-                <Ionicons name="person-add-outline" size={20} color="#007AFF" />
+              <View className="w-8 h-8 bg-accent/20 rounded-full items-center justify-center mr-2">
+                <Ionicons name="person-add" size={16} color="#007AFF" />
               </View>
-              <Text className="text-base font-semibold text-accent">Add friend manually</Text>
+              <View className="flex-1">
+                <Text className="text-sm font-semibold text-accent">Add by Phone</Text>
+                <Text className="text-xs text-text-secondary">Invite via text</Text>
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleImportContacts}
+              disabled={isImporting}
+              className="flex-1 flex-row items-center bg-background-secondary border border-border rounded-xl px-3 py-3"
+            >
+              <View className="w-8 h-8 bg-background-tertiary rounded-full items-center justify-center mr-2">
+                <Ionicons name="people" size={16} color="#6B7280" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-sm font-semibold text-text-primary">
+                  {isImporting ? 'Importing...' : 'Import Contacts'}
+                </Text>
+                <Text className="text-xs text-text-secondary">From phone</Text>
+              </View>
             </TouchableOpacity>
           </View>
-        }
-        keyboardShouldPersistTaps="handled"
-      />
+        )}
+
+        {/* Frequent friends — quick add (from Supabase tagged history) */}
+        {frequentFriends.length > 0 && !isSearching && (
+          <View className="px-4 py-2">
+            <Text className="text-xs font-semibold text-text-secondary mb-2 uppercase tracking-wide">Frequent</Text>
+            <View className="flex-row flex-wrap">
+              {frequentFriends
+                .filter((f) => !selectedFriends.some((s) => s.id === f.id))
+                .map((friend) => (
+                  <TouchableOpacity
+                    key={friend.id}
+                    onPress={() => addSelectedFriend(userToFriend(friend))}
+                    className="flex-row items-center bg-background-secondary border border-border rounded-full px-3 py-1.5 mr-2 mb-2"
+                  >
+                    <Avatar uri={friend.avatar_url} displayName={friend.display_name} size={22} />
+                    <Text className="text-sm font-semibold text-text-primary ml-1.5">{friend.display_name.split(' ')[0]}</Text>
+                    <Ionicons name="add" size={16} color="#007AFF" style={{ marginLeft: 4 }} />
+                  </TouchableOpacity>
+                ))}
+            </View>
+          </View>
+        )}
+
+        {/* Contacts list — all contacts, scrollable */}
+        {!isSearching && filteredContacts.length > 0 && (
+          <View className="pb-2">
+            <Text className="text-xs font-semibold text-text-secondary mb-1 uppercase tracking-wide px-4">
+              Your Contacts ({filteredContacts.length})
+            </Text>
+            {filteredContacts.map(renderContactRow)}
+          </View>
+        )}
+
+        {/* Empty state — no contacts yet */}
+        {!isSearching && filteredContacts.length === 0 && contactsLoaded && (
+          <View className="px-4 py-8 items-center">
+            <View className="w-16 h-16 bg-background-secondary rounded-full items-center justify-center mb-3">
+              <Ionicons name="people-outline" size={32} color="#9CA3AF" />
+            </View>
+            <Text className="text-base font-semibold text-text-primary mb-1">No contacts yet</Text>
+            <Text className="text-sm text-text-secondary text-center">
+              Add friends by phone number or import from your phone contacts to get started.
+            </Text>
+          </View>
+        )}
+
+        {/* Search results */}
+        {isSearching && (
+          <View>
+            {/* Matching contacts from your list */}
+            {filteredContacts.length > 0 && (
+              <View className="pb-2">
+                <Text className="text-xs font-semibold text-text-secondary mb-1 uppercase tracking-wide px-4">
+                  Your Contacts
+                </Text>
+                {filteredContacts.map(renderContactRow)}
+              </View>
+            )}
+
+            {/* Dine users from search */}
+            {searchResults.length > 0 && (
+              <View className="pb-2">
+                <Text className="text-xs font-semibold text-text-secondary mb-1 uppercase tracking-wide px-4">
+                  Dine Users
+                </Text>
+                {searchResults.map((item) => {
+                  const isSelected = selectedFriends.some((f) => f.id === item.id);
+                  return (
+                    <TouchableOpacity
+                      key={item.id}
+                      onPress={() => toggleUser(item)}
+                      className="flex-row items-center px-4 py-2.5 border-b border-border-light"
+                    >
+                      <Avatar uri={item.avatar_url} displayName={item.display_name} size={42} />
+                      <View className="flex-1 ml-3">
+                        <Text className="text-base font-semibold text-text-primary">{item.display_name}</Text>
+                        <Text className="text-sm text-text-secondary">@{item.username}</Text>
+                      </View>
+                      <View className={`w-6 h-6 rounded-full border-2 items-center justify-center ${
+                        isSelected ? 'bg-accent border-accent' : 'border-border'
+                      }`}>
+                        {isSelected && <Ionicons name="checkmark" size={14} color="#fff" />}
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
+
+            {/* No results — add manually prompt */}
+            {showInlineAddManual && filteredContacts.length === 0 && (
+              <View className="px-4 py-3">
+                <Text className="text-sm text-text-secondary mb-2">No results for "{query}"</Text>
+              </View>
+            )}
+
+            {/* Add manually option always visible during search */}
+            <TouchableOpacity
+              onPress={() => {
+                setManualName(query.trim());
+                setShowManualModal(true);
+              }}
+              className="flex-row items-center px-4 py-3 border-b border-border-light"
+            >
+              <View className="w-10 h-10 bg-accent/10 rounded-full items-center justify-center mr-3">
+                <Ionicons name="person-add" size={20} color="#007AFF" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-base font-semibold text-accent">Add "{query.trim()}" by phone</Text>
+                <Text className="text-xs text-text-secondary">They'll get a text to join the split</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color="#007AFF" />
+            </TouchableOpacity>
+          </View>
+        )}
+      </ScrollView>
 
       {/* Manual add modal — Name + Phone + Venmo */}
       <Modal visible={showManualModal} animationType="slide" transparent>
@@ -492,7 +526,7 @@ export function SelectFriendsScreen() {
               className="bg-background-secondary border border-border rounded-xl px-4 py-3 text-base text-text-primary mb-1"
             />
             <Text className="text-xs text-text-tertiary mb-3 ml-1">
-              Add their number so they can join Dine later
+              They'll get a text to join the split — meals backfill when they sign up
             </Text>
             <TextInput
               value={manualVenmo}
