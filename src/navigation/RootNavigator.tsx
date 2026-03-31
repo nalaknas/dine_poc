@@ -26,6 +26,7 @@ import { SettingsScreen } from '../screens/settings/SettingsScreen';
 import { NotificationPreferencesScreen } from '../screens/settings/NotificationPreferencesScreen';
 import { RecommendationsScreen } from '../screens/recommendations/RecommendationsScreen';
 import { VenmoRequestsScreen } from '../screens/post-creation/VenmoRequestsScreen';
+import { CreditDashboardScreen } from '../screens/credits/CreditDashboardScreen';
 import type { RootStackParamList } from '../types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -210,6 +211,11 @@ export function RootNavigator() {
               name="VenmoRequests"
               component={VenmoRequestsScreen}
               options={{ headerShown: true, title: 'Collect Payment' }}
+            />
+            <Stack.Screen
+              name="CreditDashboard"
+              component={CreditDashboardScreen}
+              options={{ headerShown: true, title: 'Credits' }}
             />
           </>
         )}
