@@ -10,6 +10,7 @@ import { SummaryScreen } from '../screens/post-creation/SummaryScreen';
 import { RateMealScreen } from '../screens/post-creation/RateMealScreen';
 import { AddCaptionScreen } from '../screens/post-creation/AddCaptionScreen';
 import { PostPrivacyScreen } from '../screens/post-creation/PostPrivacyScreen';
+import { QuickPostScreen } from '../screens/post-creation/QuickPostScreen';
 import { useBillSplitterStore } from '../stores/billSplitterStore';
 import { useSocialStore } from '../stores/socialStore';
 import { trackPostCreationStep, trackPostAbandoned } from '../lib/analytics';
@@ -97,6 +98,13 @@ export function PostCreationNavigator() {
       <Stack.Screen name="RateMeal" component={RateMealScreen} options={{ title: 'Rate the Meal' }} />
       <Stack.Screen name="AddCaption" component={AddCaptionScreen} options={{ title: 'Share it' }} />
       <Stack.Screen name="PostPrivacy" component={PostPrivacyScreen} options={{ title: 'Almost done!' }} />
+      <Stack.Screen
+        name="QuickPost"
+        component={QuickPostScreen}
+        options={{
+          title: 'Quick Post',
+        }}
+      />
     </Stack.Navigator>
   );
 }

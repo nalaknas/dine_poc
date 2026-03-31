@@ -470,6 +470,34 @@ export async function toggleDishEndorsement(
   return true; // added
 }
 
+// ─── Quick Post ──────────────────────────────────────────────────────────────
+
+export async function createQuickPost(
+  authorId: string,
+  restaurantName: string,
+  caption: string,
+  foodPhotos: string[],
+  isPublic: boolean,
+): Promise<Post> {
+  const { data: post, error } = await supabase
+    .from('posts')
+    .insert({
+      author_id: authorId,
+      restaurant_name: restaurantName,
+      caption,
+      food_photos: foodPhotos,
+      is_public: isPublic,
+      overall_rating: 0,
+      tags: [],
+      is_quick_post: true,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return post as Post;
+}
+
 // ─── Post Credits ───────────────────────────────────────────────────────────
 
 export async function calculatePostCredits(

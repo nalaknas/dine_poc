@@ -115,6 +115,8 @@ export interface Post {
   receipt_total?: number;
   // Discovery
   is_discoverer?: boolean;
+  // Quick post
+  is_quick_post?: boolean;
   // Client-side
   is_liked?: boolean;
   recent_comments?: Comment[];
@@ -353,6 +355,7 @@ export type TabParamList = {
 
 export type PostCreationParamList = {
   Home: undefined;
+  QuickPost: undefined;
   ValidateReceipt: undefined;
   SelectFriends: undefined;
   AssignItems: undefined;

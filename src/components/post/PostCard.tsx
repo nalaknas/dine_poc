@@ -130,6 +130,12 @@ export function PostCard({ post, onLike, onComment }: PostCardProps) {
                 </Text>
               </View>
             )}
+            {post.is_quick_post && (
+              <View className="flex-row items-center bg-gold/10 px-1.5 py-0.5 rounded-md self-start mt-0.5">
+                <Ionicons name="flash" size={10} color="#F59E0B" />
+                <Text className="text-[10px] text-gold ml-0.5 font-semibold">Quick Post</Text>
+              </View>
+            )}
           </View>
         </AnimatedPressable>
 
