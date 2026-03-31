@@ -72,6 +72,10 @@ export function SettingsScreen() {
           <Row label="Tip Split" value={tipSplitMethod === 'proportional' ? 'By items' : 'Equal'} onPress={() => setTipSplitMethod(tipSplitMethod === 'proportional' ? 'equal' : 'proportional')} last />
         </Section>
 
+        <Section title="Notifications">
+          <Row label="Notification Preferences" onPress={() => (navigation as any).navigate('NotificationPreferences')} last />
+        </Section>
+
         <Section title="Account">
           <Row label="Edit Profile" onPress={() => (navigation as any).navigate('EditProfile')} />
           <Row label="Venmo" value={profile?.venmo_username ? `@${profile.venmo_username}` : 'Not connected'} onPress={() => (navigation as any).navigate('EditProfile')} />

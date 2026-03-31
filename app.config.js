@@ -51,6 +51,13 @@ module.exports = {
           contactsPermission: 'Dine uses your contacts to help you find and tag friends you dine with.',
         },
       ],
+      [
+        'expo-notifications',
+        {
+          icon: './assets/icon-gold.png',
+          color: '#007AFF',
+        },
+      ],
     ],
     extra: {
       supabaseUrl: process.env.SUPABASE_URL,
