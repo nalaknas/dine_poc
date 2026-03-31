@@ -33,15 +33,17 @@ export function PostCard({ post, onLike, onComment }: PostCardProps) {
   const [showPlaylistPicker, setShowPlaylistPicker] = useState(false);
   const isTogglingRef = useRef(false);
   const shareCardRef = useRef<ShareCardHandle>(null);
+  const [showShareCard, setShowShareCard] = useState(false);
 
   const handleShare = useCallback(async () => {
+    // Lazy mount: show ShareCard, wait for render, then capture
+    setShowShareCard(true);
+    // Allow a tick for the ViewShot + image to render
+    await new Promise((resolve) => setTimeout(resolve, 500));
     try {
       if (shareCardRef.current) {
         const uri = await shareCardRef.current.capture();
-        await Share.share({
-          url: uri,
-          message: `Check out ${post.restaurant_name} on Dine! dine.app/post/${post.id}`,
-        });
+        await Share.share({ url: uri });
       } else {
         await Share.share({
           message: `Check out ${post.restaurant_name} on Dine! dine.app/post/${post.id}`,
@@ -49,6 +51,8 @@ export function PostCard({ post, onLike, onComment }: PostCardProps) {
       }
     } catch {
       // User cancelled share
+    } finally {
+      setShowShareCard(false);
     }
   }, [post]);
 
@@ -288,8 +292,8 @@ export function PostCard({ post, onLike, onComment }: PostCardProps) {
         </Pressable>
       </View>
 
-      {/* ShareCard (off-screen, captured for share image) */}
-      <ShareCard ref={shareCardRef} post={post} />
+      {/* ShareCard (lazy mount — only rendered when user taps share) */}
+      {showShareCard && <ShareCard ref={shareCardRef} post={post} />}
 
       {/* Playlist picker modal (long press bookmark) */}
       {user && (

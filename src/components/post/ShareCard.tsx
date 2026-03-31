@@ -15,8 +15,9 @@ interface ShareCardProps {
 }
 
 /**
- * A branded card rendered off-screen, captured as an image for sharing.
- * Shows: restaurant name, photo, rating, star dishes, tier badge, and watermark.
+ * A branded card captured as an image for sharing.
+ * Uses opacity: 0 (not off-screen positioning) so iOS still rasterizes the view.
+ * Inline styles are intentional — ViewShot captures may not work with NativeWind.
  */
 export const ShareCard = forwardRef<ShareCardHandle, ShareCardProps>(
   ({ post }, ref) => {
@@ -38,7 +39,7 @@ export const ShareCard = forwardRef<ShareCardHandle, ShareCardProps>(
     const photo = post.food_photos?.[0];
 
     return (
-      <View style={{ position: 'absolute', left: -9999, top: -9999 }}>
+      <View style={{ position: 'absolute', opacity: 0 }} pointerEvents="none" collapsable={false}>
         <ViewShot
           ref={viewShotRef}
           options={{ format: 'png', quality: 1, result: 'tmpfile' }}
@@ -95,9 +96,9 @@ export const ShareCard = forwardRef<ShareCardHandle, ShareCardProps>(
                 <Text style={{ fontSize: 12, fontWeight: '700', color: '#6B7280', marginBottom: 8 }}>
                   STAR DISHES
                 </Text>
-                {starDishes.map((dish) => (
+                {starDishes.map((dish, idx) => (
                   <View
-                    key={dish.dish_name}
+                    key={`${dish.dish_name}-${idx}`}
                     style={{
                       flexDirection: 'row', alignItems: 'center', marginBottom: 6,
                     }}
@@ -143,3 +144,5 @@ export const ShareCard = forwardRef<ShareCardHandle, ShareCardProps>(
     );
   },
 );
+
+ShareCard.displayName = 'ShareCard';
