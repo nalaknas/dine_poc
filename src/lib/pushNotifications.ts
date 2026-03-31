@@ -2,6 +2,7 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
+import * as Linking from 'expo-linking';
 import { supabase } from './supabase';
 
 // Configure how notifications appear when app is in foreground
@@ -124,4 +125,44 @@ export async function updateNotificationPreferences(
   if (error) {
     console.error('Failed to update notification preferences:', error.message);
   }
+}
+
+/**
+ * Set the app badge count (shown on the app icon).
+ * Call with 0 to clear the badge.
+ */
+export async function setBadgeCount(count: number): Promise<void> {
+  await Notifications.setBadgeCountAsync(count);
+}
+
+/**
+ * Clear the app badge (convenience wrapper).
+ */
+export async function clearBadge(): Promise<void> {
+  await Notifications.setBadgeCountAsync(0);
+}
+
+/**
+ * Set up a listener for when the user taps a push notification.
+ * Navigates to the deep link URL embedded in the notification data.
+ * Returns a cleanup function to remove the listener.
+ */
+export function addNotificationResponseListener(
+): Notifications.Subscription {
+  return Notifications.addNotificationResponseReceivedListener((response) => {
+    const url = response.notification.request.content.data?.url as string | undefined;
+    if (url) {
+      Linking.openURL(url);
+    }
+  });
+}
+
+/**
+ * Set up a listener for notifications received while the app is in the foreground.
+ * Returns a cleanup function to remove the listener.
+ */
+export function addNotificationReceivedListener(
+  callback: (notification: Notifications.Notification) => void,
+): Notifications.Subscription {
+  return Notifications.addNotificationReceivedListener(callback);
 }
