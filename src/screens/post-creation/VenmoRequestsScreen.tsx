@@ -5,6 +5,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import { Avatar } from '../../components/ui/Avatar';
 import { openVenmoRequest, buildMealNote } from '../../services/venmo-service';
+import { createSplitRecord } from '../../services/referral-service';
+import { useAuthStore } from '../../stores/authStore';
 import { formatCurrency } from '../../utils/format';
 import type { PersonBreakdown, RootStackParamList } from '../../types';
 
@@ -14,8 +16,24 @@ export function VenmoRequestsScreen() {
   const navigation = useNavigation<any>();
   const { params } = useRoute<VenmoRoute>();
   const { breakdowns, restaurantName, splitId } = params;
+  const { user } = useAuthStore();
 
   const [requested, setRequested] = useState<Set<string>>(new Set());
+  const [activeSplitId, setActiveSplitId] = useState<string | undefined>(splitId);
+
+  // Create a persisted split record for deep link sharing
+  React.useEffect(() => {
+    if (!breakdowns || !user || activeSplitId) return;
+    createSplitRecord(
+      null,
+      restaurantName ?? 'Dinner',
+      new Date().toISOString().split('T')[0],
+      user.id,
+      breakdowns.map((b) => ({ displayName: b.friend.display_name, amount: b.total })),
+    )
+      .then(setActiveSplitId)
+      .catch((err) => console.warn('[VenmoRequests] Failed to create split record:', err?.message));
+  }, [breakdowns, user, activeSplitId]);
 
   // Arrived via deep link (dine://split/:splitId) — breakdowns not yet loaded.
   // TODO: fetch split data from Supabase using splitId when split persistence is implemented.
@@ -45,7 +63,7 @@ export function VenmoRequestsScreen() {
       await openVenmoRequest({
         venmoUsername: breakdown.friend.venmo_username,
         amount: breakdown.total,
-        note: buildMealNote(restaurantName),
+        note: buildMealNote(restaurantName ?? 'Dinner', activeSplitId),
       });
       setRequested((prev) => new Set([...prev, breakdown.friend.id]));
     } catch {
