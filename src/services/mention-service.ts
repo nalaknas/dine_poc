@@ -4,6 +4,8 @@ import { createNotification } from './user-service';
 
 const MENTION_REGEX = /@(\w+)/g;
 
+const MAX_MENTIONS_PER_TEXT = 10;
+
 /** Search users by username or display_name prefix for autocomplete. */
 export async function searchUsersForMention(
   query: string,
@@ -11,10 +13,14 @@ export async function searchUsersForMention(
 ): Promise<Pick<User, 'id' | 'username' | 'display_name' | 'avatar_url'>[]> {
   if (!query.trim()) return [];
 
+  // Sanitize query to prevent PostgREST filter injection
+  const sanitized = query.replace(/[%_,.()"'\\]/g, '');
+  if (!sanitized) return [];
+
   const { data, error } = await supabase
     .from('users')
     .select('id, username, display_name, avatar_url')
-    .or(`username.ilike.${query}%,display_name.ilike.${query}%`)
+    .or(`username.ilike.${sanitized}%,display_name.ilike.${sanitized}%`)
     .limit(limit);
 
   if (error) throw error;
@@ -52,13 +58,13 @@ export async function resolveUsernames(
   return map;
 }
 
-/** Create mention notifications for all @mentioned users in text. */
+/** Create mention notifications for all @mentioned users in text (max 10). */
 export async function createMentionNotifications(
   text: string,
   fromUserId: string,
   postId: string,
 ): Promise<void> {
-  const usernames = parseMentions(text);
+  const usernames = parseMentions(text).slice(0, MAX_MENTIONS_PER_TEXT);
   if (usernames.length === 0) return;
 
   const usernameToId = await resolveUsernames(usernames);

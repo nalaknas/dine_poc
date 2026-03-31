@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View, TextInput, FlatList, TouchableOpacity, Text,
   type TextInputProps, type NativeSyntheticEvent, type TextInputSelectionChangeEventData,
@@ -20,6 +20,13 @@ export function MentionInput({ value, onChangeText, ...inputProps }: MentionInpu
   const cursorRef = useRef(0);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    };
+  }, []);
+
   const handleSelectionChange = useCallback(
     (e: NativeSyntheticEvent<TextInputSelectionChangeEventData>) => {
       cursorRef.current = e.nativeEvent.selection.end;
@@ -33,7 +40,7 @@ export function MentionInput({ value, onChangeText, ...inputProps }: MentionInpu
 
       // Find the @ trigger near the cursor
       const cursor = Math.min(cursorRef.current, text.length);
-      const textBeforeCursor = text.slice(0, cursor + 1);
+      const textBeforeCursor = text.slice(0, cursor);
       const atMatch = textBeforeCursor.match(/@(\w*)$/);
 
       if (atMatch) {
@@ -74,8 +81,11 @@ export function MentionInput({ value, onChangeText, ...inputProps }: MentionInpu
 
       const before = value.slice(0, atIndex);
       const after = value.slice(atIndex + 1 + (mentionQuery?.length ?? 0));
-      const newText = `${before}@${selectedUser.username} ${after}`;
+      const insertion = `@${selectedUser.username} `;
+      const newText = `${before}${insertion}${after}`;
 
+      // Update cursor to end of inserted mention
+      cursorRef.current = atIndex + insertion.length;
       onChangeText(newText);
       setSuggestions([]);
       setMentionQuery(null);
