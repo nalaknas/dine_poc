@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRoute, useNavigation, type RouteProp } from '@react-navigation/native';
 import { Avatar } from '../../components/ui/Avatar';
+import { TierBadge } from '../../components/ui/TierBadge';
 import { useAuthStore } from '../../stores/authStore';
 import { useUserProfileStore } from '../../stores/userProfileStore';
 import { getUserById } from '../../services/auth-service';
@@ -119,7 +120,10 @@ export function UserProfileScreen() {
               </View>
 
               <View className="mt-3">
-                <Text className="text-base font-semibold text-text-primary">{profile?.display_name}</Text>
+                <View className="flex-row items-center">
+                  <Text className="text-base font-semibold text-text-primary">{profile?.display_name}</Text>
+                  {profile?.current_tier && <TierBadge tier={profile.current_tier} variant="profile" className="ml-2" />}
+                </View>
                 {profile?.bio ? <Text className="text-sm text-text-secondary mt-0.5">{profile.bio}</Text> : null}
                 {profile?.city && (
                   <Text className="text-xs text-text-secondary mt-1">📍 {profile.city}{profile.state ? `, ${profile.state}` : ''}</Text>

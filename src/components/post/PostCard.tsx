@@ -9,6 +9,7 @@ import { PhotoCarousel } from './PhotoCarousel';
 import { StarDishes } from './StarDishes';
 import { LikeButton } from './LikeButton';
 import { AnimatedPressable } from '../ui/AnimatedPressable';
+import { TierBadge } from '../ui/TierBadge';
 import { Shadows } from '../../constants/shadows';
 import type { Post, RootStackParamList } from '../../types';
 import { formatTimeAgo } from '../../utils/format';
@@ -80,9 +81,12 @@ export function PostCard({ post, onLike, onComment }: PostCardProps) {
             size={38}
           />
           <View style={{ marginLeft: 8, flex: 1 }}>
-            <Text style={{ fontSize: 14, fontWeight: '600', color: '#1F2937' }}>
-              {author?.username ?? 'unknown'}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: '#1F2937' }}>
+                {author?.username ?? 'unknown'}
+              </Text>
+              {author?.current_tier && <TierBadge tier={author.current_tier} variant="inline" />}
+            </View>
             <Pressable onPress={handleRestaurantPress}>
               <View
                 style={{
