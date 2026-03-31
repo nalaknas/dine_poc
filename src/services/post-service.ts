@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import type { Post, Comment, CreatePostDraft, PersonBreakdown } from '../types';
+import type { Post, Comment, CreatePostDraft, PersonBreakdown, UserTier } from '../types';
 import { createNotification } from './user-service';
 import { getFollowingIds } from './user-service';
 
@@ -478,6 +478,7 @@ export async function calculatePostCredits(
   credits: number;
   breakdown: Record<string, number>;
   streak?: { weeks: number; multiplier: number; bonusCredits: number };
+  newTier?: UserTier;
 }> {
   const { data, error } = await supabase.functions.invoke('calculate-post-credits', {
     body: { postId },
@@ -488,6 +489,7 @@ export async function calculatePostCredits(
     credits: data?.credits ?? 0,
     breakdown: data?.breakdown ?? {},
     streak: data?.streak,
+    newTier: data?.newTier as UserTier | undefined,
   };
 }
 
