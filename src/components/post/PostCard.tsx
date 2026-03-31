@@ -131,24 +131,9 @@ export function PostCard({ post, onLike, onComment }: PostCardProps) {
               </View>
             )}
             {post.is_quick_post && (
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  backgroundColor: 'rgba(245,158,11,0.08)',
-                  paddingHorizontal: 6,
-                  paddingVertical: 2,
-                  borderRadius: 6,
-                  alignSelf: 'flex-start',
-                  marginTop: 2,
-                }}
-              >
+              <View className="flex-row items-center bg-gold/10 px-1.5 py-0.5 rounded-md self-start mt-0.5">
                 <Ionicons name="flash" size={10} color="#F59E0B" />
-                <Text
-                  style={{ fontSize: 10, color: '#F59E0B', marginLeft: 2, fontWeight: '600' }}
-                >
-                  Quick Post
-                </Text>
+                <Text className="text-[10px] text-gold ml-0.5 font-semibold">Quick Post</Text>
               </View>
             )}
           </View>

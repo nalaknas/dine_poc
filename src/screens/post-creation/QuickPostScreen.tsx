@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, Image,
   ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform, Alert,
@@ -33,7 +33,7 @@ export function QuickPostScreen() {
   // Tier-up celebration state
   const [showTierUp, setShowTierUp] = useState(false);
   const [newTier, setNewTier] = useState<UserTier>('rock');
-  const [pendingNav, setPendingNav] = useState<(() => void) | null>(null);
+  const pendingNavRef = useRef<(() => void) | null>(null);
 
   const pickPhotos = async (source: 'camera' | 'library') => {
     if (photos.length >= 5) {
@@ -149,7 +149,7 @@ export function QuickPostScreen() {
       };
 
       if (tierChanged) {
-        setPendingNav(() => navigateAway);
+        pendingNavRef.current = navigateAway;
         setShowTierUp(true);
       } else {
         navigateAway();
@@ -168,11 +168,11 @@ export function QuickPostScreen() {
 
   const handleTierUpDismiss = useCallback(() => {
     setShowTierUp(false);
-    if (pendingNav) {
-      pendingNav();
-      setPendingNav(null);
+    if (pendingNavRef.current) {
+      pendingNavRef.current();
+      pendingNavRef.current = null;
     }
-  }, [pendingNav]);
+  }, []);
 
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['bottom']}>
