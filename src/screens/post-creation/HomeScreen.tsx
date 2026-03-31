@@ -128,8 +128,23 @@ export function HomeScreen() {
   return (
     <SafeAreaView className="flex-1 bg-background" edges={['bottom']}>
       <ScrollView className="flex-1" contentContainerStyle={{ padding: 16 }}>
+        {/* Quick Post option */}
+        <TouchableOpacity
+          onPress={() => navigation.navigate('QuickPost')}
+          className="flex-row items-center bg-gold/10 border border-gold/30 rounded-xl p-4 mb-6"
+        >
+          <View className="w-10 h-10 bg-gold/20 rounded-xl items-center justify-center mr-3">
+            <Ionicons name="flash" size={22} color="#F59E0B" />
+          </View>
+          <View className="flex-1">
+            <Text className="text-base font-semibold text-text-primary">Quick Post</Text>
+            <Text className="text-xs text-text-secondary">Skip the receipt — just share a meal</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color="#F59E0B" />
+        </TouchableOpacity>
+
         <Text className="text-base text-text-secondary mb-6 text-center">
-          Scan your receipt to split the bill, or enter manually.
+          Or scan your receipt to split the bill.
         </Text>
 
         {/* Action buttons */}
