@@ -37,6 +37,22 @@ const DISCOVERY_CREDITS = 15;
 const ATTRIBUTION_CREDITS = 10;
 const MAX_ATTRIBUTION_PER_RESTAURANT = 500;
 
+/** Engagement-based attribution constants */
+const ATTRIBUTION_WINDOW_DAYS = 30;
+const ENGAGEMENT_CREDIT_VALUES: Record<string, number> = {
+  like: 50,
+  comment: 75,
+  bookmark: 100,
+};
+
+interface EngagementAttribution {
+  post_author_id: string;
+  engagement_type: string;
+  original_post_id: string;
+  credits_awarded: number;
+  days_since_engagement: number;
+}
+
 function getISOWeek(date: Date): string {
   const d = new Date(date);
   d.setHours(0, 0, 0, 0);
@@ -455,8 +471,144 @@ serve(async (req) => {
       console.warn('Referral credit check failed:', refErr?.message);
     }
 
+    // ── Engagement-based attribution credit logic ─────────────────────────────
+    // When a user posts about a restaurant, check if they previously engaged
+    // (liked, commented, bookmarked) with another author's post about the same
+    // restaurant within the attribution window. If so, credit that author for
+    // influencing this visit.
+
+    const engagementAttributions: EngagementAttribution[] = [];
+
+    if (restaurantName.trim().length > 0) {
+      try {
+        const windowStart = new Date();
+        windowStart.setDate(windowStart.getDate() - ATTRIBUTION_WINDOW_DAYS);
+
+        // Find engagements where the current poster interacted with posts
+        // about this restaurant from other authors within the attribution window
+        const { data: engagements, error: engErr } = await supabase
+          .from('post_engagements')
+          .select('post_author_id, engagement_type, post_id, created_at')
+          .eq('user_id', post.author_id)
+          .ilike('restaurant_name', escapedName)
+          .neq('post_author_id', post.author_id)
+          .gte('created_at', windowStart.toISOString());
+
+        if (engErr) {
+          console.error('Failed to query post_engagements:', engErr.message);
+        } else if (engagements && engagements.length > 0) {
+          // Group by post_author_id, keeping only the highest-value engagement per author
+          const authorBestEngagement = new Map<
+            string,
+            { engagement_type: string; post_id: string; credits: number; created_at: string }
+          >();
+
+          for (const eng of engagements) {
+            const creditValue = ENGAGEMENT_CREDIT_VALUES[eng.engagement_type] ?? 0;
+            const existing = authorBestEngagement.get(eng.post_author_id);
+
+            if (!existing || creditValue > existing.credits) {
+              authorBestEngagement.set(eng.post_author_id, {
+                engagement_type: eng.engagement_type,
+                post_id: eng.post_id,
+                credits: creditValue,
+                created_at: eng.created_at,
+              });
+            }
+          }
+
+          // Award credits to each attributed author
+          for (const [authorId, best] of authorBestEngagement) {
+            // Idempotency: check for existing attribution credit for this
+            // (source_user_id=poster, user_id=author, restaurant) combo in the last 30 days
+            const { data: existingAttr } = await supabase
+              .from('credit_events')
+              .select('id')
+              .eq('type', 'attribution')
+              .eq('source_user_id', post.author_id)
+              .eq('user_id', authorId)
+              .contains('metadata', { restaurant_name: restaurantName })
+              .gte('created_at', windowStart.toISOString())
+              .limit(1)
+              .maybeSingle();
+
+            if (existingAttr) {
+              continue; // Already attributed in this window
+            }
+
+            // Per-restaurant cap: check how many attribution credits this author
+            // has already earned for this restaurant
+            const { data: capData } = await supabase
+              .from('credit_events')
+              .select('credits')
+              .eq('type', 'attribution')
+              .eq('user_id', authorId)
+              .contains('metadata', { restaurant_name: restaurantName });
+
+            const currentTotal = (capData ?? []).reduce(
+              (sum: number, e: { credits: number }) => sum + e.credits, 0,
+            );
+
+            if (currentTotal >= MAX_ATTRIBUTION_PER_RESTAURANT) {
+              continue; // Cap reached for this restaurant
+            }
+
+            // Clamp credits if near cap
+            const allowedCredits = Math.min(
+              best.credits,
+              MAX_ATTRIBUTION_PER_RESTAURANT - currentTotal,
+            );
+
+            const daysSinceEngagement = Math.round(
+              (Date.now() - new Date(best.created_at).getTime()) / (1000 * 60 * 60 * 24),
+            );
+
+            const { error: attrError } = await supabase.rpc('add_credits', {
+              p_user_id: authorId,
+              p_type: 'attribution',
+              p_amount: allowedCredits,
+              p_source_post_id: postId,
+              p_source_user_id: post.author_id,
+              p_metadata: {
+                attribution_type: 'engagement',
+                engagement_type: best.engagement_type,
+                original_post_id: best.post_id,
+                new_post_id: postId,
+                restaurant_name: restaurantName,
+                days_since_engagement: daysSinceEngagement,
+              },
+            });
+
+            if (attrError) {
+              console.error(
+                `Failed to award engagement attribution to ${authorId}:`,
+                attrError.message,
+              );
+            } else {
+              engagementAttributions.push({
+                post_author_id: authorId,
+                engagement_type: best.engagement_type,
+                original_post_id: best.post_id,
+                credits_awarded: allowedCredits,
+                days_since_engagement: daysSinceEngagement,
+              });
+            }
+          }
+        }
+      } catch (engAttrErr: any) {
+        console.warn('Engagement attribution check failed:', engAttrErr?.message);
+      }
+    }
+
     return new Response(
-      JSON.stringify({ credits: multipliedTotal, breakdown, streak, discovery, newTier }),
+      JSON.stringify({
+        credits: multipliedTotal,
+        breakdown,
+        streak,
+        discovery,
+        newTier,
+        engagementAttributions,
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     );
   } catch (error: any) {

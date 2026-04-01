@@ -8,7 +8,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRoute, useNavigation, type RouteProp } from '@react-navigation/native';
 import { supabase } from '../../lib/supabase';
 import { formatTimeAgo } from '../../utils/format';
-import type { Post, DishRating, RootStackParamList } from '../../types';
+import { useAuthStore } from '../../stores/authStore';
+import { getFriendVisits } from '../../services/social-proof-service';
+import { FriendsWhoveBeenHere } from '../../components/social-proof/FriendsWhoveBeenHere';
+import { FriendStarDishes } from '../../components/social-proof/FriendStarDishes';
+import type { Post, DishRating, FriendVisit, RootStackParamList } from '../../types';
 
 const { width } = Dimensions.get('window');
 const PHOTO_SIZE = width / 3;
@@ -83,7 +87,9 @@ interface AggregatedDish {
 export function RestaurantDetailScreen() {
   const { params } = useRoute<RestaurantRoute>();
   const navigation = useNavigation<any>();
+  const { user } = useAuthStore();
   const [posts, setPosts] = useState<Post[]>([]);
+  const [friendVisits, setFriendVisits] = useState<FriendVisit[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({
     'Appetizers & Sides': true,
@@ -98,14 +104,22 @@ export function RestaurantDetailScreen() {
   }, [params.name]);
 
   const load = async () => {
-    const { data } = await supabase
+    const postsPromise = supabase
       .from('posts')
       .select('*, author:users!posts_author_id_fkey(*), dish_ratings(*)')
-      .ilike('restaurant_name', `%${params.name}%`)
+      .ilike('restaurant_name', params.name.replace(/%/g, '\\%').replace(/_/g, '\\_'))
       .eq('is_public', true)
       .order('created_at', { ascending: false })
       .limit(50);
+
+    // Fetch friend visits in parallel when user is logged in
+    const friendPromise = user
+      ? getFriendVisits(user.id, params.name).catch(() => [] as FriendVisit[])
+      : Promise.resolve([] as FriendVisit[]);
+
+    const [{ data }, friends] = await Promise.all([postsPromise, friendPromise]);
     setPosts((data ?? []) as Post[]);
+    setFriendVisits(friends);
     setIsLoading(false);
   };
 
@@ -417,6 +431,12 @@ export function RestaurantDetailScreen() {
             <Text className="text-xs text-text-secondary mt-0.5">Dishes Rated</Text>
           </View>
         </View>
+
+        {/* ── Friends Who've Been Here (Social Proof) ───────────────────── */}
+        <FriendsWhoveBeenHere friends={friendVisits} />
+
+        {/* ── Friends' Star Dishes ──────────────────────────────────────── */}
+        <FriendStarDishes friends={friendVisits} />
 
         {/* ── Tags ───────────────────────────────────────────────────────── */}
         {topTags.length > 0 && (

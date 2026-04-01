@@ -15,6 +15,7 @@ import { ShareCard, type ShareCardHandle } from './ShareCard';
 import { Shadows } from '../../constants/shadows';
 import { toggleBookmark, isRestaurantBookmarked } from '../../services/bookmark-service';
 import { useAuthStore } from '../../stores/authStore';
+
 import type { Post, RootStackParamList } from '../../types';
 import { formatTimeAgo } from '../../utils/format';
 
@@ -143,28 +144,28 @@ export function PostCard({ post, onLike, onComment }: PostCardProps) {
               </Text>
               {author?.current_tier && <TierBadge tier={author.current_tier} variant="inline" />}
             </View>
-            <Pressable onPress={handleRestaurantPress}>
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  backgroundColor: 'rgba(0,122,255,0.08)',
-                  paddingHorizontal: 6,
-                  paddingVertical: 2,
-                  borderRadius: 6,
-                  alignSelf: 'flex-start',
-                  marginTop: 2,
-                }}
-              >
-                <Ionicons name="restaurant" size={10} color="#007AFF" />
-                <Text
-                  style={{ fontSize: 11, color: '#007AFF', marginLeft: 3, fontWeight: '500' }}
-                  numberOfLines={1}
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+              <Pressable onPress={handleRestaurantPress}>
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    backgroundColor: 'rgba(0,122,255,0.08)',
+                    paddingHorizontal: 6,
+                    paddingVertical: 2,
+                    borderRadius: 6,
+                  }}
                 >
-                  {post.restaurant_name}
-                </Text>
-              </View>
-            </Pressable>
+                  <Ionicons name="restaurant" size={10} color="#007AFF" />
+                  <Text
+                    style={{ fontSize: 11, color: '#007AFF', marginLeft: 3, fontWeight: '500' }}
+                    numberOfLines={1}
+                  >
+                    {post.restaurant_name}
+                  </Text>
+                </View>
+              </Pressable>
+            </View>
             {post.is_discoverer && (
               <View
                 style={{

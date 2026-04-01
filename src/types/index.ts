@@ -321,6 +321,29 @@ export interface CreditEvent {
   created_at: string;
 }
 
+// ─── Leaderboard ─────────────────────────────────────────────────────────────
+
+export type LeaderboardTimePeriod = 'week' | 'month' | 'quarter' | 'year';
+
+export interface LeaderboardEntry {
+  rank: number;
+  restaurant_name: string;
+  city: string;
+  state?: string;
+  cuisine_type?: string;
+  avg_rating: number;
+  post_count: number;
+  unique_visitors: number;
+  leaderboard_score: number;
+  top_dishes: LeaderboardDish[];
+}
+
+export interface LeaderboardDish {
+  dish_name: string;
+  avg_rating: number;
+  mention_count: number;
+}
+
 // ─── Navigation ───────────────────────────────────────────────────────────────
 
 export type RootStackParamList = {
@@ -344,6 +367,7 @@ export type RootStackParamList = {
   VenmoRequests: { breakdowns?: PersonBreakdown[]; restaurantName?: string; splitId?: string };
   CreditDashboard: undefined;
   SavedRestaurants: undefined;
+  Leaderboard: { city?: string; cuisine?: string; period?: LeaderboardTimePeriod };
 };
 
 export type TabParamList = {
@@ -365,6 +389,34 @@ export type PostCreationParamList = {
   AddCaption: undefined;
   PostPrivacy: undefined;
 };
+
+// ─── Post Engagement (Attribution Tracking) ─────────────────────────────────
+
+export type EngagementType = 'like' | 'comment' | 'bookmark';
+
+export interface PostEngagement {
+  id: string;
+  user_id: string;
+  post_id: string;
+  post_author_id: string;
+  restaurant_name: string;
+  engagement_type: EngagementType;
+  created_at: string;
+}
+
+// ─── Social Proof ───────────────────────────────────────────────────────────
+
+/** A friend (someone the current user follows) who has posted about a restaurant */
+export interface FriendVisit {
+  userId: string;
+  displayName: string;
+  username: string;
+  avatarUrl?: string;
+  visitCount: number;
+  latestRating: number;
+  latestVisitDate: string;
+  starDishes: { dishName: string; rating: number }[];
+}
 
 // ─── Error ────────────────────────────────────────────────────────────────────
 

@@ -165,3 +165,48 @@ export function ExploreSkeleton() {
     </View>
   );
 }
+
+export function LeaderboardSkeleton() {
+  return (
+    <View style={{ padding: 16, gap: 12 }}>
+      {/* Filter pill rows */}
+      {[0, 1, 2].map((row) => (
+        <View key={row} style={{ flexDirection: 'row', gap: 8 }}>
+          {[0, 1, 2, 3].map((i) => (
+            <SkeletonRect key={i} width={70 + i * 10} height={34} borderRadius={17} />
+          ))}
+        </View>
+      ))}
+      {/* Card skeletons */}
+      {[0, 1, 2, 3, 4].map((i) => (
+        <View
+          key={i}
+          style={{
+            backgroundColor: '#F9FAFB',
+            borderRadius: 16,
+            padding: 16,
+            gap: 10,
+          }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <SkeletonCircle size={44} />
+            <View style={{ flex: 1, gap: 6 }}>
+              <SkeletonRect width="55%" height={14} />
+              <SkeletonRect width="35%" height={10} />
+            </View>
+            <SkeletonRect width={50} height={28} borderRadius={8} />
+          </View>
+          <View style={{ flexDirection: 'row', gap: 16 }}>
+            <SkeletonRect width={60} height={12} />
+            <SkeletonRect width={60} height={12} />
+            <SkeletonRect width={60} height={12} />
+          </View>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <SkeletonRect width={80} height={26} borderRadius={13} />
+            <SkeletonRect width={90} height={26} borderRadius={13} />
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}

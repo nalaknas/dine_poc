@@ -28,6 +28,7 @@ import { RecommendationsScreen } from '../screens/recommendations/Recommendation
 import { VenmoRequestsScreen } from '../screens/post-creation/VenmoRequestsScreen';
 import { CreditDashboardScreen } from '../screens/credits/CreditDashboardScreen';
 import { SavedRestaurantsScreen } from '../screens/profile/SavedRestaurantsScreen';
+import { LeaderboardScreen } from '../screens/leaderboard/LeaderboardScreen';
 import type { RootStackParamList } from '../types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -222,6 +223,11 @@ export function RootNavigator() {
               name="SavedRestaurants"
               component={SavedRestaurantsScreen}
               options={{ headerShown: true, title: 'Saved Restaurants' }}
+            />
+            <Stack.Screen
+              name="Leaderboard"
+              component={LeaderboardScreen}
+              options={{ headerShown: true, title: 'Leaderboard' }}
             />
           </>
         )}

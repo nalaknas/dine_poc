@@ -10,6 +10,7 @@ import { Avatar } from '../../components/ui/Avatar';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { ExploreSkeleton } from '../../components/ui/Skeleton';
 import { AnimatedPressable } from '../../components/ui/AnimatedPressable';
+import { LeaderboardBanner } from '../../components/leaderboard/LeaderboardBanner';
 import { Shadows } from '../../constants/shadows';
 import { searchUsers, followUser, unfollowUser } from '../../services/user-service';
 import { useAuthStore } from '../../stores/authStore';
@@ -103,6 +104,8 @@ export function ExploreScreen() {
           )}
         </View>
       </View>
+
+      {!hasSearched && !isSearching && <LeaderboardBanner />}
 
       {!hasSearched && !isSearching && (
         <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
