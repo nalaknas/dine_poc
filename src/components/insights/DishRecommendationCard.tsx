@@ -50,7 +50,7 @@ export function DishRecommendationCard({ recommendation, onPress }: DishRecommen
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
             <Ionicons name="star" size={13} color="#F59E0B" />
             <Text style={{ fontSize: 12, fontWeight: '600', color: '#1F2937' }}>
-              {avg_rating.toFixed(1)}
+              {(avg_rating ?? 0).toFixed(1)}
             </Text>
           </View>
 

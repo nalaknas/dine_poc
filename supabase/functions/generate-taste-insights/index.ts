@@ -145,7 +145,10 @@ ${JSON.stringify(dataSummary, null, 2)}`;
       },
       body: JSON.stringify({
         model: 'gpt-4o-mini',
-        messages: [{ role: 'user', content: gptPrompt }],
+        messages: [
+          { role: 'system', content: gptPrompt.split('User\'s dining data:')[0] + 'User\'s dining data will be provided in the next message.' },
+          { role: 'user', content: JSON.stringify(dataSummary) },
+        ],
         temperature: 0.7,
         max_tokens: 1500,
         response_format: { type: 'json_object' },
@@ -183,15 +186,15 @@ ${JSON.stringify(dataSummary, null, 2)}`;
         color: String(i.color ?? '#007AFF'),
       }));
 
-    // ── Step 7: Cache results in user_taste_profiles ────────────────────────
+    // ── Step 7: Cache results in user_taste_profiles (upsert to handle missing rows)
     const now = new Date().toISOString();
     const { error: updateError } = await supabase
       .from('user_taste_profiles')
-      .update({
+      .upsert({
+        user_id,
         insights_cache: insights,
         insights_generated_at: now,
-      })
-      .eq('user_id', user_id);
+      }, { onConflict: 'user_id' });
 
     if (updateError) {
       console.error('Failed to cache insights:', updateError);

@@ -122,6 +122,11 @@ AS $$
 DECLARE
   v_user_embedding vector(1536);
 BEGIN
+  -- Only allow users to fetch their own recommendations
+  IF p_user_id != auth.uid() THEN
+    RAISE EXCEPTION 'Forbidden: can only fetch recommendations for yourself';
+  END IF;
+
   -- Fetch the requesting user's taste embedding
   SELECT embedding INTO v_user_embedding
   FROM public.user_taste_profiles
@@ -192,6 +197,11 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
+  -- Only allow users to fetch their own cuisine breakdown
+  IF p_user_id != auth.uid() THEN
+    RAISE EXCEPTION 'Forbidden: can only fetch cuisine breakdown for yourself';
+  END IF;
+
   RETURN QUERY
   WITH rated AS (
     SELECT
