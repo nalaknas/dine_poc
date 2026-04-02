@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View, Text, SectionList, ScrollView, RefreshControl, TouchableOpacity,
 } from 'react-native';
@@ -62,18 +62,21 @@ export function PerksCatalogScreen() {
 
   const userTier = (profile?.current_tier ?? 'rock') as UserTier;
 
+  const citiesLoadedRef = useRef(false);
+
   const loadData = useCallback(async () => {
     if (!user) return;
     setError(null);
     try {
+      // When no city filter, use unfiltered results to also extract cities
       const data = await fetchAvailablePerks(user.id, selectedCity ?? undefined);
       setPerks(data);
 
-      // Extract unique cities from all results (not filtered)
-      if (cities.length === 0) {
-        const allData = await fetchAvailablePerks(user.id);
-        const uniqueCities = [...new Set(allData.map((p) => p.city).filter(Boolean))].sort();
+      // Extract unique cities from unfiltered results (first load only)
+      if (!citiesLoadedRef.current && !selectedCity) {
+        const uniqueCities = [...new Set(data.map((p) => p.city).filter(Boolean))].sort();
         setCities(uniqueCities);
+        citiesLoadedRef.current = true;
       }
     } catch (e) {
       setError('Failed to load perks. Pull to retry.');

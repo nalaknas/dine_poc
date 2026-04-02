@@ -67,7 +67,7 @@ serve(async (req) => {
       const { data: restaurantAccount } = await db
         .from('restaurant_accounts')
         .select('id')
-        .eq('user_id', authUser.id)
+        .eq('email', authUser.email)
         .eq('partnership_id', redemption.perk?.partnership_id)
         .single();
 

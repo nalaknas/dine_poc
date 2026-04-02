@@ -156,9 +156,9 @@ CREATE OR REPLACE FUNCTION public.check_perk_eligibility(
   p_perk_id  uuid
 )
 RETURNS TABLE (
-  eligible        boolean,
+  is_eligible     boolean,
   reason          text,
-  uses_this_month bigint,
+  uses_remaining  bigint,
   max_uses        integer
 )
 LANGUAGE plpgsql
@@ -201,18 +201,18 @@ BEGIN
 
   -- 3. Check partnership and perk are active
   IF NOT v_partnership_active THEN
-    RETURN QUERY SELECT false, 'Partnership is no longer active'::text, 0::bigint, v_uses_per_month;
+    RETURN QUERY SELECT false, 'Partnership is no longer active'::text, (v_uses_per_month)::bigint, v_uses_per_month;
     RETURN;
   END IF;
 
   IF NOT v_perk_active THEN
-    RETURN QUERY SELECT false, 'Perk is no longer active'::text, 0::bigint, v_uses_per_month;
+    RETURN QUERY SELECT false, 'Perk is no longer active'::text, (v_uses_per_month)::bigint, v_uses_per_month;
     RETURN;
   END IF;
 
   -- 4. Check perk hasn't expired
   IF v_valid_until IS NOT NULL AND v_valid_until <= now() THEN
-    RETURN QUERY SELECT false, 'Perk has expired'::text, 0::bigint, v_uses_per_month;
+    RETURN QUERY SELECT false, 'Perk has expired'::text, (v_uses_per_month)::bigint, v_uses_per_month;
     RETURN;
   END IF;
 
@@ -253,13 +253,13 @@ BEGIN
     RETURN QUERY SELECT
       false,
       format('Monthly limit reached (%s/%s uses)', v_used, v_uses_per_month),
-      v_used,
+      0::bigint,
       v_uses_per_month;
     RETURN;
   END IF;
 
-  -- All checks passed
-  RETURN QUERY SELECT true, 'Eligible'::text, v_used, v_uses_per_month;
+  -- All checks passed — return remaining = max - used
+  RETURN QUERY SELECT true, 'Eligible'::text, (v_uses_per_month - v_used)::bigint, v_uses_per_month;
 END;
 $$;
 

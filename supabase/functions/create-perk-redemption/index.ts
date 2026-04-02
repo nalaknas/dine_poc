@@ -120,7 +120,7 @@ serve(async (req) => {
       );
     }
 
-    // RPC returns a single row with is_eligible, reason, uses_remaining
+    // RPC returns a single row with is_eligible, reason, uses_remaining, max_uses
     const check = Array.isArray(eligibility) ? eligibility[0] : eligibility;
 
     if (!check?.is_eligible) {
@@ -130,23 +130,32 @@ serve(async (req) => {
       );
     }
 
-    // ── Create redemption ─────────────────────────────────────────────────
-    const redemptionCode = generateRedemptionCode();
+    // ── Create redemption (retry on code collision) ───────────────────────
     const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000); // +24h
 
-    const { data: redemption, error: insertError } = await db
-      .from('perk_redemptions')
-      .insert({
-        perk_id,
-        user_id,
-        redemption_code: redemptionCode,
-        status: 'pending',
-        expires_at: expiresAt.toISOString(),
-      })
-      .select()
-      .single();
+    let redemption = null;
+    let insertError = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const redemptionCode = generateRedemptionCode();
+      const result = await db
+        .from('perk_redemptions')
+        .insert({
+          perk_id,
+          user_id,
+          redemption_code: redemptionCode,
+          status: 'pending',
+          expires_at: expiresAt.toISOString(),
+        })
+        .select()
+        .single();
+      insertError = result.error;
+      redemption = result.data;
+      if (!insertError) break;
+      // Only retry on unique constraint violation (code collision)
+      if (!insertError.message?.includes('unique') && !insertError.code?.includes('23505')) break;
+    }
 
-    if (insertError) {
+    if (insertError || !redemption) {
       return new Response(
         JSON.stringify({ error: 'Failed to create redemption' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
