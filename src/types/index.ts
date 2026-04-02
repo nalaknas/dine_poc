@@ -344,6 +344,52 @@ export interface LeaderboardDish {
   mention_count: number;
 }
 
+// ─── Perks & Partnerships ───────────────────────────────────────────────────
+
+export type PerkType = 'discount' | 'free_item' | 'upgrade' | 'experience';
+export type RedemptionStatus = 'pending' | 'redeemed' | 'expired';
+
+export interface PartnerRestaurant {
+  id: string;
+  restaurant_name: string;
+  city: string;
+  state?: string;
+  logo_url?: string;
+  is_active: boolean;
+}
+
+export interface Perk {
+  id: string;
+  partnership_id: string;
+  title: string;
+  description: string;
+  perk_type: PerkType;
+  tier_required: string;
+  uses_per_month: number;
+  is_active: boolean;
+  valid_from?: string;
+  valid_until?: string;
+}
+
+export interface PerkWithRestaurant extends Perk {
+  restaurant_name: string;
+  city: string;
+  uses_remaining: number;
+}
+
+export interface PerkRedemption {
+  id: string;
+  perk_id: string;
+  user_id: string;
+  redemption_code: string;
+  status: RedemptionStatus;
+  expires_at: string;
+  redeemed_at?: string;
+  created_at: string;
+  perk?: Perk;
+  restaurant_name?: string;
+}
+
 // ─── Navigation ───────────────────────────────────────────────────────────────
 
 export type RootStackParamList = {
@@ -368,6 +414,11 @@ export type RootStackParamList = {
   CreditDashboard: undefined;
   SavedRestaurants: undefined;
   Leaderboard: { city?: string; cuisine?: string; period?: LeaderboardTimePeriod };
+  // Perks screens
+  PerksCatalog: undefined;
+  PerkDetail: { perkId: string };
+  PerkRedemption: { redemptionId: string };
+  RedemptionHistory: undefined;
 };
 
 export type TabParamList = {
