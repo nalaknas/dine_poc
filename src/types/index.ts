@@ -368,6 +368,12 @@ export type RootStackParamList = {
   CreditDashboard: undefined;
   SavedRestaurants: undefined;
   Leaderboard: { city?: string; cuisine?: string; period?: LeaderboardTimePeriod };
+  // Dining Plans
+  DiningPlans: undefined;
+  CreateDiningPlan: undefined;
+  DiningPlanDetail: { planId: string };
+  DiningPlanVoting: { planId: string };
+  DiningPlanScheduling: { planId: string };
 };
 
 export type TabParamList = {
@@ -416,6 +422,77 @@ export interface FriendVisit {
   latestRating: number;
   latestVisitDate: string;
   starDishes: { dishName: string; rating: number }[];
+}
+
+// ─── Dining Plans ────────────────────────────────────────────────────────────
+
+export type DiningPlanStatus = 'inviting' | 'voting' | 'scheduling' | 'confirmed' | 'completed' | 'cancelled';
+export type MemberRole = 'host' | 'member';
+export type MemberStatus = 'pending' | 'accepted' | 'declined';
+export type RestaurantSource = 'suggestion' | 'recommendation' | 'wishlist';
+
+export interface DiningPlan {
+  id: string;
+  host_id: string;
+  title: string;
+  status: DiningPlanStatus;
+  chosen_restaurant_name?: string;
+  chosen_restaurant_city?: string;
+  chosen_date?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+  member_count?: number;
+  accepted_count?: number;
+  my_role?: MemberRole;
+  my_status?: MemberStatus;
+}
+
+export interface DiningPlanMember {
+  id: string;
+  plan_id: string;
+  user_id: string;
+  role: MemberRole;
+  status: MemberStatus;
+  responded_at?: string;
+  user?: { id: string; display_name: string; username: string; avatar_url?: string };
+}
+
+export interface DiningPlanRestaurant {
+  id: string;
+  plan_id: string;
+  restaurant_name: string;
+  city?: string;
+  state?: string;
+  cuisine_type?: string;
+  source: RestaurantSource;
+  suggested_by?: string;
+  upvotes?: number;
+  downvotes?: number;
+  net_score?: number;
+}
+
+export interface DiningPlanDateOption {
+  id: string;
+  plan_id: string;
+  proposed_date: string;
+  proposed_by: string;
+  upvotes?: number;
+  downvotes?: number;
+}
+
+export interface RestaurantVote {
+  id: string;
+  plan_restaurant_id: string;
+  user_id: string;
+  vote: boolean;
+}
+
+export interface DateVote {
+  id: string;
+  date_option_id: string;
+  user_id: string;
+  vote: boolean;
 }
 
 // ─── Error ────────────────────────────────────────────────────────────────────

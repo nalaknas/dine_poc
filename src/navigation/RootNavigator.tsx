@@ -29,6 +29,11 @@ import { VenmoRequestsScreen } from '../screens/post-creation/VenmoRequestsScree
 import { CreditDashboardScreen } from '../screens/credits/CreditDashboardScreen';
 import { SavedRestaurantsScreen } from '../screens/profile/SavedRestaurantsScreen';
 import { LeaderboardScreen } from '../screens/leaderboard/LeaderboardScreen';
+import { DiningPlansScreen } from '../screens/dining-plans/DiningPlansScreen';
+import { CreateDiningPlanScreen } from '../screens/dining-plans/CreateDiningPlanScreen';
+import { DiningPlanDetailScreen } from '../screens/dining-plans/DiningPlanDetailScreen';
+import { DiningPlanVotingScreen } from '../screens/dining-plans/DiningPlanVotingScreen';
+import { DiningPlanSchedulingScreen } from '../screens/dining-plans/DiningPlanSchedulingScreen';
 import type { RootStackParamList } from '../types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -228,6 +233,36 @@ export function RootNavigator() {
               name="Leaderboard"
               component={LeaderboardScreen}
               options={{ headerShown: true, title: 'Leaderboard' }}
+            />
+            <Stack.Screen
+              name="DiningPlans"
+              component={DiningPlansScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="CreateDiningPlan"
+              component={CreateDiningPlanScreen}
+              options={{
+                headerShown: true,
+                title: 'Plan a Dinner',
+                presentation: 'modal',
+                animation: 'slide_from_bottom',
+              }}
+            />
+            <Stack.Screen
+              name="DiningPlanDetail"
+              component={DiningPlanDetailScreen}
+              options={{ headerShown: true, title: 'Dinner Plan' }}
+            />
+            <Stack.Screen
+              name="DiningPlanVoting"
+              component={DiningPlanVotingScreen}
+              options={{ headerShown: true, title: 'Restaurant Voting' }}
+            />
+            <Stack.Screen
+              name="DiningPlanScheduling"
+              component={DiningPlanSchedulingScreen}
+              options={{ headerShown: true, title: 'Schedule Date' }}
             />
           </>
         )}
