@@ -274,7 +274,7 @@ DO $$ BEGIN
         AND EXISTS (
           SELECT 1 FROM public.dining_plan_restaurants dpr
           WHERE dpr.id = plan_restaurant_id
-            AND public._is_plan_member(dpr.plan_id, auth.uid())
+            AND public._is_active_plan_member(dpr.plan_id, auth.uid())
         )
       );
   END IF;
@@ -342,7 +342,7 @@ DO $$ BEGIN
         AND EXISTS (
           SELECT 1 FROM public.dining_plan_date_options dpo
           WHERE dpo.id = date_option_id
-            AND public._is_plan_member(dpo.plan_id, auth.uid())
+            AND public._is_active_plan_member(dpo.plan_id, auth.uid())
         )
       );
   END IF;
@@ -385,6 +385,11 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
+  -- Only allow users to fetch their own plans
+  IF p_user_id != auth.uid() THEN
+    RAISE EXCEPTION 'Forbidden: can only fetch your own dining plans';
+  END IF;
+
   RETURN QUERY
   SELECT
     dp.id,
@@ -461,7 +466,7 @@ BEGIN
     dpr.suggested_by,
     COALESCE(SUM(CASE WHEN rv.vote = true  THEN 1 ELSE 0 END), 0) AS upvotes,
     COALESCE(SUM(CASE WHEN rv.vote = false THEN 1 ELSE 0 END), 0) AS downvotes,
-    COALESCE(SUM(CASE WHEN rv.vote = true  THEN 1 ELSE -1 END), 0) AS net_score
+    COALESCE(SUM(CASE WHEN rv.vote = true THEN 1 WHEN rv.vote = false THEN -1 ELSE 0 END), 0) AS net_score
   FROM public.dining_plan_restaurants dpr
   LEFT JOIN public.restaurant_votes rv ON rv.plan_restaurant_id = dpr.id
   WHERE dpr.plan_id = p_plan_id
