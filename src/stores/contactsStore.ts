@@ -7,9 +7,7 @@ import {
   updateContact as updateContactApi,
   deleteContact as deleteContactApi,
   contactToFriend,
-  importFromDeviceContacts,
-  requestContactsPermission,
-  getDeviceContacts,
+  pickAndCreateContact,
   normalizePhoneNumber,
 } from '../services/contact-service';
 import type { SplitHistoryEntry } from './splitHistoryStore';
@@ -47,8 +45,8 @@ interface ContactsState {
   /** Find a contact by phone number */
   findByPhone: (phone: string) => Contact | undefined;
 
-  /** Import contacts from iOS address book */
-  importFromPhone: (userId: string) => Promise<number>;
+  /** Pick a single contact from the native iOS contact picker */
+  pickContact: (userId: string) => Promise<Contact | null>;
 
   /** One-time migration from local splitHistoryStore to server-side contacts */
   migrateFromLocalHistory: (userId: string) => Promise<void>;
@@ -111,19 +109,16 @@ export const useContactsStore = create<ContactsState>((set, get) => ({
     return get().contacts.find((c) => c.phone_number === normalized);
   },
 
-  importFromPhone: async (userId: string) => {
-    const granted = await requestContactsPermission();
-    if (!granted) {
-      throw new Error('Contacts permission not granted. Please enable in Settings.');
-    }
+  pickContact: async (userId: string) => {
+    const contact = await pickAndCreateContact(userId);
+    if (!contact) return null;
 
-    const deviceContacts = await getDeviceContacts();
-    const imported = await importFromDeviceContacts(userId, deviceContacts);
-
-    if (imported.length > 0) {
-      set((state) => ({ contacts: [...imported, ...state.contacts] }));
+    // Add to local cache if not already present
+    const exists = get().contacts.some((c) => c.id === contact.id);
+    if (!exists) {
+      set((state) => ({ contacts: [contact, ...state.contacts] }));
     }
-    return imported.length;
+    return contact;
   },
 
   migrateFromLocalHistory: async (userId: string) => {

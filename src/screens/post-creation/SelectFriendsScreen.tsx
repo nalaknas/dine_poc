@@ -35,7 +35,7 @@ export function SelectFriendsScreen() {
   const { selectedFriends, addSelectedFriend, removeSelectedFriend } = useBillSplitterStore();
   const {
     contacts, isLoaded: contactsLoaded, loadContacts,
-    addContact, updateContact, importFromPhone,
+    addContact, updateContact, pickContact,
   } = useContactsStore();
 
   // Auto-include current user ("You") in the bill split on mount
@@ -67,7 +67,7 @@ export function SelectFriendsScreen() {
   const [manualName, setManualName] = useState('');
   const [manualPhone, setManualPhone] = useState('');
   const [manualVenmo, setManualVenmo] = useState('');
-  const [isImporting, setIsImporting] = useState(false);
+  const [isPicking, setIsPicking] = useState(false);
   // Venmo editing
   const [editingVenmoId, setEditingVenmoId] = useState<string | null>(null);
   const [editingVenmoValue, setEditingVenmoValue] = useState('');
@@ -199,21 +199,23 @@ export function SelectFriendsScreen() {
     setEditingVenmoValue('');
   };
 
-  const handleImportContacts = async () => {
+  const handlePickContact = async () => {
     if (!user) return;
-    setIsImporting(true);
+    setIsPicking(true);
     try {
-      const count = await importFromPhone(user.id);
-      if (count > 0) {
-        Alert.alert('Imported', `${count} contact${count === 1 ? '' : 's'} added.`);
-      } else {
-        Alert.alert('Up to date', 'No new contacts to import.');
+      const contact = await pickContact(user.id);
+      if (contact) {
+        // Auto-select the picked contact for this bill split
+        const friend = contactToFriend(contact);
+        if (!selectedFriends.some((f) => f.contact_id === contact.id || f.id === contact.id)) {
+          trackFriendInvited('contact');
+          addSelectedFriend(friend);
+        }
       }
     } catch (err) {
-      console.error('Import contacts error:', err);
-      Alert.alert('Error', `Could not import contacts: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      Alert.alert('Error', err instanceof Error ? err.message : 'Could not pick contact');
     }
-    setIsImporting(false);
+    setIsPicking(false);
   };
 
   const isSearching = query.trim().length >= 2;
@@ -371,16 +373,16 @@ export function SelectFriendsScreen() {
               </View>
             </TouchableOpacity>
             <TouchableOpacity
-              onPress={handleImportContacts}
-              disabled={isImporting}
+              onPress={handlePickContact}
+              disabled={isPicking}
               className="flex-1 flex-row items-center bg-background-secondary border border-border rounded-xl px-3 py-3"
             >
               <View className="w-8 h-8 bg-background-tertiary rounded-full items-center justify-center mr-2">
-                <Ionicons name="people" size={16} color="#6B7280" />
+                <Ionicons name="person-circle-outline" size={16} color="#6B7280" />
               </View>
               <View className="flex-1">
                 <Text className="text-sm font-semibold text-text-primary">
-                  {isImporting ? 'Importing...' : 'Import Contacts'}
+                  {isPicking ? 'Opening...' : 'Pick Contact'}
                 </Text>
                 <Text className="text-xs text-text-secondary">From phone</Text>
               </View>

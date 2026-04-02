@@ -133,57 +133,56 @@ export async function bulkIncrementSplitCounts(contactIds: string[]): Promise<vo
   );
 }
 
-// ─── iOS Contacts Import ─────────────────────────────────────────────────────
+// ─── iOS Contact Picker (single contact at a time) ──────────────────────────
 
-export async function requestContactsPermission(): Promise<boolean> {
+/**
+ * Opens the native iOS contact picker and returns the selected contact's
+ * name and phone number. Returns null if the user cancels or the contact
+ * has no phone number.
+ */
+export async function pickContactFromPhone(): Promise<{
+  name: string;
+  phone: string;
+} | null> {
   const { status } = await Contacts.requestPermissionsAsync();
-  return status === 'granted';
-}
-
-export async function getDeviceContacts(): Promise<Contacts.Contact[]> {
-  const { data } = await Contacts.getContactsAsync({
-    fields: [Contacts.Fields.Name, Contacts.Fields.PhoneNumbers],
-    sort: Contacts.SortTypes.FirstName,
-  });
-  return data;
-}
-
-export async function importFromDeviceContacts(
-  ownerId: string,
-  deviceContacts: Contacts.Contact[],
-): Promise<Contact[]> {
-  // Get existing contacts to dedup by phone
-  const existing = await getContacts(ownerId);
-  const existingPhones = new Set(
-    existing.filter((c) => c.phone_number).map((c) => c.phone_number),
-  );
-
-  const toCreate: { owner_id: string; display_name: string; phone_number: string }[] = [];
-
-  for (const dc of deviceContacts) {
-    const name = dc.name;
-    if (!name) continue;
-    const phone = dc.phoneNumbers?.[0]?.number;
-    if (!phone) continue;
-
-    const normalized = normalizePhoneNumber(phone);
-    if (existingPhones.has(normalized)) continue;
-
-    existingPhones.add(normalized); // prevent duplicates within batch
-    toCreate.push({
-      owner_id: ownerId,
-      display_name: name,
-      phone_number: normalized,
-    });
+  if (status !== 'granted') {
+    throw new Error('Contacts permission not granted. Please enable in Settings.');
   }
 
-  if (toCreate.length === 0) return [];
+  const contact = await Contacts.presentContactPickerAsync();
+  if (!contact) return null; // user cancelled
 
-  const { data, error } = await supabase
+  const name = contact.name;
+  if (!name) return null;
+
+  const phone = contact.phoneNumbers?.[0]?.number;
+  if (!phone) return null;
+
+  return { name, phone: normalizePhoneNumber(phone) };
+}
+
+/**
+ * Picks a contact from the native picker and creates/returns a server-side
+ * contact record. If the contact already exists (by phone), returns the existing one.
+ */
+export async function pickAndCreateContact(ownerId: string): Promise<Contact | null> {
+  const picked = await pickContactFromPhone();
+  if (!picked) return null;
+
+  // Check if contact already exists by phone number
+  const { data: existing } = await supabase
     .from('contacts')
-    .insert(toCreate)
-    .select('*, linked_user:users!contacts_linked_user_id_fkey(*)');
+    .select('*, linked_user:users!contacts_linked_user_id_fkey(*)')
+    .eq('owner_id', ownerId)
+    .eq('phone_number', picked.phone)
+    .maybeSingle();
 
-  if (error) throw error;
-  return (data ?? []) as Contact[];
+  if (existing) return existing as Contact;
+
+  // Create new contact
+  return createContact({
+    owner_id: ownerId,
+    display_name: picked.name,
+    phone_number: picked.phone,
+  });
 }
