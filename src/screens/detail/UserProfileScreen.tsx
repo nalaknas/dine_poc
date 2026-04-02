@@ -16,6 +16,8 @@ import {
   isFollowing, followUser, unfollowUser,
   getFollowerCount, getFollowingCount,
 } from '../../services/user-service';
+import { TasteCompatibilityBadge } from '../../components/insights/TasteCompatibilityBadge';
+import { fetchTasteCompatibility } from '../../services/taste-insights-service';
 import type { User, Post, RootStackParamList } from '../../types';
 
 const { width } = Dimensions.get('window');
@@ -36,6 +38,7 @@ export function UserProfileScreen() {
   const [following, setFollowing] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'grid' | 'tagged'>('grid');
+  const [compatibilityScore, setCompatibilityScore] = useState<number | null>(null);
 
   const isMe = user?.id === params.userId;
   const currentlyFollowing = followMap[params.userId] ?? false;
@@ -61,6 +64,13 @@ export function UserProfileScreen() {
       setFollowers(followersCount);
       setFollowing(followingCount);
       if (!isMe) setIsFollowing(params.userId, followingStatus);
+
+      // Fetch taste compatibility when viewing another user's profile
+      if (!isMe && user) {
+        fetchTasteCompatibility(user.id, params.userId)
+          .then(setCompatibilityScore)
+          .catch(() => setCompatibilityScore(null));
+      }
     } finally {
       setIsLoading(false);
     }
@@ -129,6 +139,17 @@ export function UserProfileScreen() {
                   <Text className="text-xs text-text-secondary mt-1">📍 {profile.city}{profile.state ? `, ${profile.state}` : ''}</Text>
                 )}
               </View>
+
+              {/* Taste compatibility badge — only shown on other users' profiles */}
+              {!isMe && compatibilityScore !== null && (
+                <View className="mt-3 flex-row items-center justify-center bg-background-secondary rounded-xl py-3" style={{ gap: 10 }}>
+                  <TasteCompatibilityBadge score={compatibilityScore} size="sm" />
+                  <View>
+                    <Text className="text-sm font-semibold text-text-primary">Taste Match</Text>
+                    <Text className="text-xs text-text-secondary">Based on your flavor profiles</Text>
+                  </View>
+                </View>
+              )}
 
               {/* Follow button */}
               {!isMe && (
