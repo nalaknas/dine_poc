@@ -107,6 +107,35 @@ export function ExploreScreen() {
 
       {!hasSearched && !isSearching && <LeaderboardBanner />}
 
+      {/* Group Dining CTA */}
+      {!hasSearched && !isSearching && (
+        <AnimatedPressable
+          onPress={() => navigation.navigate('DiningPlans')}
+          style={[
+            {
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: '#FFFFFF',
+              marginHorizontal: 16,
+              marginBottom: 12,
+              borderRadius: 16,
+              padding: 14,
+              gap: 12,
+            },
+            Shadows.card,
+          ]}
+        >
+          <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(0,122,255,0.1)', alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name="people" size={22} color="#007AFF" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 15, fontWeight: '700', color: '#1F2937' }}>Plan a Dinner</Text>
+            <Text style={{ fontSize: 12, color: '#6B7280' }}>Coordinate group dinners with friends</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
+        </AnimatedPressable>
+      )}
+
       {!hasSearched && !isSearching && (
         <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
           <Text style={{ fontSize: 14, fontWeight: '600', color: '#1F2937', marginBottom: 8 }}>Trending</Text>
