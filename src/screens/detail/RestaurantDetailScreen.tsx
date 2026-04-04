@@ -6,13 +6,15 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useRoute, useNavigation, type RouteProp } from '@react-navigation/native';
+import { Shadows } from '../../constants/shadows';
 import { supabase } from '../../lib/supabase';
 import { formatTimeAgo } from '../../utils/format';
 import { useAuthStore } from '../../stores/authStore';
 import { getFriendVisits } from '../../services/social-proof-service';
+import { fetchPerksForRestaurant } from '../../services/perks-service';
 import { FriendsWhoveBeenHere } from '../../components/social-proof/FriendsWhoveBeenHere';
 import { FriendStarDishes } from '../../components/social-proof/FriendStarDishes';
-import type { Post, DishRating, FriendVisit, RootStackParamList } from '../../types';
+import type { Post, DishRating, FriendVisit, Perk, RootStackParamList } from '../../types';
 
 const { width } = Dimensions.get('window');
 const PHOTO_SIZE = width / 3;
@@ -90,6 +92,7 @@ export function RestaurantDetailScreen() {
   const { user } = useAuthStore();
   const [posts, setPosts] = useState<Post[]>([]);
   const [friendVisits, setFriendVisits] = useState<FriendVisit[]>([]);
+  const [restaurantPerks, setRestaurantPerks] = useState<Perk[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({
     'Appetizers & Sides': true,
@@ -112,14 +115,17 @@ export function RestaurantDetailScreen() {
       .order('created_at', { ascending: false })
       .limit(50);
 
-    // Fetch friend visits in parallel when user is logged in
+    // Fetch friend visits and perks in parallel when user is logged in
     const friendPromise = user
       ? getFriendVisits(user.id, params.name).catch(() => [] as FriendVisit[])
       : Promise.resolve([] as FriendVisit[]);
 
-    const [{ data }, friends] = await Promise.all([postsPromise, friendPromise]);
+    const perksPromise = fetchPerksForRestaurant(params.name).catch(() => [] as Perk[]);
+
+    const [{ data }, friends, perks] = await Promise.all([postsPromise, friendPromise, perksPromise]);
     setPosts((data ?? []) as Post[]);
     setFriendVisits(friends);
+    setRestaurantPerks(perks);
     setIsLoading(false);
   };
 
@@ -437,6 +443,57 @@ export function RestaurantDetailScreen() {
 
         {/* ── Friends' Star Dishes ──────────────────────────────────────── */}
         <FriendStarDishes friends={friendVisits} />
+
+        {/* ── Restaurant Perks ─────────────────────────────────────────── */}
+        {restaurantPerks.length > 0 && (
+          <View className="px-4 mb-4">
+            <View className="flex-row items-center mb-3">
+              <Ionicons name="gift" size={18} color="#8B5CF6" />
+              <Text className="text-lg font-bold text-text-primary ml-2">Perks Available</Text>
+            </View>
+            {restaurantPerks.slice(0, 3).map((perk) => (
+              <TouchableOpacity
+                key={perk.id}
+                onPress={() => navigation.navigate('PerkDetail', { perkId: perk.id })}
+                style={[{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: '#FFFFFF',
+                  borderRadius: 12,
+                  padding: 12,
+                  marginBottom: 8,
+                }, Shadows.sm]}
+              >
+                <View style={{
+                  width: 36, height: 36, borderRadius: 10,
+                  backgroundColor: 'rgba(139,92,246,0.1)',
+                  alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <Ionicons name="gift-outline" size={18} color="#8B5CF6" />
+                </View>
+                <View style={{ flex: 1, marginLeft: 10 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#1F2937' }} numberOfLines={1}>
+                    {perk.title}
+                  </Text>
+                  <Text style={{ fontSize: 11, color: '#9CA3AF', marginTop: 1 }} numberOfLines={1}>
+                    {perk.description}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
+              </TouchableOpacity>
+            ))}
+            {restaurantPerks.length > 3 && (
+              <TouchableOpacity
+                onPress={() => navigation.navigate('PerksCatalog')}
+                style={{ alignItems: 'center', paddingVertical: 4 }}
+              >
+                <Text style={{ fontSize: 13, fontWeight: '600', color: '#007AFF' }}>
+                  View all {restaurantPerks.length} perks
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
 
         {/* ── Tags ───────────────────────────────────────────────────────── */}
         {topTags.length > 0 && (

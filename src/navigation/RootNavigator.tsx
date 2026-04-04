@@ -29,6 +29,10 @@ import { VenmoRequestsScreen } from '../screens/post-creation/VenmoRequestsScree
 import { CreditDashboardScreen } from '../screens/credits/CreditDashboardScreen';
 import { SavedRestaurantsScreen } from '../screens/profile/SavedRestaurantsScreen';
 import { LeaderboardScreen } from '../screens/leaderboard/LeaderboardScreen';
+import { PerksCatalogScreen } from '../screens/perks/PerksCatalogScreen';
+import { PerkDetailScreen } from '../screens/perks/PerkDetailScreen';
+import { PerkRedemptionScreen } from '../screens/perks/PerkRedemptionScreen';
+import { RedemptionHistoryScreen } from '../screens/perks/RedemptionHistoryScreen';
 import type { RootStackParamList } from '../types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -228,6 +232,30 @@ export function RootNavigator() {
               name="Leaderboard"
               component={LeaderboardScreen}
               options={{ headerShown: true, title: 'Leaderboard' }}
+            />
+            <Stack.Screen
+              name="PerksCatalog"
+              component={PerksCatalogScreen}
+              options={{ headerShown: true, title: 'Perks & Rewards' }}
+            />
+            <Stack.Screen
+              name="PerkDetail"
+              component={PerkDetailScreen}
+              options={{ headerShown: true, title: 'Perk Details' }}
+            />
+            <Stack.Screen
+              name="PerkRedemption"
+              component={PerkRedemptionScreen}
+              options={{
+                headerShown: false,
+                presentation: 'modal',
+                animation: 'slide_from_bottom',
+              }}
+            />
+            <Stack.Screen
+              name="RedemptionHistory"
+              component={RedemptionHistoryScreen}
+              options={{ headerShown: true, title: 'History' }}
             />
           </>
         )}
