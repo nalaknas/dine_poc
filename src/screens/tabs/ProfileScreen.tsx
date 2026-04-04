@@ -145,6 +145,25 @@ export function ProfileScreen() {
           <Text style={{ fontSize: 14, fontWeight: '600', color: '#1F2937' }}>Edit Profile</Text>
         </AnimatedPressable>
 
+        {/* Taste Insights CTA */}
+        <AnimatedPressable
+          onPress={() => navigation.navigate('TasteInsights')}
+          style={{
+            marginTop: 8,
+            backgroundColor: 'rgba(139,92,246,0.08)',
+            borderWidth: 1,
+            borderColor: 'rgba(139,92,246,0.15)',
+            borderRadius: 10,
+            paddingVertical: 8,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Ionicons name="analytics" size={16} color="#8B5CF6" />
+          <Text style={{ fontSize: 14, fontWeight: '600', color: '#8B5CF6', marginLeft: 4 }}>Taste Insights</Text>
+        </AnimatedPressable>
+
         {/* Taste recommendations CTA */}
         <AnimatedPressable
           onPress={() => navigation.navigate('Recommendations')}

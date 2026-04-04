@@ -344,6 +344,38 @@ export interface LeaderboardDish {
   mention_count: number;
 }
 
+// ─── Taste Insights ──────────────────────────────────────────────────────
+
+export type TasteInsightType = 'standard' | 'metric' | 'comparison';
+
+export interface TasteInsight {
+  id: string;
+  type: TasteInsightType;
+  icon: string;
+  title: string;
+  subtitle: string;
+  value?: number;
+  userValue?: number;
+  averageValue?: number;
+  color: string;
+}
+
+export interface CuisineDataPoint {
+  cuisineType: string;
+  avgRating: number;
+  dishCount: number;
+  favoriteDish: string | null;
+}
+
+export interface DishRecommendation {
+  dish_name: string;
+  restaurant_name: string;
+  city: string;
+  avg_rating: number;
+  recommender_count: number;
+  match_score: number;
+}
+
 // ─── Navigation ───────────────────────────────────────────────────────────────
 
 export type RootStackParamList = {
@@ -368,6 +400,7 @@ export type RootStackParamList = {
   CreditDashboard: undefined;
   SavedRestaurants: undefined;
   Leaderboard: { city?: string; cuisine?: string; period?: LeaderboardTimePeriod };
+  TasteInsights: undefined;
 };
 
 export type TabParamList = {
