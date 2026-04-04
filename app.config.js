@@ -17,6 +17,7 @@ module.exports = {
     ios: {
       supportsTablet: false,
       bundleIdentifier: 'com.nalaknas.dine',
+      usesAppleSignIn: true,
       associatedDomains: ['applinks:dine.app'],
       infoPlist: {
         NSCameraUsageDescription: 'Dine needs camera access to scan receipts and take food photos.',
@@ -34,6 +35,7 @@ module.exports = {
       policy: 'appVersion',
     },
     plugins: [
+      'expo-apple-authentication',
       'expo-updates',
       'expo-camera',
       'expo-media-library',
