@@ -1,0 +1,171 @@
+name: Dine CI/CD
+
+on:
+  push:
+    branches:
+      - development
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ──────────────────────────────────────────────
+  # Job 1: Detect if native rebuild is needed
+  # ──────────────────────────────────────────────
+  check-changes:
+    name: Detect native changes
+    runs-on: ubuntu-latest
+    outputs:
+      has_native_changes: ${{ steps.detect.outputs.has_native_changes }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check for native-impacting file changes
+        id: detect
+        run: |
+          CHANGED=$(git diff --name-only HEAD~1 HEAD)
+          echo "Changed files:"
+          echo "$CHANGED"
+
+          HAS_NATIVE=false
+
+          # Check for native-impacting changes
+          if echo "$CHANGED" | grep -qE '^package\.json$'; then
+            echo ">> package.json changed"
+            HAS_NATIVE=true
+          fi
+          if echo "$CHANGED" | grep -qE '^app\.config\.(js|ts)$'; then
+            echo ">> app config changed"
+            HAS_NATIVE=true
+          fi
+          if echo "$CHANGED" | grep -qE '^ios/'; then
+            echo ">> ios/ directory changed"
+            HAS_NATIVE=true
+          fi
+          if echo "$CHANGED" | grep -qE '^android/'; then
+            echo ">> android/ directory changed"
+            HAS_NATIVE=true
+          fi
+          if echo "$CHANGED" | grep -qE '\.podspec$'; then
+            echo ">> podspec changed"
+            HAS_NATIVE=true
+          fi
+          if echo "$CHANGED" | grep -qE '^eas\.json$'; then
+            echo ">> eas.json changed"
+            HAS_NATIVE=true
+          fi
+
+          echo "has_native_changes=$HAS_NATIVE" >> "$GITHUB_OUTPUT"
+          echo "Result: has_native_changes=$HAS_NATIVE"
+
+  # ──────────────────────────────────────────────
+  # Job 2: OTA update to development (JS-only)
+  # ──────────────────────────────────────────────
+  staging-ota:
+    name: Staging OTA update
+    needs: check-changes
+    if: github.ref == 'refs/heads/development' && needs.check-changes.outputs.has_native_changes == 'false'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Publish OTA update
+        run: |
+          COMMIT_MSG=$(git log -1 --pretty=%s)
+          eas update --branch development --message "OTA: $COMMIT_MSG" --non-interactive
+
+  # ──────────────────────────────────────────────
+  # Job 3: Native build to development (internal)
+  # ──────────────────────────────────────────────
+  staging-build:
+    name: Staging native build
+    needs: check-changes
+    if: github.ref == 'refs/heads/development' && needs.check-changes.outputs.has_native_changes == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build for internal distribution
+        run: eas build --profile development --platform ios --non-interactive
+
+  # ──────────────────────────────────────────────
+  # Job 4: OTA update to production (JS-only)
+  # ──────────────────────────────────────────────
+  production-ota:
+    name: Production OTA update
+    needs: check-changes
+    if: github.ref == 'refs/heads/main' && needs.check-changes.outputs.has_native_changes == 'false'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Publish OTA update
+        run: |
+          COMMIT_MSG=$(git log -1 --pretty=%s)
+          eas update --branch production --message "Release: $COMMIT_MSG" --non-interactive
+
+  # ──────────────────────────────────────────────
+  # Job 5: Native build to production + TestFlight
+  # ──────────────────────────────────────────────
+  production-build:
+    name: Production build + TestFlight
+    needs: check-changes
+    if: github.ref == 'refs/heads/main' && needs.check-changes.outputs.has_native_changes == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build and submit to TestFlight
+        run: eas build --profile production --platform ios --non-interactive --auto-submit

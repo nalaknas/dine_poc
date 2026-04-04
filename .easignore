@@ -1,0 +1,36 @@
+# Documentation
+docs/
+*.md
+!README.md
+
+# Development tools
+.claude/
+.github/
+scripts/
+
+# Tests
+__tests__/
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+jest.config.*
+
+# Supabase (server-side, not needed in app bundle)
+supabase/
+
+# Git
+.git/
+.gitignore
+
+# Environment
+.env
+.env.*
+
+# Editor
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
