@@ -82,6 +82,12 @@ export function AuthScreen() {
   const handleGoogleSignIn = async () => {
     try {
       const redirectUri = AuthSession.makeRedirectUri({ scheme: 'dine' });
+      console.log('[GoogleAuth] clientId:', Config.google.oauthClientId ? `${Config.google.oauthClientId.substring(0, 10)}...` : 'EMPTY');
+      console.log('[GoogleAuth] redirectUri:', redirectUri);
+      if (!Config.google.oauthClientId) {
+        Alert.alert('Config Error', 'Google OAuth Client ID is not configured.');
+        return;
+      }
       const nonce = await Crypto.digestStringAsync(
         Crypto.CryptoDigestAlgorithm.SHA256,
         Crypto.getRandomBytes(32).toString(),
