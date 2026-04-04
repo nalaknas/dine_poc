@@ -7,11 +7,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import * as AppleAuthentication from 'expo-apple-authentication';
+import * as AuthSession from 'expo-auth-session';
+import * as Crypto from 'expo-crypto';
 import { useAuthStore } from '../../stores/authStore';
 import { getOrCreateUserProfile } from '../../services/auth-service';
 import { useUserProfileStore } from '../../stores/userProfileStore';
 import { Button } from '../../components/ui/Button';
 import { trackSignUp, trackSignIn } from '../../lib/analytics';
+import { Config } from '../../constants/config';
 import type { RootStackParamList } from '../../types';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -34,15 +38,80 @@ function friendlyError(message: string): string {
 
 export function AuthScreen() {
   const navigation = useNavigation<Nav>();
-  const { signIn, signUp, isLoading } = useAuthStore();
+  const { signIn, signUp, signInWithIdToken, isLoading } = useAuthStore();
   const { setProfile } = useUserProfileStore();
+  const googleDiscovery = AuthSession.useAutoDiscovery('https://accounts.google.com');
 
   const [mode, setMode] = useState<Mode>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showEmailForm, setShowEmailForm] = useState(false);
 
-  const handleSubmit = async () => {
+  const handlePostAuth = async (method: string) => {
+    const { user } = useAuthStore.getState();
+    if (user) {
+      trackSignIn({ userId: user.id, loginMethod: method, success: true });
+      const profile = await getOrCreateUserProfile(user.id, user.email);
+      setProfile(profile);
+    }
+  };
+
+  const handleAppleSignIn = async () => {
+    try {
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+
+      if (!credential.identityToken) {
+        Alert.alert('Error', 'Apple Sign-In failed — no identity token received.');
+        return;
+      }
+
+      await signInWithIdToken('apple', credential.identityToken);
+      await handlePostAuth('apple');
+    } catch (err: any) {
+      if (err.code === 'ERR_REQUEST_CANCELED') return;
+      Alert.alert('Error', friendlyError(err?.message ?? 'Apple Sign-In failed'));
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      const redirectUri = AuthSession.makeRedirectUri({ scheme: 'dine' });
+      const nonce = await Crypto.digestStringAsync(
+        Crypto.CryptoDigestAlgorithm.SHA256,
+        Crypto.getRandomBytes(32).toString(),
+      );
+
+      const request = new AuthSession.AuthRequest({
+        clientId: Config.google.oauthClientId,
+        redirectUri,
+        scopes: ['openid', 'profile', 'email'],
+        responseType: AuthSession.ResponseType.IdToken,
+        extraParams: { nonce },
+        usePKCE: false,
+      });
+
+      if (!googleDiscovery) {
+        Alert.alert('Error', 'Google Sign-In is not available right now. Please try again.');
+        return;
+      }
+      const result = await request.promptAsync(googleDiscovery);
+
+      if (result.type === 'success' && result.params.id_token) {
+        await signInWithIdToken('google', result.params.id_token);
+        await handlePostAuth('google');
+      }
+    } catch (err: any) {
+      Alert.alert('Error', friendlyError(err?.message ?? 'Google Sign-In failed'));
+    }
+  };
+
+  const handleEmailSubmit = async () => {
     if (!email.trim() || !password.trim()) {
       Alert.alert('Missing Fields', 'Please enter your email and password.');
       return;
@@ -55,17 +124,14 @@ export function AuthScreen() {
         await signIn(email.trim().toLowerCase(), password);
       }
 
-      // Fetch/create profile after auth
       const { user } = useAuthStore.getState();
       if (user) {
-        // Track auth event
         const trimmedEmail = email.trim().toLowerCase();
         if (mode === 'signup') {
           trackSignUp({ userId: user.id, email: trimmedEmail, signupMethod: 'email' });
         } else {
           trackSignIn({ userId: user.id, loginMethod: 'email', success: true });
         }
-
         const profile = await getOrCreateUserProfile(user.id, user.email);
         setProfile(profile);
       }
@@ -96,52 +162,98 @@ export function AuthScreen() {
               </Text>
             </View>
 
-            {/* Email */}
-            <View className="mb-4">
-              <Text className="text-sm font-medium text-text-primary mb-1.5">Email</Text>
-              <TextInput
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoComplete="email"
-                placeholder="you@example.com"
-                placeholderTextColor="#9CA3AF"
-                className="bg-background-secondary border border-border rounded-xl px-4 py-3 text-base text-text-primary"
-              />
+            {/* Social Sign-In Buttons */}
+            <View className="mb-6 gap-3">
+              <TouchableOpacity
+                onPress={handleAppleSignIn}
+                disabled={isLoading}
+                className="flex-row items-center justify-center bg-black rounded-xl py-3.5 px-4"
+              >
+                <Ionicons name="logo-apple" size={20} color="#fff" />
+                <Text className="text-white text-base font-semibold ml-2">
+                  Continue with Apple
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleGoogleSignIn}
+                disabled={isLoading}
+                className="flex-row items-center justify-center bg-white border border-border rounded-xl py-3.5 px-4"
+              >
+                <Ionicons name="logo-google" size={20} color="#4285F4" />
+                <Text className="text-text-primary text-base font-semibold ml-2">
+                  Continue with Google
+                </Text>
+              </TouchableOpacity>
             </View>
 
-            {/* Password */}
-            <View className="mb-6">
-              <Text className="text-sm font-medium text-text-primary mb-1.5">Password</Text>
-              <View className="bg-background-secondary border border-border rounded-xl px-4 py-3 flex-row items-center">
-                <TextInput
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
-                  autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
-                  placeholder={mode === 'signup' ? 'At least 6 characters' : '••••••••'}
-                  placeholderTextColor="#9CA3AF"
-                  className="flex-1 text-base text-text-primary"
-                />
-                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                  <Ionicons
-                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                    size={20}
-                    color="#9CA3AF"
+            {/* Divider */}
+            <View className="flex-row items-center mb-6">
+              <View className="flex-1 h-px bg-border" />
+              <Text className="text-sm text-text-secondary mx-4">or</Text>
+              <View className="flex-1 h-px bg-border" />
+            </View>
+
+            {/* Email form — collapsed by default */}
+            {!showEmailForm ? (
+              <TouchableOpacity
+                onPress={() => setShowEmailForm(true)}
+                className="border border-border rounded-xl py-3.5 items-center mb-6"
+              >
+                <Text className="text-base font-semibold text-text-primary">
+                  {mode === 'signin' ? 'Sign in with Email' : 'Sign up with Email'}
+                </Text>
+              </TouchableOpacity>
+            ) : (
+              <View>
+                {/* Email */}
+                <View className="mb-4">
+                  <Text className="text-sm font-medium text-text-primary mb-1.5">Email</Text>
+                  <TextInput
+                    value={email}
+                    onChangeText={setEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoComplete="email"
+                    placeholder="you@example.com"
+                    placeholderTextColor="#9CA3AF"
+                    className="bg-background-secondary border border-border rounded-xl px-4 py-3 text-base text-text-primary"
                   />
-                </TouchableOpacity>
-              </View>
-            </View>
+                </View>
 
-            {/* Submit */}
-            <Button
-              title={mode === 'signin' ? 'Sign In' : 'Create Account'}
-              onPress={handleSubmit}
-              loading={isLoading}
-              fullWidth
-              size="lg"
-            />
+                {/* Password */}
+                <View className="mb-6">
+                  <Text className="text-sm font-medium text-text-primary mb-1.5">Password</Text>
+                  <View className="bg-background-secondary border border-border rounded-xl px-4 py-3 flex-row items-center">
+                    <TextInput
+                      value={password}
+                      onChangeText={setPassword}
+                      secureTextEntry={!showPassword}
+                      autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+                      placeholder={mode === 'signup' ? 'At least 6 characters' : '••••••••'}
+                      placeholderTextColor="#9CA3AF"
+                      className="flex-1 text-base text-text-primary"
+                    />
+                    <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                      <Ionicons
+                        name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                        size={20}
+                        color="#9CA3AF"
+                      />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* Submit */}
+                <Button
+                  title={mode === 'signin' ? 'Sign In' : 'Create Account'}
+                  onPress={handleEmailSubmit}
+                  loading={isLoading}
+                  fullWidth
+                  size="lg"
+                />
+              </View>
+            )}
 
             {/* Toggle mode */}
             <View className="flex-row justify-center mt-6">
