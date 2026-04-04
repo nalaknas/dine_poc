@@ -39,6 +39,32 @@ export interface UserStats {
   followingCount: number;
 }
 
+// ─── Restaurant ──────────────────────────────────────────────────────────────
+
+export interface Restaurant {
+  id: string;
+  name: string;
+  google_place_id?: string;
+  yelp_id?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  lat?: number;
+  lng?: number;
+  cuisine_type?: string;
+  price_range?: number;
+  phone?: string;
+  website?: string;
+  hours?: Record<string, string>;
+  photo_url?: string;
+  google_rating?: number;
+  yelp_rating?: number;
+  post_count: number;
+  is_claimed: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 // ─── Post / Meal ───────────────────────────────────────────────────────────────
 
 export interface DishRating {
@@ -85,6 +111,8 @@ export interface Post {
   id: string;
   author_id: string;
   author?: User;
+  restaurant_id?: string;
+  restaurant?: Restaurant;
   restaurant_name: string;
   city?: string;
   state?: string;
@@ -327,6 +355,7 @@ export type LeaderboardTimePeriod = 'week' | 'month' | 'quarter' | 'year';
 
 export interface LeaderboardEntry {
   rank: number;
+  restaurant_id?: string;
   restaurant_name: string;
   city: string;
   state?: string;
