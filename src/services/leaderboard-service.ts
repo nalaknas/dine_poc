@@ -26,6 +26,7 @@ export async function fetchLeaderboard(
 
   return ((data as Record<string, unknown>[]) ?? []).map((row) => ({
     rank: Number(row.rank),
+    restaurant_id: row.restaurant_id ? String(row.restaurant_id) : undefined,
     restaurant_name: String(row.restaurant_name),
     city: String(row.city ?? ''),
     state: row.state ? String(row.state) : undefined,

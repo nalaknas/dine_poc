@@ -103,6 +103,7 @@ export async function deletePlaylist(playlistId: string): Promise<void> {
 export async function addRestaurantToPlaylist(
   playlistId: string,
   restaurant: {
+    restaurant_id?: string;
     restaurant_name: string;
     city?: string;
     state?: string;
@@ -154,6 +155,7 @@ export async function toggleBookmark(
   city?: string,
   state?: string,
   cuisineType?: string,
+  restaurantId?: string,
 ): Promise<boolean> {
   const defaultPlaylist = await getOrCreateDefaultPlaylist(userId);
   const existing = (defaultPlaylist.restaurants ?? []).find(
@@ -166,6 +168,7 @@ export async function toggleBookmark(
   }
 
   await addRestaurantToPlaylist(defaultPlaylist.id, {
+    restaurant_id: restaurantId,
     restaurant_name: restaurantName,
     city,
     state,
