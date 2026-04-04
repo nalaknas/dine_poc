@@ -61,6 +61,7 @@ Use the specialized agents in `.claude/agents/` to build features end-to-end:
 | Agent | When to use |
 |-------|-------------|
 | `pm-requirements-breakdown` | Break down a feature idea into user stories, acceptance criteria, and sized tasks |
+| `pm-story-creator` | Create RICE-prioritized user stories, upload as Linear tickets, and plan sprints |
 | `component-spec-designer` | Design a component spec (props, variants, states, accessibility) before building |
 | `ticket-implementer` | Implement a Linear ticket by ID — fetches issue, plans, and writes code |
 | `db-migration-agent` | Create, validate, or apply Supabase migrations (schema, RLS, indexes) |
@@ -69,9 +70,10 @@ Use the specialized agents in `.claude/agents/` to build features end-to-end:
 
 ### Typical workflow
 1. **Plan**: `pm-requirements-breakdown` to decompose the feature
-2. **Spec**: `component-spec-designer` for new UI components
-3. **Schema**: `db-migration-agent` if DB changes are needed
-4. **Build**: `ticket-implementer` or `design-system-builder` to implement
-5. **Review**: `code-reviewer` after implementation
+2. **Ticketing**: `pm-story-creator` to prioritize stories and create Linear tickets
+3. **Spec**: `component-spec-designer` for new UI components
+4. **Schema**: `db-migration-agent` if DB changes are needed
+5. **Build**: `ticket-implementer` or `design-system-builder` to implement
+6. **Review**: `code-reviewer` after implementation
 
 Agents can be composed in parallel when tasks are independent (e.g., db-migration-agent + component-spec-designer).
