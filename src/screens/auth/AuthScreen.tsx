@@ -8,7 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as AppleAuthentication from 'expo-apple-authentication';
-import * as AuthSession from 'expo-auth-session';
+import * as WebBrowser from 'expo-web-browser';
 import * as Crypto from 'expo-crypto';
 import { useAuthStore } from '../../stores/authStore';
 import { getOrCreateUserProfile } from '../../services/auth-service';
@@ -17,6 +17,8 @@ import { Button } from '../../components/ui/Button';
 import { trackSignUp, trackSignIn } from '../../lib/analytics';
 import { Config } from '../../constants/config';
 import type { RootStackParamList } from '../../types';
+
+WebBrowser.maybeCompleteAuthSession();
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -40,13 +42,13 @@ export function AuthScreen() {
   const navigation = useNavigation<Nav>();
   const { signIn, signUp, signInWithIdToken, isLoading } = useAuthStore();
   const { setProfile } = useUserProfileStore();
-  const googleDiscovery = AuthSession.useAutoDiscovery('https://accounts.google.com');
 
   const [mode, setMode] = useState<Mode>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showEmailForm, setShowEmailForm] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const handlePostAuth = async (method: string) => {
     const { user } = useAuthStore.getState();
@@ -56,6 +58,7 @@ export function AuthScreen() {
       setProfile(profile);
     }
   };
+
 
   const handleAppleSignIn = async () => {
     try {
@@ -80,40 +83,45 @@ export function AuthScreen() {
   };
 
   const handleGoogleSignIn = async () => {
+    if (googleLoading) return;
+    setGoogleLoading(true);
     try {
-      const redirectUri = AuthSession.makeRedirectUri({ scheme: 'dine' });
-      console.log('[GoogleAuth] clientId:', Config.google.oauthClientId ? `${Config.google.oauthClientId.substring(0, 10)}...` : 'EMPTY');
-      console.log('[GoogleAuth] redirectUri:', redirectUri);
-      if (!Config.google.oauthClientId) {
-        Alert.alert('Config Error', 'Google OAuth Client ID is not configured.');
-        return;
-      }
+      const redirectUri = 'https://auth.expo.io/@nalaknas/dine';
       const nonce = await Crypto.digestStringAsync(
         Crypto.CryptoDigestAlgorithm.SHA256,
         Crypto.getRandomBytes(32).toString(),
       );
 
-      const request = new AuthSession.AuthRequest({
-        clientId: Config.google.oauthClientId,
-        redirectUri,
-        scopes: ['openid', 'profile', 'email'],
-        responseType: AuthSession.ResponseType.IdToken,
-        extraParams: { nonce },
-        usePKCE: false,
+      // Build the Google OAuth URL manually
+      const params = new URLSearchParams({
+        client_id: Config.google.oauthClientId,
+        redirect_uri: redirectUri,
+        response_type: 'id_token',
+        scope: 'openid profile email',
+        nonce,
       });
+      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+      const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
 
-      if (!googleDiscovery) {
-        Alert.alert('Error', 'Google Sign-In is not available right now. Please try again.');
-        return;
-      }
-      const result = await request.promptAsync(googleDiscovery);
+      if (result.type === 'success' && result.url) {
+        // Parse the id_token from the redirect URL fragment
+        const url = result.url;
+        const fragment = url.split('#')[1] ?? '';
+        const fragParams = new URLSearchParams(fragment);
+        const idToken = fragParams.get('id_token');
 
-      if (result.type === 'success' && result.params.id_token) {
-        await signInWithIdToken('google', result.params.id_token);
-        await handlePostAuth('google');
+        if (idToken) {
+          await signInWithIdToken('google', idToken);
+          await handlePostAuth('google');
+        } else {
+          Alert.alert('Error', 'No ID token received from Google.');
+        }
       }
     } catch (err: any) {
+      console.log('[GoogleAuth] ERROR:', err);
       Alert.alert('Error', friendlyError(err?.message ?? 'Google Sign-In failed'));
+    } finally {
+      setGoogleLoading(false);
     }
   };
 
@@ -183,7 +191,7 @@ export function AuthScreen() {
 
               <TouchableOpacity
                 onPress={handleGoogleSignIn}
-                disabled={isLoading}
+                disabled={isLoading || googleLoading}
                 className="flex-row items-center justify-center bg-white border border-border rounded-xl py-3.5 px-4"
               >
                 <Ionicons name="logo-google" size={20} color="#4285F4" />

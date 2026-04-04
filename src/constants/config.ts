@@ -10,6 +10,7 @@ export const Config = {
   google: {
     placesApiKey: (extra.googlePlacesApiKey as string) ?? '',
     oauthClientId: (extra.googleOAuthClientId as string) ?? '',
+    iosOAuthClientId: (extra.googleIosOAuthClientId as string) ?? '',
   },
   yelp: {
     apiKey: (extra.yelpApiKey as string) ?? '',

@@ -88,6 +88,7 @@ jobs:
       - name: Publish OTA update
         env:
           GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+          GOOGLE_IOS_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_IOS_OAUTH_CLIENT_ID }}
         run: |
           COMMIT_MSG=$(git log -1 --pretty=%s)
           eas update --branch development --message "OTA: $COMMIT_MSG" --non-interactive
@@ -118,6 +119,7 @@ jobs:
       - name: Build for internal distribution
         env:
           GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+          GOOGLE_IOS_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_IOS_OAUTH_CLIENT_ID }}
         run: eas build --profile development --platform ios --non-interactive
 
   # ──────────────────────────────────────────────
@@ -146,6 +148,7 @@ jobs:
       - name: Publish OTA update
         env:
           GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+          GOOGLE_IOS_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_IOS_OAUTH_CLIENT_ID }}
         run: |
           COMMIT_MSG=$(git log -1 --pretty=%s)
           eas update --branch production --message "Release: $COMMIT_MSG" --non-interactive
@@ -176,4 +179,5 @@ jobs:
       - name: Build and submit to TestFlight
         env:
           GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+          GOOGLE_IOS_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_IOS_OAUTH_CLIENT_ID }}
         run: eas build --profile production --platform ios --non-interactive --auto-submit
