@@ -2,6 +2,7 @@ import { supabase } from '../lib/supabase';
 import type { Post, Comment, CreatePostDraft, PersonBreakdown, UserTier } from '../types';
 import { createNotification } from './user-service';
 import { getFollowingIds } from './user-service';
+import { findOrCreateRestaurant } from './restaurant-service';
 
 // ─── Feed ─────────────────────────────────────────────────────────────────────
 
@@ -185,12 +186,29 @@ export async function createPost(
 ): Promise<Post> {
   const receipt = draft.receiptData;
 
+  // 0. Resolve or create restaurant record
+  const restaurantName = receipt?.restaurantName ?? '';
+  let restaurantId: string | undefined;
+  if (restaurantName) {
+    try {
+      restaurantId = await findOrCreateRestaurant(
+        restaurantName,
+        receipt?.city,
+        receipt?.state,
+        { address: receipt?.address, cuisine_type: draft.cuisineType },
+      );
+    } catch (err) {
+      console.warn('[createPost] restaurant lookup failed, continuing without ID:', err);
+    }
+  }
+
   // 1. Insert the post
   const { data: post, error: postError } = await supabase
     .from('posts')
     .insert({
       author_id: authorId,
-      restaurant_name: receipt?.restaurantName ?? '',
+      restaurant_id: restaurantId,
+      restaurant_name: restaurantName,
       city: receipt?.city,
       state: receipt?.state,
       address: receipt?.address,
@@ -479,10 +497,20 @@ export async function createQuickPost(
   foodPhotos: string[],
   isPublic: boolean,
 ): Promise<Post> {
+  let restaurantId: string | undefined;
+  if (restaurantName) {
+    try {
+      restaurantId = await findOrCreateRestaurant(restaurantName);
+    } catch {
+      console.warn('[createQuickPost] restaurant lookup failed, continuing without ID');
+    }
+  }
+
   const { data: post, error } = await supabase
     .from('posts')
     .insert({
       author_id: authorId,
+      restaurant_id: restaurantId,
       restaurant_name: restaurantName,
       caption,
       food_photos: foodPhotos,

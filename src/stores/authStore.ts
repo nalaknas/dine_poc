@@ -11,6 +11,7 @@ interface AuthState {
   setLoading: (loading: boolean) => void;
   signUp: (email: string, password: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
+  signInWithIdToken: (provider: 'apple' | 'google', token: string) => Promise<void>;
   signOut: () => Promise<void>;
   initialize: () => Promise<void>;
 }
@@ -73,6 +74,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ isLoading: true });
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  signInWithIdToken: async (provider, token) => {
+    set({ isLoading: true });
+    try {
+      const { error } = await supabase.auth.signInWithIdToken({ provider, token });
       if (error) throw error;
     } finally {
       set({ isLoading: false });

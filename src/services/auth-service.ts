@@ -1,5 +1,30 @@
 import { supabase } from '../lib/supabase';
 import type { User } from '../types';
+import type { Session } from '@supabase/supabase-js';
+
+/**
+ * Sign in with an Apple ID token (from expo-apple-authentication).
+ */
+export async function signInWithAppleToken(identityToken: string): Promise<Session> {
+  const { data, error } = await supabase.auth.signInWithIdToken({
+    provider: 'apple',
+    token: identityToken,
+  });
+  if (error) throw error;
+  return data.session;
+}
+
+/**
+ * Sign in with a Google ID token (from expo-auth-session).
+ */
+export async function signInWithGoogleToken(idToken: string): Promise<Session> {
+  const { data, error } = await supabase.auth.signInWithIdToken({
+    provider: 'google',
+    token: idToken,
+  });
+  if (error) throw error;
+  return data.session;
+}
 
 export async function getOrCreateUserProfile(uid: string, email: string): Promise<User> {
   // Try to get existing profile

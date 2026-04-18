@@ -19,6 +19,11 @@ jest.config.*
 # Supabase (server-side, not needed in app bundle)
 supabase/
 
+# Native folders — EAS regenerates these via `expo prebuild` so local
+# stale Podfile.lock / build artifacts don't interfere with the build
+ios/
+android/
+
 # Git
 .git/
 .gitignore

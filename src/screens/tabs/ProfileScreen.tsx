@@ -144,63 +144,6 @@ export function ProfileScreen() {
         >
           <Text style={{ fontSize: 14, fontWeight: '600', color: '#1F2937' }}>Edit Profile</Text>
         </AnimatedPressable>
-
-        {/* Taste recommendations CTA */}
-        <AnimatedPressable
-          onPress={() => navigation.navigate('Recommendations')}
-          style={{
-            marginTop: 8,
-            backgroundColor: 'rgba(0,122,255,0.08)',
-            borderWidth: 1,
-            borderColor: 'rgba(0,122,255,0.15)',
-            borderRadius: 10,
-            paddingVertical: 8,
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Ionicons name="sparkles" size={16} color="#007AFF" />
-          <Text style={{ fontSize: 14, fontWeight: '600', color: '#007AFF', marginLeft: 4 }}>For You</Text>
-        </AnimatedPressable>
-
-        {/* Saved Restaurants CTA */}
-        <AnimatedPressable
-          onPress={() => navigation.navigate('SavedRestaurants')}
-          style={{
-            marginTop: 8,
-            backgroundColor: 'rgba(0,122,255,0.04)',
-            borderWidth: 1,
-            borderColor: 'rgba(0,122,255,0.1)',
-            borderRadius: 10,
-            paddingVertical: 8,
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Ionicons name="bookmark-outline" size={16} color="#007AFF" />
-          <Text style={{ fontSize: 14, fontWeight: '600', color: '#007AFF', marginLeft: 4 }}>Saved Restaurants</Text>
-        </AnimatedPressable>
-
-        {/* Credits CTA */}
-        <AnimatedPressable
-          onPress={() => navigation.navigate('CreditDashboard')}
-          style={{
-            marginTop: 8,
-            backgroundColor: 'rgba(245,158,11,0.08)',
-            borderWidth: 1,
-            borderColor: 'rgba(245,158,11,0.15)',
-            borderRadius: 10,
-            paddingVertical: 8,
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <Ionicons name="trophy-outline" size={16} color="#F59E0B" />
-          <Text style={{ fontSize: 14, fontWeight: '600', color: '#F59E0B', marginLeft: 4 }}>View Credits</Text>
-        </AnimatedPressable>
       </LinearGradient>
 
       {/* Grid tabs */}
@@ -262,13 +205,7 @@ export function ProfileScreen() {
 
           return (
             <AnimatedPressable
-              onPress={() => {
-                if (isUnrated) {
-                  navigation.navigate('TaggedRate', { postId: item.id });
-                } else {
-                  navigation.navigate('MealDetail', { postId: item.id });
-                }
-              }}
+              onPress={() => navigation.navigate('MealDetail', { postId: item.id })}
               style={{ width: PHOTO_SIZE, height: PHOTO_SIZE, marginBottom: 4, borderRadius: 8, overflow: 'hidden' }}
             >
               {item.food_photos?.length > 0 ? (

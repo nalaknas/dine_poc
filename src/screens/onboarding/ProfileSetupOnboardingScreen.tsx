@@ -27,6 +27,7 @@ export function ProfileSetupOnboardingScreen() {
   const [avatarUri, setAvatarUri] = useState<string | null>(profile?.avatar_url ?? null);
   const [selectedCuisines, setSelectedCuisines] = useState<string[]>([]);
   const [selectedDietary, setSelectedDietary] = useState<string[]>([]);
+  const [phoneNumber, setPhoneNumber] = useState(profile?.phone_number ?? '');
   const [venmoUsername, setVenmoUsername] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -76,6 +77,7 @@ export function ProfileSetupOnboardingScreen() {
         display_name: displayName.trim(),
         username: username.trim().toLowerCase(),
         avatar_url: avatarUrl,
+        phone_number: phoneNumber.trim() || undefined,
         venmo_username: venmoUsername || undefined,
         cuisine_preferences: selectedCuisines,
         dietary_restrictions: selectedDietary,
@@ -133,6 +135,20 @@ export function ProfileSetupOnboardingScreen() {
                 placeholderTextColor="#9CA3AF"
                 className="bg-background-secondary border border-border rounded-xl px-4 py-3 text-base text-text-primary"
               />
+            </View>
+
+            {/* Phone number */}
+            <View className="mb-4">
+              <Text className="text-sm font-medium text-text-primary mb-1.5">Phone Number</Text>
+              <TextInput
+                value={phoneNumber}
+                onChangeText={setPhoneNumber}
+                keyboardType="phone-pad"
+                placeholder="(555) 123-4567"
+                placeholderTextColor="#9CA3AF"
+                className="bg-background-secondary border border-border rounded-xl px-4 py-3 text-base text-text-primary"
+              />
+              <Text className="text-xs text-text-secondary mt-1.5">So friends can find and split bills with you.</Text>
             </View>
 
             {/* Venmo (optional) */}

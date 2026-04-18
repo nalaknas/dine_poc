@@ -226,23 +226,6 @@ export function MealDetailScreen() {
             )}
           </TouchableOpacity>
 
-          {/* Tagged user rate banner */}
-          {isTaggedUser && !hasRated && (
-            <TouchableOpacity
-              onPress={() => navigation.navigate('TaggedRate', { postId: post.id })}
-              className="mx-4 mb-2 bg-green-50 border border-green-200 rounded-xl p-3 flex-row items-center"
-            >
-              <View className="w-8 h-8 rounded-full bg-green-500 items-center justify-center mr-3">
-                <Ionicons name="restaurant" size={16} color="#fff" />
-              </View>
-              <View className="flex-1">
-                <Text className="text-sm font-semibold text-text-primary">You dined here!</Text>
-                <Text className="text-xs text-text-secondary">Rate this meal to build your taste profile</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color="#10B981" />
-            </TouchableOpacity>
-          )}
-
           {/* Your Ratings card (already rated) */}
           {isTaggedUser && hasRated && myRatings.length > 0 && (
             <View className="mx-4 mb-2 bg-blue-50 border border-blue-200 rounded-xl p-3">
@@ -257,13 +240,6 @@ export function MealDetailScreen() {
                   </Text>
                 ))}
               </View>
-              <TouchableOpacity
-                onPress={() => navigation.navigate('TaggedRate', { postId: post.id })}
-                className="mt-2 flex-row items-center justify-end"
-              >
-                <Text className="text-xs font-semibold text-accent mr-1">Edit Ratings</Text>
-                <Ionicons name="chevron-forward" size={14} color="#007AFF" />
-              </TouchableOpacity>
             </View>
           )}
 
