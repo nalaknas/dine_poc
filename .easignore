@@ -19,6 +19,9 @@ jest.config.*
 # Supabase (server-side, not needed in app bundle)
 supabase/
 
+# CocoaPods (EAS runs pod install fresh — avoids hardcoded local paths)
+ios/Pods/
+
 # Git
 .git/
 .gitignore

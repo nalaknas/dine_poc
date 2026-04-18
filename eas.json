@@ -5,10 +5,20 @@
   },
   "build": {
     "development": {
+      "developmentClient": true,
       "distribution": "internal",
       "channel": "development",
       "ios": {
-        "resourceClass": "m1-medium"
+        "resourceClass": "m-medium"
+      }
+    },
+    "development-simulator": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "channel": "development",
+      "ios": {
+        "simulator": true,
+        "resourceClass": "m-medium"
       }
     },
     "production": {
@@ -16,7 +26,7 @@
       "distribution": "store",
       "channel": "production",
       "ios": {
-        "resourceClass": "m1-medium"
+        "resourceClass": "m-medium"
       }
     }
   },
