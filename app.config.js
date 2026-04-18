@@ -58,6 +58,8 @@ module.exports = {
           color: '#007AFF',
         },
       ],
+      'expo-font',
+      'expo-web-browser',
     ],
     extra: {
       supabaseUrl: process.env.SUPABASE_URL,
