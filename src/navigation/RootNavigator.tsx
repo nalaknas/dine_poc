@@ -18,17 +18,10 @@ import { UserProfileScreen } from '../screens/detail/UserProfileScreen';
 import { RestaurantDetailScreen } from '../screens/detail/RestaurantDetailScreen';
 import { CommentsScreen } from '../screens/detail/CommentsScreen';
 import { EditPostScreen } from '../screens/detail/EditPostScreen';
-import { TaggedRateScreen } from '../screens/detail/TaggedRateScreen';
 import { EditProfileScreen } from '../screens/detail/EditProfileScreen';
-import { PlaylistDetailScreen } from '../screens/playlists/PlaylistDetailScreen';
-import { CreatePlaylistScreen } from '../screens/playlists/CreatePlaylistScreen';
 import { SettingsScreen } from '../screens/settings/SettingsScreen';
 import { NotificationPreferencesScreen } from '../screens/settings/NotificationPreferencesScreen';
-import { RecommendationsScreen } from '../screens/recommendations/RecommendationsScreen';
 import { VenmoRequestsScreen } from '../screens/post-creation/VenmoRequestsScreen';
-import { CreditDashboardScreen } from '../screens/credits/CreditDashboardScreen';
-import { SavedRestaurantsScreen } from '../screens/profile/SavedRestaurantsScreen';
-import { LeaderboardScreen } from '../screens/leaderboard/LeaderboardScreen';
 import type { RootStackParamList } from '../types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -170,29 +163,9 @@ export function RootNavigator() {
               options={{ headerShown: true, title: 'Edit Post' }}
             />
             <Stack.Screen
-              name="TaggedRate"
-              component={TaggedRateScreen}
-              options={{ headerShown: true, title: 'Rate This Meal' }}
-            />
-            <Stack.Screen
               name="EditProfile"
               component={EditProfileScreen}
               options={{ headerShown: true, title: 'Edit Profile' }}
-            />
-            <Stack.Screen
-              name="PlaylistDetail"
-              component={PlaylistDetailScreen}
-              options={{ headerShown: true, title: '' }}
-            />
-            <Stack.Screen
-              name="CreatePlaylist"
-              component={CreatePlaylistScreen}
-              options={{
-                headerShown: true,
-                title: 'New Playlist',
-                presentation: 'modal',
-                animation: 'slide_from_bottom',
-              }}
             />
             <Stack.Screen
               name="Settings"
@@ -205,29 +178,9 @@ export function RootNavigator() {
               options={{ headerShown: true, title: 'Notifications' }}
             />
             <Stack.Screen
-              name="Recommendations"
-              component={RecommendationsScreen}
-              options={{ headerShown: true, title: 'For You' }}
-            />
-            <Stack.Screen
               name="VenmoRequests"
               component={VenmoRequestsScreen}
               options={{ headerShown: true, title: 'Collect Payment' }}
-            />
-            <Stack.Screen
-              name="CreditDashboard"
-              component={CreditDashboardScreen}
-              options={{ headerShown: true, title: 'Credits' }}
-            />
-            <Stack.Screen
-              name="SavedRestaurants"
-              component={SavedRestaurantsScreen}
-              options={{ headerShown: true, title: 'Saved Restaurants' }}
-            />
-            <Stack.Screen
-              name="Leaderboard"
-              component={LeaderboardScreen}
-              options={{ headerShown: true, title: 'Leaderboard' }}
             />
           </>
         )}
