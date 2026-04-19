@@ -4,7 +4,7 @@ module.exports = {
   expo: {
     name: 'Dine',
     slug: 'dine',
-    version: '1.0.0',
+    version: '1.0.1',
     scheme: 'dine',
     orientation: 'portrait',
     icon: './assets/icon-gold.png',
