@@ -15,9 +15,17 @@ CREATE INDEX IF NOT EXISTS comment_likes_comment_id ON public.comment_likes (com
 
 -- RLS
 ALTER TABLE public.comment_likes ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Comment likes viewable by all" ON public.comment_likes FOR SELECT USING (true);
-CREATE POLICY "Authenticated users can like comments" ON public.comment_likes FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Users can unlike their own comment likes" ON public.comment_likes FOR DELETE USING (auth.uid() = user_id);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='comment_likes' AND policyname='Comment likes viewable by all') THEN
+    CREATE POLICY "Comment likes viewable by all" ON public.comment_likes FOR SELECT USING (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='comment_likes' AND policyname='Authenticated users can like comments') THEN
+    CREATE POLICY "Authenticated users can like comments" ON public.comment_likes FOR INSERT WITH CHECK (auth.uid() = user_id);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='comment_likes' AND policyname='Users can unlike their own comment likes') THEN
+    CREATE POLICY "Users can unlike their own comment likes" ON public.comment_likes FOR DELETE USING (auth.uid() = user_id);
+  END IF;
+END $$;
 
 -- RPC helpers
 CREATE OR REPLACE FUNCTION public.increment_comment_like_count(p_comment_id uuid)
