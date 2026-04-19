@@ -116,7 +116,11 @@ export function FeedScreen() {
             <EmptyState
               icon="restaurant-outline"
               title="No posts yet"
-              description="Follow friends to see their dining experiences here."
+              description="Share your first meal or find friends to see their dining experiences."
+              actionLabel="Post your first meal"
+              onAction={() => navigation.navigate('PostCreation' as any)}
+              secondaryActionLabel="Find friends"
+              onSecondaryAction={() => navigation.navigate('Explore' as any)}
             />
           )
         }
