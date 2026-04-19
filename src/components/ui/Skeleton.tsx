@@ -103,6 +103,32 @@ export function FeedSkeleton() {
   );
 }
 
+export function MealDetailSkeleton() {
+  return (
+    <View style={{ padding: 16, gap: 16 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+        <SkeletonCircle size={40} />
+        <View style={{ flex: 1, gap: 6 }}>
+          <SkeletonRect width="40%" height={14} />
+          <SkeletonRect width="30%" height={12} />
+        </View>
+      </View>
+      <SkeletonRect width="100%" height={300} borderRadius={12} />
+      <View style={{ flexDirection: 'row', gap: 16 }}>
+        <SkeletonCircle size={28} />
+        <SkeletonCircle size={28} />
+        <SkeletonCircle size={28} />
+      </View>
+      <SkeletonText lines={2} lastWidth="70%" />
+      <View style={{ gap: 8 }}>
+        <SkeletonRect width="50%" height={12} />
+        <SkeletonRect width="80%" height={12} />
+        <SkeletonRect width="60%" height={12} />
+      </View>
+    </View>
+  );
+}
+
 export function ProfileSkeleton() {
   return (
     <View style={{ padding: 16, gap: 16 }}>

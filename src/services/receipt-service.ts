@@ -18,6 +18,15 @@ async function compressForOCR(uri: string): Promise<string> {
   return FileSystem.readAsStringAsync(result.uri, { encoding: BASE64 });
 }
 
+async function compressForUpload(uri: string, maxWidth: number): Promise<string> {
+  const result = await ImageManipulator.manipulateAsync(
+    uri,
+    [{ resize: { width: maxWidth } }],
+    { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG }
+  );
+  return FileSystem.readAsStringAsync(result.uri, { encoding: BASE64 });
+}
+
 /**
  * Analyzes receipt images by calling the Supabase Edge Function.
  * The Edge Function handles Google Vision API + GPT-4o Mini parsing.
@@ -102,7 +111,7 @@ export async function uploadFoodPhoto(
   userId: string,
   fileName: string
 ): Promise<string> {
-  const base64 = await FileSystem.readAsStringAsync(uri, { encoding: BASE64 });
+  const base64 = await compressForUpload(uri, 1600);
   return storageUpload('dine-images', `posts/${userId}/${fileName}`, base64);
 }
 
@@ -110,6 +119,6 @@ export async function uploadFoodPhoto(
  * Uploads a profile avatar to Supabase Storage.
  */
 export async function uploadAvatar(uri: string, userId: string): Promise<string> {
-  const base64 = await FileSystem.readAsStringAsync(uri, { encoding: BASE64 });
+  const base64 = await compressForUpload(uri, 600);
   return storageUpload('dine-images', `profiles/${userId}/avatar.jpg`, base64);
 }
