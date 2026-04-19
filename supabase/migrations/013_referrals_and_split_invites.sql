@@ -14,13 +14,18 @@ CREATE TABLE IF NOT EXISTS public.referrals (
 
 ALTER TABLE public.referrals ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can view their own referrals"
-  ON public.referrals FOR SELECT
-  USING (auth.uid() = inviter_id OR auth.uid() = invitee_id);
-
-CREATE POLICY "Users can record referrals for themselves"
-  ON public.referrals FOR INSERT
-  WITH CHECK (auth.uid() = invitee_id);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='referrals' AND policyname='Users can view their own referrals') THEN
+    CREATE POLICY "Users can view their own referrals"
+      ON public.referrals FOR SELECT
+      USING (auth.uid() = inviter_id OR auth.uid() = invitee_id);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='referrals' AND policyname='Users can record referrals for themselves') THEN
+    CREATE POLICY "Users can record referrals for themselves"
+      ON public.referrals FOR INSERT
+      WITH CHECK (auth.uid() = invitee_id);
+  END IF;
+END $$;
 
 -- UPDATE/DELETE on referrals handled server-side only (Edge Functions with service role)
 
@@ -38,11 +43,15 @@ CREATE TABLE IF NOT EXISTS public.split_invites (
 
 ALTER TABLE public.split_invites ENABLE ROW LEVEL SECURITY;
 
--- Authenticated users can view split invites (for deep link landing)
-CREATE POLICY "Authenticated users can view split invites"
-  ON public.split_invites FOR SELECT
-  USING (auth.uid() IS NOT NULL);
-
-CREATE POLICY "Users can create their own split invites"
-  ON public.split_invites FOR INSERT
-  WITH CHECK (auth.uid() = inviter_id);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='split_invites' AND policyname='Authenticated users can view split invites') THEN
+    CREATE POLICY "Authenticated users can view split invites"
+      ON public.split_invites FOR SELECT
+      USING (auth.uid() IS NOT NULL);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='split_invites' AND policyname='Users can create their own split invites') THEN
+    CREATE POLICY "Users can create their own split invites"
+      ON public.split_invites FOR INSERT
+      WITH CHECK (auth.uid() = inviter_id);
+  END IF;
+END $$;
