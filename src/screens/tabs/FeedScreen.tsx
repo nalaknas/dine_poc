@@ -22,15 +22,18 @@ export function FeedScreen() {
   const { user } = useAuthStore();
   const { feedPosts, setFeedPosts, toggleLike, isLoadingFeed, setLoadingFeed } = useSocialStore();
   const [refreshing, setRefreshing] = useState(false);
+  const [feedError, setFeedError] = useState(false);
 
   const loadFeed = useCallback(async () => {
     if (!user) return;
     try {
       setLoadingFeed(true);
+      setFeedError(false);
       const posts = await getFeedPosts(user.id);
       setFeedPosts(posts);
     } catch (err) {
       console.warn('Feed load error:', err);
+      setFeedError(true);
     } finally {
       setLoadingFeed(false);
     }
@@ -103,13 +106,19 @@ export function FeedScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#007AFF" />
         }
         ListEmptyComponent={
-          <EmptyState
-            icon="restaurant-outline"
-            title="No posts yet"
-            description="Follow friends to see their dining experiences here."
-            actionLabel="Discover Friends"
-            onAction={() => navigation.navigate('Main' as any)}
-          />
+          feedError ? (
+            <EmptyState
+              icon="cloud-offline-outline"
+              title="No connection"
+              description="Pull down to retry."
+            />
+          ) : (
+            <EmptyState
+              icon="restaurant-outline"
+              title="No posts yet"
+              description="Follow friends to see their dining experiences here."
+            />
+          )
         }
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ flexGrow: 1, paddingTop: 8, paddingBottom: 100 }}

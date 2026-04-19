@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import { Avatar } from '../../components/ui/Avatar';
+import { MealDetailSkeleton } from '../../components/ui/Skeleton';
 import { PhotoCarousel } from '../../components/post/PhotoCarousel';
 import { StarDishes } from '../../components/post/StarDishes';
 import { LikeButton } from '../../components/post/LikeButton';
@@ -191,9 +192,9 @@ export function MealDetailScreen() {
 
   if (isLoading) {
     return (
-      <View className="flex-1 items-center justify-center bg-background">
-        <ActivityIndicator size="large" color="#007AFF" />
-      </View>
+      <SafeAreaView className="flex-1 bg-background" edges={['top']}>
+        <MealDetailSkeleton />
+      </SafeAreaView>
     );
   }
 
@@ -216,8 +217,10 @@ export function MealDetailScreen() {
           >
             <Avatar uri={post.author?.avatar_url} displayName={post.author?.display_name ?? 'User'} size={40} />
             <View className="ml-2 flex-1">
-              <Text className="text-base font-semibold text-text-primary">{post.author?.username}</Text>
-              <Text className="text-sm text-accent">{post.restaurant_name}</Text>
+              <Text className="text-base font-semibold text-text-primary">{post.author?.username ?? 'User'}</Text>
+              {post.restaurant_name ? (
+                <Text className="text-sm text-accent">{post.restaurant_name}</Text>
+              ) : null}
             </View>
             {post.author_id === user?.id && (
               <TouchableOpacity onPress={() => navigation.navigate('EditPost', { postId: post.id })}>
@@ -248,7 +251,7 @@ export function MealDetailScreen() {
             const contributedPhotos = (post.tagged_friends ?? []).flatMap(
               (f) => f.contributed_photos ?? [],
             );
-            const allPhotos = [...post.food_photos, ...contributedPhotos];
+            const allPhotos = [...(post.food_photos ?? []), ...contributedPhotos];
             return allPhotos.length > 0 ? (
               <PhotoCarousel photos={allPhotos} photoLabels={post.photo_labels} />
             ) : null;
@@ -336,9 +339,9 @@ export function MealDetailScreen() {
           )}
 
           {/* Tags */}
-          {post.tags.length > 0 && (
+          {(post.tags?.length ?? 0) > 0 && (
             <View className="flex-row flex-wrap px-4 mb-3">
-              {post.tags.map((tag) => (
+              {post.tags?.map((tag) => (
                 <Text key={tag} className="text-sm text-accent mr-2">#{tag}</Text>
               ))}
             </View>
