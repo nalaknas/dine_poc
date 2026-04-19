@@ -13,7 +13,7 @@ import { useSocialStore } from '../../stores/socialStore';
 import { createQuickPost, calculatePostCredits } from '../../services/post-service';
 import { uploadFoodPhoto } from '../../services/receipt-service';
 import { useToast } from '../../contexts/ToastContext';
-import { trackPostCreated } from '../../lib/analytics';
+import { trackPostCreated, trackError } from '../../lib/analytics';
 import { TierUpCelebration } from '../../components/ui/TierUpCelebration';
 import type { UserTier } from '../../types';
 
@@ -155,8 +155,25 @@ export function QuickPostScreen() {
         navigateAway();
       }
     } catch (err: any) {
+      const errorMessage = err?.message ?? String(err);
+      const errorCode = err?.code ?? err?.status;
+      console.error('[QuickPost] publish failed', {
+        message: errorMessage,
+        code: errorCode,
+        details: err?.details,
+        hint: err?.hint,
+        stack: err?.stack,
+      });
+      trackError({
+        errorType: 'quick_post_failure',
+        errorMessage,
+        errorCode: errorCode ? String(errorCode) : undefined,
+        screenName: 'QuickPost',
+      });
       showToast({
-        message: 'Something went wrong. Try again.',
+        message: __DEV__ && errorCode
+          ? `Something went wrong (${errorCode}). Try again.`
+          : 'Something went wrong. Try again.',
         type: 'error',
         action: { label: 'Retry', onPress: handlePublish },
         duration: 5000,
