@@ -91,11 +91,17 @@ describe('Venmo Service', () => {
 
   describe('buildMealNote', () => {
     it('should format meal note correctly', () => {
-      expect(buildMealNote('Olive Garden')).toBe('Dine: Dinner at Olive Garden');
+      expect(buildMealNote('Olive Garden')).toBe('Split from Olive Garden on Dine');
     });
 
     it('should handle restaurant names with special characters', () => {
-      expect(buildMealNote("Joe's Crab Shack")).toBe("Dine: Dinner at Joe's Crab Shack");
+      expect(buildMealNote("Joe's Crab Shack")).toBe("Split from Joe's Crab Shack on Dine");
+    });
+
+    it('should append the split deep link when splitId is provided', () => {
+      expect(buildMealNote('Olive Garden', 'abc123')).toBe(
+        'Split from Olive Garden on Dine — dine.app/split/abc123',
+      );
     });
   });
 
