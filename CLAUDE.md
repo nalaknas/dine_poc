@@ -60,20 +60,26 @@ Use the specialized agents in `.claude/agents/` to build features end-to-end:
 
 | Agent | When to use |
 |-------|-------------|
-| `pm-requirements-breakdown` | Break down a feature idea into user stories, acceptance criteria, and sized tasks |
-| `pm-story-creator` | Create RICE-prioritized user stories, upload as Linear tickets, and plan sprints |
-| `component-spec-designer` | Design a component spec (props, variants, states, accessibility) before building |
 | `ticket-implementer` | Implement a Linear ticket by ID — fetches issue, plans, and writes code |
 | `db-migration-agent` | Create, validate, or apply Supabase migrations (schema, RLS, indexes) |
 | `code-reviewer` | Review written code for bugs, security, and pattern consistency |
-| `design-system-builder` | Build screens/components that match the established design system |
 
-### Typical workflow
-1. **Plan**: `pm-requirements-breakdown` to decompose the feature
-2. **Ticketing**: `pm-story-creator` to prioritize stories and create Linear tickets
-3. **Spec**: `component-spec-designer` for new UI components
-4. **Schema**: `db-migration-agent` if DB changes are needed
-5. **Build**: `ticket-implementer` or `design-system-builder` to implement
-6. **Review**: `code-reviewer` after implementation
+## Skills
 
-Agents can be composed in parallel when tasks are independent (e.g., db-migration-agent + component-spec-designer).
+Prefer skills over ad-hoc workflows for repeatable procedures:
+
+| Skill | What it does |
+|-------|--------------|
+| `ticket-start` | Fetch Linear ticket → sync `development` → create feature branch from `gitBranchName` → set ticket to In Progress |
+| `ticket-ship` | Preflight → commit → push → open PR to `development` → monitor CI → merge on green → set ticket to Done |
+| `release-to-prod` | Merge `development` → `main` → monitor EAS production build → confirm TestFlight submission |
+| `ota-push` | Publish an EAS OTA update to the current channel; falls back to native build if native changes detected |
+| `rollback` | Revert a bad `main` merge → trigger rollback build → republish OTA → back-merge to `development` → open post-mortem ticket |
+| `sync-branch` | Pull `main` → rebase `development` onto `main` → rebase current feature branch onto `development` |
+| `hotfix` | Emergency fix off `main` → PR to `main` → back-merge into `development` |
+| `supabase-ship` | Apply pending migrations + deploy edge functions via MCP, then run advisors |
+| `preflight` | Pre-commit gate: typecheck + jest + secrets scan. Blocks on failure |
+| `branch-cleanup` | Delete merged feature branches (local + remote), prune stale refs, return to `development` |
+| `db-change` | Design and apply a Supabase migration via `db-migration-agent` + Supabase MCP |
+| `implement-ticket` | End-to-end ticket implementation (delegates to `ticket-implementer` + `code-reviewer`) |
+| `implement-feature` | End-to-end feature workflow for larger work |

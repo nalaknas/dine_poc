@@ -45,3 +45,9 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Claude Code runtime — personal/runtime, not shared
+.claude/skills/
+.claude/agent-memory/
+.claude/worktrees/
+.claude/scheduled_tasks.lock

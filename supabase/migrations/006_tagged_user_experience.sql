@@ -8,9 +8,15 @@ ALTER TABLE public.post_tagged_friends
   ADD COLUMN IF NOT EXISTS contributed_photos text[] NOT NULL DEFAULT '{}';
 
 -- 2. Unique constraint: one rating per user per dish per post
-ALTER TABLE public.dish_ratings
-  ADD CONSTRAINT dish_ratings_post_user_dish_unique
-    UNIQUE (post_id, user_id, dish_name);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'dish_ratings_post_user_dish_unique'
+  ) THEN
+    ALTER TABLE public.dish_ratings
+      ADD CONSTRAINT dish_ratings_post_user_dish_unique UNIQUE (post_id, user_id, dish_name);
+  END IF;
+END $$;
 
 -- 3. Dish endorsements table (emoji reactions on dishes)
 CREATE TABLE IF NOT EXISTS public.dish_endorsements (
@@ -27,14 +33,14 @@ CREATE INDEX IF NOT EXISTS dish_endorsements_rating_id ON public.dish_endorsemen
 -- 4. RLS for dish_endorsements
 ALTER TABLE public.dish_endorsements ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Anyone can view endorsements"
-  ON public.dish_endorsements FOR SELECT
-  USING (true);
-
-CREATE POLICY "Users can insert own endorsements"
-  ON public.dish_endorsements FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users can delete own endorsements"
-  ON public.dish_endorsements FOR DELETE
-  USING (auth.uid() = user_id);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='dish_endorsements' AND policyname='Anyone can view endorsements') THEN
+    CREATE POLICY "Anyone can view endorsements" ON public.dish_endorsements FOR SELECT USING (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='dish_endorsements' AND policyname='Users can insert own endorsements') THEN
+    CREATE POLICY "Users can insert own endorsements" ON public.dish_endorsements FOR INSERT WITH CHECK (auth.uid() = user_id);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='dish_endorsements' AND policyname='Users can delete own endorsements') THEN
+    CREATE POLICY "Users can delete own endorsements" ON public.dish_endorsements FOR DELETE USING (auth.uid() = user_id);
+  END IF;
+END $$;

@@ -24,11 +24,11 @@ CREATE TABLE IF NOT EXISTS public.post_engagements (
 );
 
 -- For attribution lookups: "which restaurants has user X engaged with recently?"
-CREATE INDEX idx_post_engagements_attribution
+CREATE INDEX IF NOT EXISTS idx_post_engagements_attribution
   ON public.post_engagements (user_id, restaurant_name, created_at DESC);
 
 -- For credit queries: "which authors influenced visits to restaurant Y?"
-CREATE INDEX idx_post_engagements_author
+CREATE INDEX IF NOT EXISTS idx_post_engagements_author
   ON public.post_engagements (post_author_id, restaurant_name);
 
 -- ─── RLS ────────────────────────────────────────────────────────────────────
@@ -37,9 +37,13 @@ CREATE INDEX idx_post_engagements_author
 
 ALTER TABLE public.post_engagements ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can view own engagements"
-  ON public.post_engagements FOR SELECT
-  USING (auth.uid() = user_id);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='post_engagements' AND policyname='Users can view own engagements') THEN
+    CREATE POLICY "Users can view own engagements"
+      ON public.post_engagements FOR SELECT
+      USING (auth.uid() = user_id);
+  END IF;
+END $$;
 
 -- ─── TRIGGER FUNCTION: likes → post_engagements ────────────────────────────
 -- On INSERT into likes: create a 'like' engagement row if the post has a
@@ -86,6 +90,7 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS trg_like_engagement ON public.likes;
 CREATE TRIGGER trg_like_engagement
   AFTER INSERT OR DELETE ON public.likes
   FOR EACH ROW
@@ -135,6 +140,7 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS trg_comment_engagement ON public.comments;
 CREATE TRIGGER trg_comment_engagement
   AFTER INSERT OR DELETE ON public.comments
   FOR EACH ROW
@@ -210,6 +216,7 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS trg_bookmark_engagement ON public.playlist_restaurants;
 CREATE TRIGGER trg_bookmark_engagement
   AFTER INSERT OR DELETE ON public.playlist_restaurants
   FOR EACH ROW
