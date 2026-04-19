@@ -84,17 +84,46 @@ export function trackSignIn(properties: {
 }
 
 // ── Post creation funnel ───────────────────────────────────
-let postCreationStartedAt: number | null = null;
+//
+// Funnel events fired by both flows. Build a Mixpanel funnel breaking down
+// by `flow` to compare full vs quick:
+//
+//   1. post_creation_step (step_index = 0)         — flow opened
+//   2. post_publish_attempted                      — user tapped Post
+//   3. post_created                                — server returned a row
+//
+// Drop-off between (1)→(2) = abandonment before submit.
+// Drop-off between (2)→(3) = silent failure (RLS, network, etc).
+// post_creation_abandoned fires when the user exits without reaching (3).
+//
+// Every event below carries `flow: 'full' | 'quick'`. Don't drop it.
 
-export function trackPostCreationStep(step: string, stepIndex: number) {
+export type PostFlow = 'full' | 'quick';
+
+let postCreationStartedAt: number | null = null;
+let postWasCreated = false;
+
+export function trackPostCreationStep(step: string, stepIndex: number, flow: PostFlow) {
   if (stepIndex === 0) {
     postCreationStartedAt = Date.now();
+    postWasCreated = false;
   }
   mp?.track('post_creation_step', {
     step,
     step_index: stepIndex,
+    flow,
     elapsed_ms: postCreationStartedAt ? Date.now() - postCreationStartedAt : 0,
   });
+}
+
+export function trackPostPublishAttempted(properties: {
+  flow: PostFlow;
+  restaurantName?: string;
+  friendCount?: number;
+  photoCount?: number;
+}) {
+  const elapsed = postCreationStartedAt ? Date.now() - postCreationStartedAt : undefined;
+  mp?.track('post_publish_attempted', { ...properties, elapsed_ms: elapsed });
 }
 
 export function trackPostCreated(properties: {
@@ -104,6 +133,7 @@ export function trackPostCreated(properties: {
   photoCount: number;
   dishRatingCount: number;
   restaurantName?: string;
+  flow: PostFlow;
 }) {
   const timeToPost = postCreationStartedAt ? Date.now() - postCreationStartedAt : undefined;
 
@@ -114,22 +144,34 @@ export function trackPostCreated(properties: {
   mp?.track('Conversion', {
     'Conversion Type': 'post_creation',
     'Conversion Value': properties.friendCount,
+    flow: properties.flow,
   });
 
   postCreationStartedAt = null;
+  postWasCreated = true;
 
   // Track time-to-first-post via people property (Mixpanel sets once)
   mp?.getPeople().setOnce('first_post_at', new Date().toISOString());
 }
 
-export function trackPostAbandoned(lastStep: string, lastStepIndex: number) {
+export function trackPostAbandoned(lastStep: string, lastStepIndex: number, flow: PostFlow) {
   const elapsed = postCreationStartedAt ? Date.now() - postCreationStartedAt : undefined;
   mp?.track('post_creation_abandoned', {
     last_step: lastStep,
     last_step_index: lastStepIndex,
+    flow,
     elapsed_ms: elapsed,
   });
   postCreationStartedAt = null;
+}
+
+/**
+ * Use in screen unmount / `beforeRemove` to fire abandonment only when the
+ * user is leaving without having published. No-op if a post was just created.
+ */
+export function trackPostAbandonedIfNotCreated(lastStep: string, lastStepIndex: number, flow: PostFlow) {
+  if (postWasCreated || postCreationStartedAt === null) return;
+  trackPostAbandoned(lastStep, lastStepIndex, flow);
 }
 
 // ── Engagement events ──────────────────────────────────────

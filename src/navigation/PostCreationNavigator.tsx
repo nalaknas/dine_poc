@@ -54,7 +54,7 @@ export function PostCreationNavigator() {
           const routeName = e.target?.split('-')[0] as keyof PostCreationParamList;
           if (routeName) {
             const stepIndex = STEPS.indexOf(routeName);
-            if (stepIndex >= 0) trackPostCreationStep(routeName, stepIndex);
+            if (stepIndex >= 0) trackPostCreationStep(routeName, stepIndex, 'full');
             if (routeName !== 'Home') {
               useBillSplitterStore.getState().persistDraft(routeName);
               useSocialStore.getState().persistDraft();
@@ -81,7 +81,7 @@ export function PostCreationNavigator() {
             <TouchableOpacity onPress={() => {
               // Track abandonment — the current route is always 'Home' here (step 0)
               // but the user may have navigated back, so track from Home
-              trackPostAbandoned('Home', 0);
+              trackPostAbandoned('Home', 0, 'full');
               useBillSplitterStore.getState().reset();
               useSocialStore.getState().clearDraftPost();
               navigation.getParent()?.navigate('Feed');
