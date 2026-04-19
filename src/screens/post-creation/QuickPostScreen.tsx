@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, Image,
   ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform, Alert,
@@ -13,7 +13,13 @@ import { useSocialStore } from '../../stores/socialStore';
 import { createQuickPost, calculatePostCredits } from '../../services/post-service';
 import { uploadFoodPhoto } from '../../services/receipt-service';
 import { useToast } from '../../contexts/ToastContext';
-import { trackPostCreated, trackError } from '../../lib/analytics';
+import {
+  trackPostCreated,
+  trackError,
+  trackPostCreationStep,
+  trackPostPublishAttempted,
+  trackPostAbandonedIfNotCreated,
+} from '../../lib/analytics';
 import { TierUpCelebration } from '../../components/ui/TierUpCelebration';
 import type { UserTier } from '../../types';
 
@@ -34,6 +40,13 @@ export function QuickPostScreen() {
   const [showTierUp, setShowTierUp] = useState(false);
   const [newTier, setNewTier] = useState<UserTier>('rock');
   const pendingNavRef = useRef<(() => void) | null>(null);
+
+  // Funnel: opens the quick flow, fires abandonment on unmount if user
+  // backs out without publishing.
+  useEffect(() => {
+    trackPostCreationStep('quick_post_opened', 0, 'quick');
+    return () => trackPostAbandonedIfNotCreated('QuickPost', 0, 'quick');
+  }, []);
 
   const pickPhotos = async (source: 'camera' | 'library') => {
     if (photos.length >= 5) {
@@ -66,6 +79,12 @@ export function QuickPostScreen() {
   const handlePublish = async () => {
     if (!user || !profile || !canPost) return;
 
+    trackPostPublishAttempted({
+      flow: 'quick',
+      restaurantName: restaurantName.trim(),
+      photoCount: photos.length,
+    });
+
     setIsPosting(true);
     try {
       // 1. Upload photos
@@ -97,6 +116,7 @@ export function QuickPostScreen() {
         photoCount: uploadedPhotos.length,
         dishRatingCount: 0,
         restaurantName: restaurantName.trim(),
+        flow: 'quick',
       });
 
       // 4. Calculate credits

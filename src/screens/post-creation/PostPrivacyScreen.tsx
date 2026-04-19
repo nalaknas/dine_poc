@@ -12,7 +12,7 @@ import { useSplitHistoryStore } from '../../stores/splitHistoryStore';
 import { uploadFoodPhoto } from '../../services/receipt-service';
 import { generateDishEmbedding } from '../../services/recommendation-service';
 import { useToast } from '../../contexts/ToastContext';
-import { trackPostCreated, trackBillSplitCompleted } from '../../lib/analytics';
+import { trackPostCreated, trackBillSplitCompleted, trackPostPublishAttempted } from '../../lib/analytics';
 import { TierUpCelebration } from '../../components/ui/TierUpCelebration';
 import type { CreatePostDraft, UserTier } from '../../types';
 
@@ -38,6 +38,13 @@ export function PostPrivacyScreen() {
 
   const handlePublish = async () => {
     if (!user || !profile) return;
+
+    trackPostPublishAttempted({
+      flow: 'full',
+      restaurantName: currentReceipt?.restaurantName,
+      friendCount: selectedFriends.length,
+      photoCount: (draftPost?.foodPhotos ?? []).length,
+    });
 
     setIsPosting(true);
     try {
@@ -105,6 +112,7 @@ export function PostPrivacyScreen() {
         photoCount: draft.foodPhotos?.length ?? 0,
         dishRatingCount: (draft.dishRatings ?? []).length,
         restaurantName: currentReceipt?.restaurantName,
+        flow: 'full',
       });
 
       // 2c. Track bill_split_completed if friends were involved
