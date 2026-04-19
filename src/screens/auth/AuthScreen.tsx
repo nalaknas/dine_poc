@@ -8,17 +8,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as AppleAuthentication from 'expo-apple-authentication';
-import * as WebBrowser from 'expo-web-browser';
 import * as Crypto from 'expo-crypto';
 import { useAuthStore } from '../../stores/authStore';
 import { getOrCreateUserProfile } from '../../services/auth-service';
 import { useUserProfileStore } from '../../stores/userProfileStore';
 import { Button } from '../../components/ui/Button';
 import { trackSignUp, trackSignIn } from '../../lib/analytics';
-import { Config } from '../../constants/config';
 import type { RootStackParamList } from '../../types';
-
-WebBrowser.maybeCompleteAuthSession();
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -48,7 +44,6 @@ export function AuthScreen() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showEmailForm, setShowEmailForm] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
   const [appleAvailable, setAppleAvailable] = useState(false);
 
   // Apple Sign-In is only available on iOS 13+. Hide the button otherwise so
@@ -104,49 +99,6 @@ export function AuthScreen() {
     } catch (err: any) {
       if (err.code === 'ERR_REQUEST_CANCELED') return;
       Alert.alert('Error', friendlyError(err?.message ?? 'Apple Sign-In failed'));
-    }
-  };
-
-  const handleGoogleSignIn = async () => {
-    if (googleLoading) return;
-    setGoogleLoading(true);
-    try {
-      const redirectUri = 'https://auth.expo.io/@nalaknas/dine';
-      const nonce = await Crypto.digestStringAsync(
-        Crypto.CryptoDigestAlgorithm.SHA256,
-        Crypto.getRandomBytes(32).toString(),
-      );
-
-      // Build the Google OAuth URL manually
-      const params = new URLSearchParams({
-        client_id: Config.google.oauthClientId,
-        redirect_uri: redirectUri,
-        response_type: 'id_token',
-        scope: 'openid profile email',
-        nonce,
-      });
-      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
-      const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
-
-      if (result.type === 'success' && result.url) {
-        // Parse the id_token from the redirect URL fragment
-        const url = result.url;
-        const fragment = url.split('#')[1] ?? '';
-        const fragParams = new URLSearchParams(fragment);
-        const idToken = fragParams.get('id_token');
-
-        if (idToken) {
-          await signInWithIdToken('google', idToken);
-          await handlePostAuth('google');
-        } else {
-          Alert.alert('Error', 'No ID token received from Google.');
-        }
-      }
-    } catch (err: any) {
-      console.log('[GoogleAuth] ERROR:', err);
-      Alert.alert('Error', friendlyError(err?.message ?? 'Google Sign-In failed'));
-    } finally {
-      setGoogleLoading(false);
     }
   };
 
@@ -215,17 +167,6 @@ export function AuthScreen() {
                   </Text>
                 </TouchableOpacity>
               )}
-
-              <TouchableOpacity
-                onPress={handleGoogleSignIn}
-                disabled={isLoading || googleLoading}
-                className="flex-row items-center justify-center bg-white border border-border rounded-xl py-3.5 px-4"
-              >
-                <Ionicons name="logo-google" size={20} color="#4285F4" />
-                <Text className="text-text-primary text-base font-semibold ml-2">
-                  Continue with Google
-                </Text>
-              </TouchableOpacity>
             </View>
 
             {/* Divider */}
