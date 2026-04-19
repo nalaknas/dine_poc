@@ -11,7 +11,7 @@ interface AuthState {
   setLoading: (loading: boolean) => void;
   signUp: (email: string, password: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
-  signInWithIdToken: (provider: 'apple' | 'google', token: string) => Promise<void>;
+  signInWithIdToken: (provider: 'apple' | 'google', token: string, nonce?: string) => Promise<void>;
   signOut: () => Promise<void>;
   initialize: () => Promise<void>;
 }
@@ -80,10 +80,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  signInWithIdToken: async (provider, token) => {
+  signInWithIdToken: async (provider, token, nonce) => {
     set({ isLoading: true });
     try {
-      const { error } = await supabase.auth.signInWithIdToken({ provider, token });
+      const { error } = await supabase.auth.signInWithIdToken({ provider, token, nonce });
       if (error) throw error;
     } finally {
       set({ isLoading: false });
