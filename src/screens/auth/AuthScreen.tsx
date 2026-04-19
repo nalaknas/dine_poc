@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, KeyboardAvoidingView,
   Platform, ScrollView, Alert, ActivityIndicator,
@@ -49,6 +49,21 @@ export function AuthScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [showEmailForm, setShowEmailForm] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [appleAvailable, setAppleAvailable] = useState(false);
+
+  // Apple Sign-In is only available on iOS 13+. Hide the button otherwise so
+  // users never see a non-functional CTA (also a common App Store reject reason).
+  useEffect(() => {
+    let cancelled = false;
+    AppleAuthentication.isAvailableAsync()
+      .then((available) => {
+        if (!cancelled) setAppleAvailable(available);
+      })
+      .catch(() => {
+        if (!cancelled) setAppleAvailable(false);
+      });
+    return () => { cancelled = true; };
+  }, []);
 
   const handlePostAuth = async (method: string) => {
     const { user } = useAuthStore.getState();
@@ -62,11 +77,21 @@ export function AuthScreen() {
 
   const handleAppleSignIn = async () => {
     try {
+      // Generate a random nonce, send the SHA-256 hash to Apple, and pass the
+      // raw nonce to Supabase to verify the `nonce` claim in the ID token.
+      // This binds the token to this sign-in attempt and prevents replay.
+      const rawNonce = Crypto.getRandomBytes(32).toString();
+      const hashedNonce = await Crypto.digestStringAsync(
+        Crypto.CryptoDigestAlgorithm.SHA256,
+        rawNonce,
+      );
+
       const credential = await AppleAuthentication.signInAsync({
         requestedScopes: [
           AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
           AppleAuthentication.AppleAuthenticationScope.EMAIL,
         ],
+        nonce: hashedNonce,
       });
 
       if (!credential.identityToken) {
@@ -74,7 +99,7 @@ export function AuthScreen() {
         return;
       }
 
-      await signInWithIdToken('apple', credential.identityToken);
+      await signInWithIdToken('apple', credential.identityToken, rawNonce);
       await handlePostAuth('apple');
     } catch (err: any) {
       if (err.code === 'ERR_REQUEST_CANCELED') return;
@@ -178,16 +203,18 @@ export function AuthScreen() {
 
             {/* Social Sign-In Buttons */}
             <View className="mb-6 gap-3">
-              <TouchableOpacity
-                onPress={handleAppleSignIn}
-                disabled={isLoading}
-                className="flex-row items-center justify-center bg-black rounded-xl py-3.5 px-4"
-              >
-                <Ionicons name="logo-apple" size={20} color="#fff" />
-                <Text className="text-white text-base font-semibold ml-2">
-                  Continue with Apple
-                </Text>
-              </TouchableOpacity>
+              {appleAvailable && (
+                <TouchableOpacity
+                  onPress={handleAppleSignIn}
+                  disabled={isLoading}
+                  className="flex-row items-center justify-center bg-black rounded-xl py-3.5 px-4"
+                >
+                  <Ionicons name="logo-apple" size={20} color="#fff" />
+                  <Text className="text-white text-base font-semibold ml-2">
+                    Continue with Apple
+                  </Text>
+                </TouchableOpacity>
+              )}
 
               <TouchableOpacity
                 onPress={handleGoogleSignIn}
