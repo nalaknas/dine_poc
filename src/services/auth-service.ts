@@ -54,7 +54,22 @@ export async function getOrCreateUserProfile(uid: string, email: string): Promis
     .select()
     .single();
 
-  if (createError) throw createError;
+  if (createError) {
+    // Race: a concurrent caller (AuthScreen's post-auth handler +
+    // RootNavigator's profile effect both fire on auth state change) or a
+    // server-side trigger already inserted the row between our SELECT and
+    // INSERT. Re-fetch and return theirs instead of bubbling a duplicate-
+    // key error to the UI. `23505` = Postgres unique_violation.
+    if ((createError as { code?: string }).code === '23505') {
+      const { data: reread } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', uid)
+        .single();
+      if (reread) return reread as User;
+    }
+    throw createError;
+  }
   return created as User;
 }
 
