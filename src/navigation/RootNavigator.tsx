@@ -11,8 +11,9 @@ import { MainTabNavigator } from './MainTabNavigator';
 import { AuthScreen } from '../screens/auth/AuthScreen';
 import { SplashScreen, shouldSkipSplash, markSplashPlayed } from '../screens/onboarding/SplashScreen';
 import { WelcomeOnboardingScreen } from '../screens/onboarding/WelcomeOnboardingScreen';
+import { TastePickerScreen } from '../screens/onboarding/TastePickerScreen';
+import { FollowFriendsScreen } from '../screens/onboarding/FollowFriendsScreen';
 import { PermissionsOnboardingScreen } from '../screens/onboarding/PermissionsOnboardingScreen';
-import { ProfileSetupOnboardingScreen } from '../screens/onboarding/ProfileSetupOnboardingScreen';
 import { MealDetailScreen } from '../screens/detail/MealDetailScreen';
 import { UserProfileScreen } from '../screens/detail/UserProfileScreen';
 import { RestaurantDetailScreen } from '../screens/detail/RestaurantDetailScreen';
@@ -119,11 +120,14 @@ export function RootNavigator() {
     loadSettings().then(() => initialize());
   }, []);
 
-  // Auto-load profile when user is authenticated but profile isn't loaded yet
+  // Auto-load profile when user is authenticated but profile isn't loaded yet.
+  // Note: AuthScreen is the one that sets `hasCompletedOnboarding` based on
+  // wasCreated — this effect only fires for existing sessions (app restart),
+  // where the onboarding flag is already persisted correctly from the last run.
   useEffect(() => {
     if (user && !profile) {
       getOrCreateUserProfile(user.id, user.email)
-        .then(setProfile)
+        .then(({ profile }) => setProfile(profile))
         .catch(console.error);
     }
   }, [user, profile]);
@@ -247,14 +251,17 @@ export function RootNavigator() {
   );
 }
 
-// Inline onboarding stack to keep RootNavigator clean
+// Inline onboarding stack to keep RootNavigator clean.
+// Flow (ENG-129): Welcome → TastePicker → FollowFriends → Permissions → Main.
+// Permissions is the step that flips `hasCompletedOnboarding = true`.
 const OnboardingStack = createNativeStackNavigator();
 function OnboardingNavigator() {
   return (
     <OnboardingStack.Navigator screenOptions={{ headerShown: false }}>
       <OnboardingStack.Screen name="Welcome" component={WelcomeOnboardingScreen} />
+      <OnboardingStack.Screen name="TastePicker" component={TastePickerScreen} />
+      <OnboardingStack.Screen name="FollowFriends" component={FollowFriendsScreen} />
       <OnboardingStack.Screen name="Permissions" component={PermissionsOnboardingScreen} />
-      <OnboardingStack.Screen name="ProfileSetup" component={ProfileSetupOnboardingScreen} />
     </OnboardingStack.Navigator>
   );
 }

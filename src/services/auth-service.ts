@@ -26,15 +26,40 @@ export async function signInWithGoogleToken(idToken: string): Promise<Session> {
   return data.session;
 }
 
-export async function getOrCreateUserProfile(uid: string, email: string): Promise<User> {
+export interface GetOrCreateResult {
+  profile: User;
+  /**
+   * True if this call created a brand-new row (i.e. the user has never
+   * logged in before). Callers can use this to differentiate sign-up from
+   * sign-in when the underlying auth call can't (e.g. Apple ID token).
+   */
+  wasCreated: boolean;
+}
+
+// Rows younger than this are treated as just-created. Covers the Supabase
+// DB trigger that auto-inserts into `users` when a new auth.users row lands —
+// that trigger fires before our client SELECT, so a freshly-signed-up account
+// otherwise looks "existing" to us.
+const FRESH_SIGNUP_WINDOW_MS = 60_000;
+
+export async function getOrCreateUserProfile(
+  uid: string,
+  email: string,
+): Promise<GetOrCreateResult> {
   // Try to get existing profile
-  const { data: existing, error: fetchError } = await supabase
+  const { data: existing } = await supabase
     .from('users')
     .select('*')
     .eq('id', uid)
     .single();
 
-  if (existing) return existing as User;
+  if (existing) {
+    const ageMs = Date.now() - new Date(existing.created_at).getTime();
+    return {
+      profile: existing as User,
+      wasCreated: ageMs < FRESH_SIGNUP_WINDOW_MS,
+    };
+  }
 
   // Create new profile
   const username = email.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '') + Math.floor(Math.random() * 1000);
@@ -54,8 +79,23 @@ export async function getOrCreateUserProfile(uid: string, email: string): Promis
     .select()
     .single();
 
-  if (createError) throw createError;
-  return created as User;
+  if (createError) {
+    // Race: a concurrent caller (AuthScreen's post-auth handler +
+    // RootNavigator's profile effect both fire on auth state change) or a
+    // server-side trigger already inserted the row between our SELECT and
+    // INSERT. Re-fetch and return theirs instead of bubbling a duplicate-
+    // key error to the UI. `23505` = Postgres unique_violation.
+    if ((createError as { code?: string }).code === '23505') {
+      const { data: reread } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', uid)
+        .single();
+      if (reread) return { profile: reread as User, wasCreated: false };
+    }
+    throw createError;
+  }
+  return { profile: created as User, wasCreated: true };
 }
 
 export async function updateUserProfile(uid: string, updates: Partial<User>): Promise<User> {
