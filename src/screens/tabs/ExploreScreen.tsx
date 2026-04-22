@@ -18,6 +18,8 @@ import { useUserProfileStore } from '../../stores/userProfileStore';
 import { trackSearch } from '../../lib/analytics';
 import type { User, RootStackParamList } from '../../types';
 
+const WARMING_UP_THRESHOLD = 5; // meals before the AI card has useful signal
+
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 // Warm food-toned gradients for the cuisine grid. The prototype used a
@@ -34,12 +36,14 @@ const CUISINES: ReadonlyArray<{ name: string; from: string; to: string }> = [
 export function ExploreScreen() {
   const navigation = useNavigation<Nav>();
   const { user } = useAuthStore();
-  const { setIsFollowing, isFollowing: followingMap } = useUserProfileStore();
+  const { profile, setIsFollowing, isFollowing: followingMap } = useUserProfileStore();
 
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<User[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+
+  const isWarmingUp = (profile?.total_meals ?? 0) < WARMING_UP_THRESHOLD;
 
   const handleSearch = useCallback(async (text: string) => {
     setQuery(text);
@@ -111,7 +115,19 @@ export function ExploreScreen() {
         </View>
       </View>
 
-      {showIdleContent && <IdleDiscover />}
+      {showIdleContent && (
+        isWarmingUp ? (
+          <EmptyState
+            glyph="◎"
+            title="Warming up your taste."
+            description="Rate 5 more spots and we'll start bringing you picks that match your palate."
+            actionLabel="Rate a spot"
+            onAction={() => navigation.navigate('PostCreation' as never)}
+          />
+        ) : (
+          <IdleDiscover />
+        )
+      )}
     </View>
   );
 
