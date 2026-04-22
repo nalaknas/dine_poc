@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { Avatar } from '../../components/ui/Avatar';
+import { EmptyState } from '../../components/ui/EmptyState';
 import { useBillSplitterStore } from '../../stores/billSplitterStore';
 import { useContactsStore, contactToFriend } from '../../stores/contactsStore';
 import { searchUsers } from '../../services/user-service';
@@ -229,6 +230,18 @@ export function SelectFriendsScreen() {
               No Dine users for "{query}". Tap "Add manually" above to invite by name.
             </Text>
           </View>
+        )}
+
+        {/* No-split-partners editorial prompt — shown only at the initial state
+            before the user searches or picks anyone beyond themselves. */}
+        {!isSearching && selectedFriends.length <= 1 && (
+          <EmptyState
+            glyph="◐"
+            title="No one to split with."
+            description="Invite a friend who's been there too. Splits auto-pull their share."
+            actionLabel="Invite a friend"
+            onAction={() => setShowManualModal(true)}
+          />
         )}
       </ScrollView>
 

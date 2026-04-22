@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { EmptyState } from '../../components/ui/EmptyState';
 import { useAuthStore } from '../../stores/authStore';
 import {
   getUserPlaylists, deletePlaylist, removeRestaurantFromPlaylist,
@@ -146,13 +147,13 @@ export function SavedRestaurantsScreen() {
         }
         ListEmptyComponent={
           !isLoading ? (
-            <View className="py-16 items-center">
-              <Ionicons name="bookmark-outline" size={48} color="#D1D5DB" />
-              <Text className="text-lg font-semibold text-text-primary mt-4">No saved restaurants</Text>
-              <Text className="text-sm text-text-secondary mt-1 text-center px-8">
-                Tap the bookmark icon on any post to save restaurants for later.
-              </Text>
-            </View>
+            <EmptyState
+              glyph="◌"
+              title="No saves yet."
+              description="Tap the heart on any post — saves are private until you share them."
+              actionLabel="Explore feed"
+              onAction={() => navigation.navigate('Main' as never)}
+            />
           ) : null
         }
       />
