@@ -36,6 +36,12 @@ export interface GetOrCreateResult {
   wasCreated: boolean;
 }
 
+// Rows younger than this are treated as just-created. Covers the Supabase
+// DB trigger that auto-inserts into `users` when a new auth.users row lands —
+// that trigger fires before our client SELECT, so a freshly-signed-up account
+// otherwise looks "existing" to us.
+const FRESH_SIGNUP_WINDOW_MS = 60_000;
+
 export async function getOrCreateUserProfile(
   uid: string,
   email: string,
@@ -47,7 +53,13 @@ export async function getOrCreateUserProfile(
     .eq('id', uid)
     .single();
 
-  if (existing) return { profile: existing as User, wasCreated: false };
+  if (existing) {
+    const ageMs = Date.now() - new Date(existing.created_at).getTime();
+    return {
+      profile: existing as User,
+      wasCreated: ageMs < FRESH_SIGNUP_WINDOW_MS,
+    };
+  }
 
   // Create new profile
   const username = email.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '') + Math.floor(Math.random() * 1000);
