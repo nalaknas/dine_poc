@@ -13,6 +13,7 @@ import { TierBadge } from '../ui/TierBadge';
 import { PlaylistPickerModal } from '../ui/PlaylistPickerModal';
 import { ShareCard, type ShareCardHandle } from './ShareCard';
 import { Shadows } from '../../constants/shadows';
+import { Gold, Indigo, Neutral, Onyx, Gradients } from '../../constants/colors';
 import { toggleBookmark, isRestaurantBookmarked } from '../../services/bookmark-service';
 import { useAuthStore } from '../../stores/authStore';
 
@@ -121,9 +122,9 @@ export function PostCard({ post, onLike, onComment }: PostCardProps) {
       style={[
         {
           backgroundColor: '#FFFFFF',
-          marginHorizontal: 12,
-          marginBottom: 12,
-          borderRadius: 16,
+          marginHorizontal: 14,
+          marginBottom: 16,
+          borderRadius: 20,
           overflow: 'hidden',
         },
         Shadows.card,
@@ -135,30 +136,30 @@ export function PostCard({ post, onLike, onComment }: PostCardProps) {
           <Avatar
             uri={author?.avatar_url}
             displayName={author?.display_name ?? 'User'}
-            size={38}
+            size={36}
           />
-          <View style={{ marginLeft: 8, flex: 1 }}>
+          <View style={{ marginLeft: 10, flex: 1 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Text style={{ fontSize: 14, fontWeight: '600', color: '#1F2937' }}>
+              <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 14, color: Neutral[800] }}>
                 {author?.username ?? 'unknown'}
               </Text>
               {author?.current_tier && <TierBadge tier={author.current_tier} variant="inline" />}
             </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 3 }}>
               <Pressable onPress={handleRestaurantPress}>
                 <View
                   style={{
                     flexDirection: 'row',
                     alignItems: 'center',
-                    backgroundColor: 'rgba(0,122,255,0.08)',
-                    paddingHorizontal: 6,
+                    backgroundColor: 'rgba(94,106,210,0.08)',
+                    paddingHorizontal: 7,
                     paddingVertical: 2,
                     borderRadius: 6,
                   }}
                 >
-                  <Ionicons name="restaurant" size={10} color="#007AFF" />
+                  <Ionicons name="restaurant" size={10} color={Indigo.linear} />
                   <Text
-                    style={{ fontSize: 11, color: '#007AFF', marginLeft: 3, fontWeight: '500' }}
+                    style={{ fontFamily: 'Inter_500Medium', fontSize: 11, color: Indigo.linear, marginLeft: 3 }}
                     numberOfLines={1}
                   >
                     {post.restaurant_name}
@@ -171,7 +172,7 @@ export function PostCard({ post, onLike, onComment }: PostCardProps) {
                 style={{
                   flexDirection: 'row',
                   alignItems: 'center',
-                  backgroundColor: 'rgba(245,158,11,0.12)',
+                  backgroundColor: 'rgba(247,181,46,0.12)',
                   paddingHorizontal: 6,
                   paddingVertical: 2,
                   borderRadius: 6,
@@ -179,18 +180,31 @@ export function PostCard({ post, onLike, onComment }: PostCardProps) {
                   marginTop: 2,
                 }}
               >
-                <Ionicons name="compass" size={10} color="#D97706" />
+                <Ionicons name="compass" size={10} color={Gold[600]} />
                 <Text
-                  style={{ fontSize: 10, color: '#D97706', marginLeft: 2, fontWeight: '700' }}
+                  style={{ fontFamily: 'Inter_700Bold', fontSize: 10, color: Gold[600], marginLeft: 2 }}
                 >
                   Discoverer
                 </Text>
               </View>
             )}
             {post.is_quick_post && (
-              <View className="flex-row items-center bg-gold/10 px-1.5 py-0.5 rounded-md self-start mt-0.5">
-                <Ionicons name="flash" size={10} color="#F59E0B" />
-                <Text className="text-[10px] text-gold ml-0.5 font-semibold">Quick Post</Text>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  backgroundColor: 'rgba(247,181,46,0.12)',
+                  paddingHorizontal: 6,
+                  paddingVertical: 2,
+                  borderRadius: 6,
+                  alignSelf: 'flex-start',
+                  marginTop: 2,
+                }}
+              >
+                <Ionicons name="flash" size={10} color={Gold[600]} />
+                <Text style={{ fontFamily: 'Inter_600SemiBold', fontSize: 10, color: Gold[600], marginLeft: 2 }}>
+                  Quick Post
+                </Text>
               </View>
             )}
           </View>
@@ -198,21 +212,21 @@ export function PostCard({ post, onLike, onComment }: PostCardProps) {
 
         {/* Rating badge */}
         {post.overall_rating > 0 && (
-          post.overall_rating >= 8.0 ? (
+          post.overall_rating >= 8.5 ? (
             <View style={{ borderRadius: 10, overflow: 'hidden' }}>
               <LinearGradient
-                colors={['#F59E0B', '#EF4444']}
+                colors={[Gradients.gold[0], Gradients.gold[1]]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={{
                   flexDirection: 'row',
                   alignItems: 'center',
-                  paddingHorizontal: 8,
+                  paddingHorizontal: 9,
                   paddingVertical: 4,
                 }}
               >
                 <Ionicons name="star" size={12} color="#FFFFFF" />
-                <Text style={{ fontSize: 13, fontWeight: '700', color: '#FFFFFF', marginLeft: 3 }}>
+                <Text style={{ fontFamily: 'JetBrainsMono_600SemiBold', fontSize: 13, color: '#FFFFFF', marginLeft: 4 }}>
                   {post.overall_rating.toFixed(1)}
                 </Text>
               </LinearGradient>
@@ -222,14 +236,14 @@ export function PostCard({ post, onLike, onComment }: PostCardProps) {
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
-                backgroundColor: '#F9FAFB',
-                paddingHorizontal: 8,
+                backgroundColor: Neutral[50],
+                paddingHorizontal: 9,
                 paddingVertical: 4,
                 borderRadius: 10,
               }}
             >
-              <Ionicons name="star" size={12} color="#F59E0B" />
-              <Text style={{ fontSize: 13, fontWeight: '700', color: '#1F2937', marginLeft: 3 }}>
+              <Ionicons name="star" size={12} color={Gold[400]} />
+              <Text style={{ fontFamily: 'JetBrainsMono_600SemiBold', fontSize: 13, color: Onyx[900], marginLeft: 4 }}>
                 {post.overall_rating.toFixed(1)}
               </Text>
             </View>
@@ -239,17 +253,19 @@ export function PostCard({ post, onLike, onComment }: PostCardProps) {
 
       {/* Location line */}
       {(post.city || post.price_range) && (
-        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingBottom: 8 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingBottom: 10 }}>
           {post.city && (
             <>
-              <Ionicons name="location" size={11} color="#6B7280" />
-              <Text style={{ fontSize: 11, color: '#6B7280', marginLeft: 2 }}>
+              <Ionicons name="location" size={11} color={Neutral[500]} />
+              <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 11, color: Neutral[500], marginLeft: 3 }}>
                 {post.city}{post.state ? `, ${post.state}` : ''}
               </Text>
             </>
           )}
           {post.price_range && (
-            <Text style={{ fontSize: 11, color: '#6B7280', marginLeft: 8 }}>• {post.price_range}</Text>
+            <Text style={{ fontFamily: 'JetBrainsMono_500Medium', fontSize: 11, color: Neutral[500], marginLeft: 8 }}>
+              · {post.price_range}
+            </Text>
           )}
         </View>
       )}
@@ -267,20 +283,22 @@ export function PostCard({ post, onLike, onComment }: PostCardProps) {
       )}
 
       {/* Action bar */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingTop: 12, paddingBottom: 8 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingTop: 12, paddingBottom: 8 }}>
         <LikeButton
           isLiked={post.is_liked ?? false}
           likeCount={post.like_count}
           onToggle={onLike}
         />
-        <Pressable onPress={onComment} style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 16 }}>
-          <Ionicons name="chatbubble-outline" size={22} color="#6B7280" />
+        <Pressable onPress={onComment} style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 18 }}>
+          <Ionicons name="chatbubble-outline" size={22} color={Neutral[700]} />
           {post.comment_count > 0 && (
-            <Text style={{ fontSize: 13, color: '#6B7280', marginLeft: 4 }}>{post.comment_count}</Text>
+            <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 13, color: Neutral[700], marginLeft: 4 }}>
+              {post.comment_count}
+            </Text>
           )}
         </Pressable>
-        <Pressable onPress={handleShare} style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 16 }}>
-          <Ionicons name="paper-plane-outline" size={22} color="#6B7280" />
+        <Pressable onPress={handleShare} style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 18 }}>
+          <Ionicons name="paper-plane-outline" size={22} color={Neutral[700]} />
         </Pressable>
         {/* Bookmark on far right */}
         <View style={{ flex: 1 }} />
@@ -288,7 +306,7 @@ export function PostCard({ post, onLike, onComment }: PostCardProps) {
           <Ionicons
             name={isBookmarked ? 'bookmark' : 'bookmark-outline'}
             size={22}
-            color={isBookmarked ? '#007AFF' : '#6B7280'}
+            color={isBookmarked ? Indigo.linear : Neutral[700]}
           />
         </Pressable>
       </View>
@@ -311,9 +329,14 @@ export function PostCard({ post, onLike, onComment }: PostCardProps) {
 
       {/* Caption */}
       {post.caption ? (
-        <View style={{ paddingHorizontal: 12, paddingBottom: 8 }}>
-          <Text style={{ fontSize: 13, color: '#1F2937', lineHeight: 20 }}>
-            <Text style={{ fontWeight: '600' }} onPress={handleAuthorPress}>{author?.username ?? ''} </Text>
+        <View style={{ paddingHorizontal: 14, paddingBottom: 8 }}>
+          <Text style={{ fontFamily: 'Inter_400Regular', fontSize: 14, color: Neutral[800], lineHeight: 20 }}>
+            <Text
+              style={{ fontFamily: 'Inter_600SemiBold', color: Neutral[800] }}
+              onPress={handleAuthorPress}
+            >
+              {author?.username ?? ''}{' '}
+            </Text>
             {post.caption}
           </Text>
         </View>
@@ -321,9 +344,9 @@ export function PostCard({ post, onLike, onComment }: PostCardProps) {
 
       {/* Tags */}
       {post.tags.length > 0 && (
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 12, paddingBottom: 8 }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 14, paddingBottom: 8 }}>
           {post.tags.map((tag) => (
-            <Text key={tag} style={{ fontSize: 12, color: '#007AFF', marginRight: 8 }}>
+            <Text key={tag} style={{ fontFamily: 'Inter_500Medium', fontSize: 12, color: Indigo.linear, marginRight: 8 }}>
               #{tag}
             </Text>
           ))}
@@ -332,32 +355,45 @@ export function PostCard({ post, onLike, onComment }: PostCardProps) {
 
       {/* Tagged friends */}
       {post.tagged_friends && post.tagged_friends.length > 0 && (
-        <Text style={{ paddingHorizontal: 12, paddingBottom: 8, fontSize: 11, color: '#6B7280' }}>
+        <Text style={{ paddingHorizontal: 14, paddingBottom: 8, fontFamily: 'Inter_500Medium', fontSize: 11, color: Neutral[500] }}>
           with {post.tagged_friends.map((f) => f.display_name).join(', ')}
         </Text>
       )}
 
       {/* Comments */}
       {post.comment_count > 0 && (
-        <View style={{ paddingHorizontal: 12, paddingBottom: 8 }}>
+        <View style={{ paddingHorizontal: 14, paddingBottom: 8 }}>
           {post.comment_count > (post.recent_comments?.length ?? 0) && (
             <Pressable onPress={onComment} style={{ marginBottom: 4 }}>
-              <Text style={{ fontSize: 12, color: '#6B7280' }}>
+              <Text style={{ fontFamily: 'Inter_500Medium', fontSize: 12, color: Neutral[500] }}>
                 View all {post.comment_count} comment{post.comment_count !== 1 ? 's' : ''}
               </Text>
             </Pressable>
           )}
           {post.recent_comments?.map((comment) => (
-            <Text key={comment.id} style={{ fontSize: 13, color: '#1F2937', lineHeight: 19, marginBottom: 2 }}>
-              <Text style={{ fontWeight: '600' }}>{comment.author?.username ?? 'user'} </Text>
+            <Text
+              key={comment.id}
+              style={{ fontFamily: 'Inter_400Regular', fontSize: 13, color: Neutral[800], lineHeight: 19, marginBottom: 2 }}
+            >
+              <Text style={{ fontFamily: 'Inter_600SemiBold' }}>{comment.author?.username ?? 'user'}{' '}</Text>
               {comment.content}
             </Text>
           ))}
         </View>
       )}
 
-      {/* Timestamp */}
-      <Text style={{ paddingHorizontal: 12, paddingBottom: 12, fontSize: 11, color: '#9CA3AF' }}>
+      {/* Timestamp — uppercase, wide tracking (editorial signature) */}
+      <Text
+        style={{
+          paddingHorizontal: 14,
+          paddingBottom: 14,
+          fontFamily: 'Inter_500Medium',
+          fontSize: 11,
+          color: '#8E8B84',
+          textTransform: 'uppercase',
+          letterSpacing: 0.55, // +0.05em at 11px
+        }}
+      >
         {formatTimeAgo(post.created_at)}
       </Text>
     </View>
