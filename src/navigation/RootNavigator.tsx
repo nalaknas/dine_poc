@@ -120,11 +120,14 @@ export function RootNavigator() {
     loadSettings().then(() => initialize());
   }, []);
 
-  // Auto-load profile when user is authenticated but profile isn't loaded yet
+  // Auto-load profile when user is authenticated but profile isn't loaded yet.
+  // Note: AuthScreen is the one that sets `hasCompletedOnboarding` based on
+  // wasCreated — this effect only fires for existing sessions (app restart),
+  // where the onboarding flag is already persisted correctly from the last run.
   useEffect(() => {
     if (user && !profile) {
       getOrCreateUserProfile(user.id, user.email)
-        .then(setProfile)
+        .then(({ profile }) => setProfile(profile))
         .catch(console.error);
     }
   }, [user, profile]);

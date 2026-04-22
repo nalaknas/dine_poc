@@ -12,6 +12,7 @@ import * as Crypto from 'expo-crypto';
 import { useAuthStore } from '../../stores/authStore';
 import { getOrCreateUserProfile } from '../../services/auth-service';
 import { useUserProfileStore } from '../../stores/userProfileStore';
+import { useSettingsStore } from '../../stores/settingsStore';
 import { Button } from '../../components/ui/Button';
 import { trackSignUp, trackSignIn } from '../../lib/analytics';
 import type { RootStackParamList } from '../../types';
@@ -38,6 +39,7 @@ export function AuthScreen() {
   const navigation = useNavigation<Nav>();
   const { signIn, signUp, signInWithIdToken, isLoading } = useAuthStore();
   const { setProfile } = useUserProfileStore();
+  const { setHasCompletedOnboarding } = useSettingsStore();
 
   const [mode, setMode] = useState<Mode>('signin');
   const [email, setEmail] = useState('');
@@ -64,8 +66,12 @@ export function AuthScreen() {
     const { user } = useAuthStore.getState();
     if (user) {
       trackSignIn({ userId: user.id, loginMethod: method, success: true });
-      const profile = await getOrCreateUserProfile(user.id, user.email);
+      const { profile, wasCreated } = await getOrCreateUserProfile(user.id, user.email);
       setProfile(profile);
+      // If the row didn't exist before this call, this account has never
+      // logged in — route them through onboarding. Existing accounts skip
+      // straight to the app.
+      setHasCompletedOnboarding(!wasCreated);
     }
   };
 
@@ -123,8 +129,12 @@ export function AuthScreen() {
         } else {
           trackSignIn({ userId: user.id, loginMethod: 'email', success: true });
         }
-        const profile = await getOrCreateUserProfile(user.id, user.email);
+        const { profile, wasCreated } = await getOrCreateUserProfile(user.id, user.email);
         setProfile(profile);
+        // Sign-up users go into onboarding; sign-in users skip straight to
+        // the app. Derived from wasCreated rather than `mode` so Apple ID
+        // token (which can't distinguish) and email stay consistent.
+        setHasCompletedOnboarding(!wasCreated);
       }
     } catch (err: any) {
       Alert.alert('Error', friendlyError(err?.message ?? 'Something went wrong'));

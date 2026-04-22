@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { AnimatedPressable } from '../../components/ui/AnimatedPressable';
 import { Neutral, Onyx, Semantic } from '../../constants/colors';
-import { useAuthStore } from '../../stores/authStore';
+import { useSettingsStore } from '../../stores/settingsStore';
 
 /**
  * Editorial Welcome — the first screen a brand-new account sees after sign-in.
@@ -12,7 +12,7 @@ import { useAuthStore } from '../../stores/authStore';
  */
 export function WelcomeOnboardingScreen() {
   const navigation = useNavigation<any>();
-  const { signOut } = useAuthStore();
+  const { setHasCompletedOnboarding } = useSettingsStore();
 
   return (
     <SafeAreaView style={styles.container}>
@@ -41,10 +41,11 @@ export function WelcomeOnboardingScreen() {
 
         <Pressable
           onPress={() => {
-            // Unlike the prototype, our flow only reaches Welcome for signed-in
-            // new accounts. "I already have an account" therefore = sign out
-            // and return to the Auth stack.
-            signOut();
+            // Escape hatch for returning users whose device somehow lost the
+            // "onboarding complete" flag (fresh install, AsyncStorage wipe,
+            // etc.) and got pulled into onboarding. Flip the flag → the
+            // RootNavigator drops the Onboarding stack and lands on Main.
+            setHasCompletedOnboarding(true);
           }}
           style={styles.ghostCta}
         >

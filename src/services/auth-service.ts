@@ -26,15 +26,28 @@ export async function signInWithGoogleToken(idToken: string): Promise<Session> {
   return data.session;
 }
 
-export async function getOrCreateUserProfile(uid: string, email: string): Promise<User> {
+export interface GetOrCreateResult {
+  profile: User;
+  /**
+   * True if this call created a brand-new row (i.e. the user has never
+   * logged in before). Callers can use this to differentiate sign-up from
+   * sign-in when the underlying auth call can't (e.g. Apple ID token).
+   */
+  wasCreated: boolean;
+}
+
+export async function getOrCreateUserProfile(
+  uid: string,
+  email: string,
+): Promise<GetOrCreateResult> {
   // Try to get existing profile
-  const { data: existing, error: fetchError } = await supabase
+  const { data: existing } = await supabase
     .from('users')
     .select('*')
     .eq('id', uid)
     .single();
 
-  if (existing) return existing as User;
+  if (existing) return { profile: existing as User, wasCreated: false };
 
   // Create new profile
   const username = email.split('@')[0].toLowerCase().replace(/[^a-z0-9_]/g, '') + Math.floor(Math.random() * 1000);
@@ -66,11 +79,11 @@ export async function getOrCreateUserProfile(uid: string, email: string): Promis
         .select('*')
         .eq('id', uid)
         .single();
-      if (reread) return reread as User;
+      if (reread) return { profile: reread as User, wasCreated: false };
     }
     throw createError;
   }
-  return created as User;
+  return { profile: created as User, wasCreated: true };
 }
 
 export async function updateUserProfile(uid: string, updates: Partial<User>): Promise<User> {
