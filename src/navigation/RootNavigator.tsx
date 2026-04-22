@@ -9,7 +9,7 @@ import { useUserProfileStore } from '../stores/userProfileStore';
 import { getOrCreateUserProfile } from '../services/auth-service';
 import { MainTabNavigator } from './MainTabNavigator';
 import { AuthScreen } from '../screens/auth/AuthScreen';
-import { SplashScreen } from '../screens/onboarding/SplashScreen';
+import { SplashScreen, shouldSkipSplash, markSplashPlayed } from '../screens/onboarding/SplashScreen';
 import { WelcomeOnboardingScreen } from '../screens/onboarding/WelcomeOnboardingScreen';
 import { PermissionsOnboardingScreen } from '../screens/onboarding/PermissionsOnboardingScreen';
 import { ProfileSetupOnboardingScreen } from '../screens/onboarding/ProfileSetupOnboardingScreen';
@@ -50,6 +50,15 @@ export function RootNavigator() {
   const { hasCompletedOnboarding, loadSettings } = useSettingsStore();
   const { profile, setProfile } = useUserProfileStore();
   const navigationRef = useNavigationContainerRef<RootStackParamList>();
+
+  // Splash plays first on cold-start, regardless of auth state. In prod we
+  // only play once per JS session (ENG-133); in dev we always play so Metro
+  // reloads remain observable.
+  const [splashDone, setSplashDone] = useState(() => shouldSkipSplash());
+  const handleSplashComplete = useCallback(() => {
+    markSplashPlayed();
+    setSplashDone(true);
+  }, []);
 
   // Capture deep-link URLs that arrive before the auth stack can render
   // the target screen. React Navigation's built-in `linking` only handles
@@ -150,6 +159,10 @@ export function RootNavigator() {
     }
   }, []);
 
+  if (!splashDone) {
+    return <SplashScreen onComplete={handleSplashComplete} />;
+  }
+
   if (!isInitialized) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' }}>
@@ -169,7 +182,6 @@ export function RootNavigator() {
       }}>
         {!user ? (
           <>
-            <Stack.Screen name="Splash" component={SplashScreen} />
             <Stack.Screen name="Auth" component={AuthScreen} />
             <Stack.Screen name="Onboarding" component={OnboardingNavigator} />
           </>
