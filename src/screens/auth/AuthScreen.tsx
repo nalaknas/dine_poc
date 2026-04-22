@@ -68,9 +68,12 @@ export function AuthScreen() {
       trackSignIn({ userId: user.id, loginMethod: method, success: true });
       const { profile, wasCreated } = await getOrCreateUserProfile(user.id, user.email);
       setProfile(profile);
-      // If the row didn't exist before this call, this account has never
-      // logged in — route them through onboarding. Existing accounts skip
-      // straight to the app.
+      // Late correction for Apple flow: by the time we get here the
+      // navigator has already routed off user state, so if the flag was
+      // wrong we've landed on the wrong screen. The email flow handles
+      // this eagerly before signUp/signIn; Apple can't distinguish at
+      // call time so we rely on `wasCreated` + accept a brief flicker
+      // when a returning Apple user briefly sees Onboarding.
       setHasCompletedOnboarding(!wasCreated);
     }
   };
@@ -115,6 +118,13 @@ export function AuthScreen() {
     }
 
     try {
+      // Set the onboarding flag BEFORE the auth call so it's already the
+      // right value when `onAuthStateChange` fires inside signUp/signIn.
+      // If we set it after, React re-renders RootNavigator with user=authed
+      // but a stale flag, which routes the user to Main before we can
+      // correct it — and RN doesn't auto-navigate back once stacks change.
+      setHasCompletedOnboarding(mode === 'signin');
+
       if (mode === 'signup') {
         await signUp(email.trim().toLowerCase(), password);
       } else {
@@ -129,12 +139,8 @@ export function AuthScreen() {
         } else {
           trackSignIn({ userId: user.id, loginMethod: 'email', success: true });
         }
-        const { profile, wasCreated } = await getOrCreateUserProfile(user.id, user.email);
+        const { profile } = await getOrCreateUserProfile(user.id, user.email);
         setProfile(profile);
-        // Sign-up users go into onboarding; sign-in users skip straight to
-        // the app. Derived from wasCreated rather than `mode` so Apple ID
-        // token (which can't distinguish) and email stay consistent.
-        setHasCompletedOnboarding(!wasCreated);
       }
     } catch (err: any) {
       Alert.alert('Error', friendlyError(err?.message ?? 'Something went wrong'));
