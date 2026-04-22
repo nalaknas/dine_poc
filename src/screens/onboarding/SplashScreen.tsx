@@ -1,7 +1,5 @@
 import React, { useEffect } from 'react';
 import { StyleSheet, Dimensions, AccessibilityInfo } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -11,9 +9,19 @@ import Animated, {
   type SharedValue,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import type { RootStackParamList } from '../../types';
 
-type Nav = NativeStackNavigationProp<RootStackParamList>;
+// ─── Cold-start gate ────────────────────────────────────────────────────────
+// In production we play the splash once per JS session (cold-start), then skip
+// on subsequent mounts — backgrounding + returning within the same process
+// should not replay the 2.4s sequence. In `__DEV__` we always play so each
+// Metro reload is observable.
+let HAS_PLAYED = false;
+export function shouldSkipSplash(): boolean {
+  return !__DEV__ && HAS_PLAYED;
+}
+export function markSplashPlayed(): void {
+  HAS_PLAYED = true;
+}
 
 // ─── Palette (from dine design system) ───
 const ONYX = '#0A0A0A';
@@ -81,8 +89,15 @@ const LINES = LINE_PAIRS.map(([a, b]) => {
   };
 });
 
-export function SplashScreen() {
-  const navigation = useNavigation<Nav>();
+type SplashScreenProps = {
+  /**
+   * Called once the 2.4s sequence (or the reduced-motion fallback) completes.
+   * Parent decides what to render next — typically `NavigationContainer`.
+   */
+  onComplete: () => void;
+};
+
+export function SplashScreen({ onComplete }: SplashScreenProps) {
   const t = useSharedValue(0);
 
   useEffect(() => {
@@ -125,7 +140,7 @@ export function SplashScreen() {
 
       timers.push(
         setTimeout(() => {
-          if (!cancelled) navigation.replace('Auth');
+          if (!cancelled) onComplete();
         }, duration),
       );
     };
@@ -136,7 +151,7 @@ export function SplashScreen() {
       cancelled = true;
       timers.forEach(clearTimeout);
     };
-  }, [navigation, t]);
+  }, [onComplete, t]);
 
   const bgStyle = useAnimatedStyle(() => ({
     backgroundColor: interpolateColor(

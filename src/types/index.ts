@@ -376,7 +376,6 @@ export interface LeaderboardDish {
 // ─── Navigation ───────────────────────────────────────────────────────────────
 
 export type RootStackParamList = {
-  Splash: undefined;
   Auth: undefined;
   Onboarding: undefined;
   Main: undefined;
