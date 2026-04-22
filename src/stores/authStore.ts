@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 import { registerForPushNotifications, unregisterPushToken } from '../lib/pushNotifications';
+import { useSettingsStore } from './settingsStore';
 import type { AuthUser } from '../types';
 
 interface AuthState {
@@ -96,6 +97,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       await unregisterPushToken();
       await supabase.auth.signOut();
       set({ user: null });
+      // `hasCompletedOnboarding` is device-level, not per-user — reset it on
+      // sign-out so the next account to sign in on this device actually sees
+      // the onboarding flow. Proper per-user tracking would live server-side
+      // on the users table; this is the pragmatic single-device fix.
+      useSettingsStore.getState().setHasCompletedOnboarding(false);
     } finally {
       set({ isLoading: false });
     }
