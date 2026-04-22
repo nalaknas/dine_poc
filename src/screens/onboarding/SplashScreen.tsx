@@ -328,9 +328,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   letter: {
-    fontFamily: 'System',
+    fontFamily: 'Manrope_800ExtraBold',
     fontSize: 76,
-    fontWeight: '800',
+    // Note: `fontWeight` is intentionally omitted — the weighted variant in
+    // `fontFamily` already encodes weight, and setting both can confuse
+    // native font resolution on Android.
     letterSpacing: -4,
     lineHeight: 76,
     color: YELLOW,
