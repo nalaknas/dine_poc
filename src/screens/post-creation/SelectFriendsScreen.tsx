@@ -118,10 +118,10 @@ export function SelectFriendsScreen() {
   const isSearching = query.trim().length >= 2;
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={['bottom']}>
+    <SafeAreaView className="flex-1 bg-cream" edges={['bottom']}>
       {/* Selected friends chips */}
       {selectedFriends.length > 0 && (
-        <View className="px-4 py-3 border-b border-border-light">
+        <View className="px-4 py-3 border-b border-neutral-200 bg-white">
           <FlatList
             horizontal
             data={selectedFriends}
@@ -138,12 +138,12 @@ export function SelectFriendsScreen() {
                   <View className="relative">
                     <Avatar uri={item.avatar_url} displayName={item.display_name} size={42} />
                     {!isMe && (
-                      <View className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-error rounded-full items-center justify-center">
+                      <View className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full items-center justify-center" style={{ backgroundColor: '#B84545' }}>
                         <Ionicons name="close" size={9} color="#fff" />
                       </View>
                     )}
                   </View>
-                  <Text className="text-xs text-text-secondary mt-1" numberOfLines={1} style={{ maxWidth: 44 }}>
+                  <Text className="text-xs text-neutral-500 mt-1" numberOfLines={1} style={{ maxWidth: 44 }}>
                     {isMe ? 'You' : item.display_name.split(' ')[0]}
                   </Text>
                 </TouchableOpacity>
@@ -155,18 +155,18 @@ export function SelectFriendsScreen() {
 
       {/* Search bar */}
       <View className="px-4 py-3">
-        <View className="flex-row items-center bg-background-secondary rounded-xl px-3 py-2">
-          <Ionicons name="search" size={18} color="#9CA3AF" />
+        <View className="flex-row items-center bg-white border border-neutral-200 rounded-xl px-3 py-2">
+          <Ionicons name="search" size={18} color="#9B9791" />
           <TextInput
             value={query}
             onChangeText={handleSearch}
-            placeholder="Search Dine users..."
-            placeholderTextColor="#9CA3AF"
-            className="flex-1 ml-2 text-base text-text-primary"
+            placeholder="Search Dine users…"
+            placeholderTextColor="#9B9791"
+            className="flex-1 ml-2 text-base text-onyx-900"
           />
           {query.length > 0 && (
             <TouchableOpacity onPress={() => { setQuery(''); setSearchResults([]); }}>
-              <Ionicons name="close-circle" size={18} color="#9CA3AF" />
+              <Ionicons name="close-circle" size={18} color="#9B9791" />
             </TouchableOpacity>
           )}
         </View>
@@ -179,16 +179,16 @@ export function SelectFriendsScreen() {
             setManualName(isSearching ? query.trim() : '');
             setShowManualModal(true);
           }}
-          className="flex-row items-center bg-accent/10 border border-accent/30 rounded-xl px-3 py-3"
+          className="flex-row items-center bg-white border border-neutral-200 rounded-xl px-3 py-3"
         >
-          <View className="w-8 h-8 bg-accent/20 rounded-full items-center justify-center mr-2">
-            <Ionicons name="person-add" size={16} color="#007AFF" />
+          <View className="w-8 h-8 rounded-full items-center justify-center mr-2 bg-neutral-100">
+            <Ionicons name="person-add" size={16} color="#0A0A0A" />
           </View>
           <View className="flex-1">
-            <Text className="text-sm font-semibold text-accent">
+            <Text className="text-sm font-semibold text-onyx-900">
               {isSearching ? `Add "${query.trim()}" manually` : 'Add by name'}
             </Text>
-            <Text className="text-xs text-text-secondary">For friends who aren't on Dine</Text>
+            <Text className="text-xs text-neutral-500">For friends who aren't on Dine</Text>
           </View>
         </TouchableOpacity>
       </View>
@@ -197,7 +197,7 @@ export function SelectFriendsScreen() {
       <ScrollView className="flex-1" keyboardShouldPersistTaps="handled">
         {isSearching && searchResults.length > 0 && (
           <View className="pb-2">
-            <Text className="text-xs font-semibold text-text-secondary mb-1 uppercase tracking-wide px-4">
+            <Text className="text-xs font-semibold text-neutral-500 mb-1 uppercase tracking-wide px-4">
               Dine Users
             </Text>
             {searchResults.map((item) => {
@@ -206,15 +206,15 @@ export function SelectFriendsScreen() {
                 <TouchableOpacity
                   key={item.id}
                   onPress={() => toggleUser(item)}
-                  className="flex-row items-center px-4 py-2.5 border-b border-border-light"
+                  className="flex-row items-center px-4 py-2.5 border-b border-neutral-100"
                 >
                   <Avatar uri={item.avatar_url} displayName={item.display_name} size={42} />
                   <View className="flex-1 ml-3">
-                    <Text className="text-base font-semibold text-text-primary">{item.display_name}</Text>
-                    <Text className="text-sm text-text-secondary">@{item.username}</Text>
+                    <Text className="text-base font-semibold text-onyx-900">{item.display_name}</Text>
+                    <Text className="text-sm text-neutral-500">@{item.username}</Text>
                   </View>
                   <View className={`w-6 h-6 rounded-full border-2 items-center justify-center ${
-                    isSelected ? 'bg-accent border-accent' : 'border-border'
+                    isSelected ? 'bg-onyx-900 border-onyx-900' : 'border-neutral-300'
                   }`}>
                     {isSelected && <Ionicons name="checkmark" size={14} color="#fff" />}
                   </View>
@@ -226,7 +226,7 @@ export function SelectFriendsScreen() {
 
         {isSearching && searchResults.length === 0 && (
           <View className="px-4 py-3">
-            <Text className="text-sm text-text-secondary">
+            <Text className="text-sm text-neutral-500">
               No Dine users for "{query}". Tap "Add manually" above to invite by name.
             </Text>
           </View>
@@ -248,42 +248,42 @@ export function SelectFriendsScreen() {
       {/* Manual add modal — Name + Phone + Venmo */}
       <Modal visible={showManualModal} animationType="slide" transparent>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1 justify-end">
-          <View className="bg-background rounded-t-2xl p-6 shadow-lg">
-            <Text className="text-xl font-bold text-text-primary mb-4">Add Friend</Text>
+          <View className="bg-cream rounded-t-2xl p-6 shadow-lg">
+            <Text className="text-xl font-bold text-onyx-900 mb-4">Add Friend</Text>
             <TextInput
               value={manualName}
               onChangeText={setManualName}
               placeholder="Name"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor="#9B9791"
               autoFocus
-              className="bg-background-secondary border border-border rounded-xl px-4 py-3 text-base text-text-primary mb-3"
+              className="bg-white border border-neutral-200 rounded-xl px-4 py-3 text-base text-onyx-900 mb-3"
             />
             <TextInput
               value={manualVenmo}
               onChangeText={setManualVenmo}
               placeholder="Venmo username (recommended)"
               autoCapitalize="none"
-              placeholderTextColor="#9CA3AF"
-              className="bg-background-secondary border border-border rounded-xl px-4 py-3 text-base text-text-primary mb-3"
+              placeholderTextColor="#9B9791"
+              className="bg-white border border-neutral-200 rounded-xl px-4 py-3 text-base text-onyx-900 mb-3"
             />
             <TextInput
               value={manualPhone}
               onChangeText={setManualPhone}
               placeholder="Phone number (optional)"
               keyboardType="phone-pad"
-              placeholderTextColor="#9CA3AF"
-              className="bg-background-secondary border border-border rounded-xl px-4 py-3 text-base text-text-primary mb-4"
+              placeholderTextColor="#9B9791"
+              className="bg-white border border-neutral-200 rounded-xl px-4 py-3 text-base text-onyx-900 mb-4"
             />
             <View className="flex-row gap-3">
               <TouchableOpacity
                 onPress={() => { setShowManualModal(false); setManualName(''); setManualPhone(''); setManualVenmo(''); }}
-                className="flex-1 border border-border rounded-xl py-3 items-center"
+                className="flex-1 border border-neutral-300 rounded-xl py-3 items-center bg-white"
               >
-                <Text className="text-base font-semibold text-text-primary">Cancel</Text>
+                <Text className="text-base font-semibold text-onyx-900">Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={addManualFriend}
-                className="flex-1 bg-accent rounded-xl py-3 items-center"
+                className="flex-1 bg-onyx-900 rounded-xl py-3 items-center"
               >
                 <Text className="text-base font-semibold text-white">Add</Text>
               </TouchableOpacity>
@@ -293,15 +293,15 @@ export function SelectFriendsScreen() {
       </Modal>
 
       {/* Continue */}
-      <View className="bg-background border-t border-border-light px-4 py-4">
+      <View className="bg-cream border-t border-neutral-200 px-4 py-4">
         <TouchableOpacity
           onPress={() => navigation.navigate('AssignItems')}
           disabled={selectedFriends.length === 0}
           className={`rounded-xl py-4 items-center ${
-            selectedFriends.length > 0 ? 'bg-accent' : 'bg-border'
+            selectedFriends.length > 0 ? 'bg-onyx-900' : 'bg-neutral-200'
           }`}
         >
-          <Text className="text-base font-semibold text-white">
+          <Text className={`text-base font-semibold ${selectedFriends.length > 0 ? 'text-white' : 'text-neutral-500'}`}>
             Continue with {selectedFriends.length} {selectedFriends.length === 1 ? 'person' : 'people'}
           </Text>
         </TouchableOpacity>
