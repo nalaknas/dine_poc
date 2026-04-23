@@ -226,6 +226,9 @@ export interface CreatePostDraft {
   tags: string[];
   cuisineType?: string;
   mealType?: string;
+  // Editorial flavor tags (ENG-134). Client-side only until a dedicated
+  // `flavor_tags` column migration lands on the posts table.
+  flavorTags?: string[];
   // Step 7
   isPublic: boolean;
   mealDate?: string;
@@ -414,7 +417,7 @@ export type PostCreationParamList = {
   AssignItems: undefined;
   Summary: undefined;
   RateMeal: undefined;
-  AddCaption: undefined;
+  ReviewComposer: undefined;
   PostPrivacy: undefined;
 };
 

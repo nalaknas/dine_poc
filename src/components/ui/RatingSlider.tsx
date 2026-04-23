@@ -1,95 +1,169 @@
-import React, { useCallback } from 'react';
-import { View, Text } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { AnimatedPressable } from './AnimatedPressable';
+import { Gold, Neutral, Onyx } from '../../constants/colors';
 
 interface RatingSliderProps {
   value: number;
   onChange: (value: number) => void;
   label?: string;
-  min?: number;
-  max?: number;
-  step?: number;
 }
 
-export function RatingSlider({
-  value,
-  onChange,
-  label,
-  min = 0,
-  max = 10,
-  step = 0.5,
-}: RatingSliderProps) {
-  const steps = Math.floor((max - min) / step) + 1;
-  const values = Array.from({ length: steps }, (_, i) => min + i * step);
+function ratingLabel(val: number): string {
+  if (val >= 9) return 'Amazing';
+  if (val >= 8) return 'Excellent';
+  if (val >= 7) return 'Great';
+  if (val >= 6) return 'Good';
+  if (val >= 5) return 'Okay';
+  if (val >= 4) return 'Below avg';
+  if (val >= 2) return 'Poor';
+  if (val > 0) return 'Terrible';
+  return 'Not rated';
+}
 
-  const getRatingColor = (val: number) => {
-    if (val >= 8) return '#10B981'; // green
-    if (val >= 6) return '#F59E0B'; // amber
-    if (val >= 4) return '#EF4444'; // red
-    return '#9CA3AF'; // gray
-  };
-
-  const getRatingLabel = (val: number) => {
-    if (val >= 9) return 'Amazing';
-    if (val >= 8) return 'Excellent';
-    if (val >= 7) return 'Great';
-    if (val >= 6) return 'Good';
-    if (val >= 5) return 'Okay';
-    if (val >= 4) return 'Below Avg';
-    if (val >= 2) return 'Poor';
-    if (val > 0) return 'Terrible';
-    return 'Not rated';
-  };
+/**
+ * Editorial rating picker — 0-10 grid.
+ *
+ * Active cell visual:
+ * - Rating ≥ 8 → gold fill (precious, earned)
+ * - Rating < 8 → onyx fill
+ * Inactive cells are neutral-outlined.
+ */
+export function RatingSlider({ value, onChange, label }: RatingSliderProps) {
+  const rated = value > 0;
+  const isTopRating = value >= 8;
 
   return (
-    <View className="mb-4">
+    <View style={styles.container}>
       {label && (
-        <View className="flex-row justify-between items-center mb-2">
-          <Text className="text-base font-medium text-text-primary">{label}</Text>
-          <View className="flex-row items-center gap-2">
-            <Text style={{ color: getRatingColor(value), fontWeight: '700', fontSize: 18 }}>
-              {value > 0 ? value.toFixed(1) : '—'}
-            </Text>
-            {value > 0 && (
-              <Text className="text-sm text-text-secondary">{getRatingLabel(value)}</Text>
+        <View style={styles.headerRow}>
+          <Text style={styles.label}>{label}</Text>
+          <View style={styles.valueRow}>
+            <Text style={styles.valueNumber}>{rated ? value.toFixed(1) : '—'}</Text>
+            {rated && (
+              <Text
+                style={[
+                  styles.valueLabel,
+                  isTopRating && styles.valueLabelTop,
+                ]}
+              >
+                {ratingLabel(value)}
+              </Text>
             )}
           </View>
         </View>
       )}
-      {/* Tap-to-rate grid for 0–10 (whole numbers only for quick tap) */}
-      <View className="flex-row flex-wrap gap-1">
-        {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((v) => (
-          <AnimatedPressable
-            key={v}
-            scaleValue={0.9}
-            onPress={() => {
-              Haptics.selectionAsync();
-              onChange(v);
-            }}
-            style={{
-              width: 34,
-              height: 34,
-              borderRadius: 8,
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: value === v ? getRatingColor(v) : '#F3F4F6',
-              borderWidth: value === v ? 0 : 1,
-              borderColor: '#E5E7EB',
-            }}
-          >
-            <Text
-              style={{
-                fontSize: 12,
-                fontWeight: '600',
-                color: value === v ? '#fff' : '#6B7280',
+
+      <View style={styles.grid}>
+        {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((v) => {
+          const active = value === v;
+          const top = v >= 8;
+          return (
+            <AnimatedPressable
+              key={v}
+              scaleValue={0.9}
+              onPress={() => {
+                Haptics.selectionAsync();
+                onChange(v);
               }}
+              style={[
+                styles.cell,
+                active
+                  ? top
+                    ? styles.cellActiveTop
+                    : styles.cellActive
+                  : styles.cellInactive,
+              ]}
             >
-              {v}
-            </Text>
-          </AnimatedPressable>
-        ))}
+              <Text
+                style={[
+                  styles.cellLabel,
+                  active
+                    ? top
+                      ? styles.cellLabelTop
+                      : styles.cellLabelActive
+                    : styles.cellLabelInactive,
+                ]}
+              >
+                {v}
+              </Text>
+            </AnimatedPressable>
+          );
+        })}
       </View>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    marginBottom: 16,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    marginBottom: 10,
+  },
+  label: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 15,
+    color: Onyx[900],
+  },
+  valueRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 8,
+  },
+  valueNumber: {
+    fontFamily: 'Fraunces_500Medium',
+    fontSize: 22,
+    color: Onyx[900],
+  },
+  valueLabel: {
+    fontFamily: 'Inter_500Medium',
+    fontSize: 13,
+    color: Neutral[500],
+  },
+  valueLabelTop: {
+    color: Gold[600],
+  },
+
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+  },
+  cell: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cellActive: {
+    backgroundColor: Onyx[900],
+  },
+  cellActiveTop: {
+    backgroundColor: Gold[400],
+  },
+  cellInactive: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: Neutral[200],
+  },
+  cellLabel: {
+    fontFamily: 'JetBrainsMono_500Medium',
+    fontSize: 13,
+  },
+  cellLabelActive: {
+    color: '#FFFFFF',
+  },
+  cellLabelTop: {
+    color: Onyx[900],
+  },
+  cellLabelInactive: {
+    color: Neutral[500],
+  },
+});
