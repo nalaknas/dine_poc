@@ -8,7 +8,7 @@ import { SelectFriendsScreen } from '../screens/post-creation/SelectFriendsScree
 import { AssignItemsScreen } from '../screens/post-creation/AssignItemsScreen';
 import { SummaryScreen } from '../screens/post-creation/SummaryScreen';
 import { RateMealScreen } from '../screens/post-creation/RateMealScreen';
-import { AddCaptionScreen } from '../screens/post-creation/AddCaptionScreen';
+import { ReviewComposerScreen } from '../screens/post-creation/ReviewComposerScreen';
 import { PostPrivacyScreen } from '../screens/post-creation/PostPrivacyScreen';
 import { QuickPostScreen } from '../screens/post-creation/QuickPostScreen';
 import { useBillSplitterStore } from '../stores/billSplitterStore';
@@ -20,7 +20,7 @@ const Stack = createNativeStackNavigator<PostCreationParamList>();
 
 const STEPS: (keyof PostCreationParamList)[] = [
   'Home', 'ValidateReceipt', 'SelectFriends', 'AssignItems',
-  'Summary', 'RateMeal', 'AddCaption', 'PostPrivacy',
+  'Summary', 'RateMeal', 'ReviewComposer', 'PostPrivacy',
 ];
 
 function ProgressBar({ routeName }: { routeName: string }) {
@@ -96,7 +96,7 @@ export function PostCreationNavigator() {
       <Stack.Screen name="AssignItems" component={AssignItemsScreen} options={{ title: 'Split the Bill' }} />
       <Stack.Screen name="Summary" component={SummaryScreen} options={{ title: 'Summary' }} />
       <Stack.Screen name="RateMeal" component={RateMealScreen} options={{ title: 'Rate the Meal' }} />
-      <Stack.Screen name="AddCaption" component={AddCaptionScreen} options={{ title: 'Share it' }} />
+      <Stack.Screen name="ReviewComposer" component={ReviewComposerScreen} options={{ title: 'Share it' }} />
       <Stack.Screen name="PostPrivacy" component={PostPrivacyScreen} options={{ title: 'Almost done!' }} />
       <Stack.Screen
         name="QuickPost"
