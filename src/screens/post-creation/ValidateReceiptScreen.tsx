@@ -133,37 +133,37 @@ export function ValidateReceiptScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={['bottom']}>
+    <SafeAreaView className="flex-1 bg-cream" edges={['bottom']}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1">
         <ScrollView className="flex-1" contentContainerStyle={{ padding: 16, paddingBottom: 100 }} keyboardShouldPersistTaps="handled">
 
           {/* Restaurant info */}
-          <View className="bg-background-secondary rounded-xl p-4 mb-4">
-            <Text className="text-sm font-semibold text-text-secondary mb-3">RESTAURANT</Text>
+          <View className="bg-white border border-neutral-200 rounded-xl p-4 mb-4">
+            <Text className="text-sm font-semibold text-neutral-500 mb-3">RESTAURANT</Text>
             <TextInput
               value={currentReceipt.restaurantName}
               onChangeText={(v) => updateReceiptField('restaurantName', v)}
               placeholder="Restaurant name"
-              placeholderTextColor="#9CA3AF"
-              className={`text-base font-semibold text-text-primary border-b pb-2 mb-1 ${nameInvalid ? 'border-red-500' : 'border-border'}`}
+              placeholderTextColor="#9B9791"
+              className={`text-base font-semibold text-onyx-900 border-b pb-2 mb-1 ${nameInvalid ? 'border-error' : 'border-neutral-200'}`}
             />
             {nameInvalid && (
-              <Text className="text-red-500 text-xs mb-2">Restaurant name is required</Text>
+              <Text className="text-xs mb-2" style={{ color: '#B84545' }}>Restaurant name is required</Text>
             )}
             <View className="flex-row gap-2">
               <TextInput
                 value={currentReceipt.city}
                 onChangeText={(v) => updateReceiptField('city', v)}
                 placeholder="City"
-                placeholderTextColor="#9CA3AF"
-                className="flex-1 text-base text-text-primary border border-border rounded-lg px-3 py-2"
+                placeholderTextColor="#9B9791"
+                className="flex-1 text-base text-onyx-900 border border-neutral-200 rounded-lg px-3 py-2"
               />
               <TextInput
                 value={currentReceipt.state}
                 onChangeText={(v) => updateReceiptField('state', v)}
                 placeholder="State"
-                placeholderTextColor="#9CA3AF"
-                className="w-20 text-base text-text-primary border border-border rounded-lg px-3 py-2"
+                placeholderTextColor="#9B9791"
+                className="w-20 text-base text-onyx-900 border border-neutral-200 rounded-lg px-3 py-2"
                 maxLength={2}
                 autoCapitalize="characters"
               />
@@ -171,47 +171,47 @@ export function ValidateReceiptScreen() {
           </View>
 
           {/* Meal details */}
-          <View className="bg-background-secondary rounded-xl p-4 mb-4">
-            <Text className="text-sm font-semibold text-text-secondary mb-3">MEAL DETAILS</Text>
+          <View className="bg-white border border-neutral-200 rounded-xl p-4 mb-4">
+            <Text className="text-sm font-semibold text-neutral-500 mb-3">MEAL DETAILS</Text>
             <View className="flex-row gap-2 mb-2">
               <View className="flex-1">
-                <Text className="text-xs text-text-secondary mb-1">Date</Text>
+                <Text className="text-xs text-neutral-500 mb-1">Date</Text>
                 <TextInput
                   value={currentReceipt.date}
                   onChangeText={(v) => updateReceiptField('date', v)}
                   placeholder="YYYY-MM-DD"
-                  placeholderTextColor="#9CA3AF"
-                  className="text-base text-text-primary border border-border rounded-lg px-3 py-2"
+                  placeholderTextColor="#9B9791"
+                  className="text-base text-onyx-900 border border-neutral-200 rounded-lg px-3 py-2"
                 />
               </View>
               <View className="flex-1">
-                <Text className="text-xs text-text-secondary mb-1">Time</Text>
+                <Text className="text-xs text-neutral-500 mb-1">Time</Text>
                 <TextInput
                   value={currentReceipt.time}
                   onChangeText={(v) => updateReceiptField('time', v)}
                   placeholder="7:30 PM"
-                  placeholderTextColor="#9CA3AF"
-                  className="text-base text-text-primary border border-border rounded-lg px-3 py-2"
+                  placeholderTextColor="#9B9791"
+                  className="text-base text-onyx-900 border border-neutral-200 rounded-lg px-3 py-2"
                 />
               </View>
             </View>
             <View>
-              <Text className="text-xs text-text-secondary mb-1">Address</Text>
+              <Text className="text-xs text-neutral-500 mb-1">Address</Text>
               <TextInput
                 value={currentReceipt.address}
                 onChangeText={(v) => updateReceiptField('address', v)}
                 placeholder="Street address"
-                placeholderTextColor="#9CA3AF"
-                className="text-base text-text-primary border border-border rounded-lg px-3 py-2"
+                placeholderTextColor="#9B9791"
+                className="text-base text-onyx-900 border border-neutral-200 rounded-lg px-3 py-2"
               />
             </View>
           </View>
 
           {/* Items */}
-          <View className={`bg-background-secondary rounded-xl p-4 mb-4 ${itemsInvalid ? 'border border-red-500' : ''}`}>
-            <Text className="text-sm font-semibold text-text-secondary mb-3">ITEMS</Text>
+          <View className={`bg-white border rounded-xl p-4 mb-4 ${itemsInvalid ? 'border-error' : 'border-neutral-200'}`}>
+            <Text className="text-sm font-semibold text-neutral-500 mb-3">ITEMS</Text>
             {itemsInvalid && (
-              <Text className="text-red-500 text-xs mb-2">Add at least one item to split</Text>
+              <Text className="text-xs mb-2" style={{ color: '#B84545' }}>Add at least one item to split</Text>
             )}
             {currentReceipt.items.map((item, idx) => (
               <View key={item.id} className="flex-row items-center mb-2">
@@ -219,17 +219,17 @@ export function ValidateReceiptScreen() {
                   value={item.name}
                   onChangeText={(v) => updateReceiptItem(item.id, { name: v })}
                   placeholder={`Item ${idx + 1}`}
-                  placeholderTextColor="#9CA3AF"
-                  className="flex-1 text-base text-text-primary border border-border rounded-lg px-3 py-2 mr-2"
+                  placeholderTextColor="#9B9791"
+                  className="flex-1 text-base text-onyx-900 border border-neutral-200 rounded-lg px-3 py-2 mr-2"
                 />
                 <PriceInput
                   value={item.price}
                   onCommit={(n) => updateReceiptItem(item.id, { price: n })}
                   placeholder="$0.00"
-                  style="w-20 text-base text-text-primary border border-border rounded-lg px-3 py-2 mr-2"
+                  style="w-20 text-base text-onyx-900 border border-neutral-200 rounded-lg px-3 py-2 mr-2"
                 />
                 <TouchableOpacity onPress={() => removeItem(item.id)}>
-                  <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                  <Ionicons name="trash-outline" size={18} color="#B84545" />
                 </TouchableOpacity>
               </View>
             ))}
@@ -237,34 +237,34 @@ export function ValidateReceiptScreen() {
               onPress={addItem}
               className="flex-row items-center mt-2"
             >
-              <Ionicons name="add-circle-outline" size={20} color="#007AFF" />
-              <Text className="text-sm font-semibold text-accent ml-1">Add Item</Text>
+              <Ionicons name="add-circle-outline" size={20} color="#0A0A0A" />
+              <Text className="text-sm font-semibold text-onyx-900 ml-1">Add Item</Text>
             </TouchableOpacity>
           </View>
 
           {/* Totals */}
-          <View className="bg-background-secondary rounded-xl p-4 mb-4">
-            <Text className="text-sm font-semibold text-text-secondary mb-3">TOTALS</Text>
+          <View className="bg-white border border-neutral-200 rounded-xl p-4 mb-4">
+            <Text className="text-sm font-semibold text-neutral-500 mb-3">TOTALS</Text>
             {[
               { label: 'Subtotal', field: 'subtotal' as const },
               { label: 'Tax', field: 'tax' as const },
               { label: 'Discount', field: 'discount' as const },
             ].map((row) => (
               <View key={row.field} className="flex-row justify-between items-center mb-2">
-                <Text className="text-base text-text-secondary">{row.label}</Text>
+                <Text className="text-base text-neutral-500">{row.label}</Text>
                 <PriceInput
                   value={currentReceipt[row.field]}
                   onCommit={(n) => updateReceiptField(row.field, n)}
                   textAlign="right"
-                  style="w-24 text-right text-base text-text-primary border border-border rounded-lg px-3 py-1.5"
+                  style="w-24 text-right text-base text-onyx-900 border border-neutral-200 rounded-lg px-3 py-1.5"
                 />
               </View>
             ))}
           </View>
 
           {/* Tip */}
-          <View className="bg-background-secondary rounded-xl p-4 mb-4">
-            <Text className="text-sm font-semibold text-text-secondary mb-3">TIP</Text>
+          <View className="bg-white border border-neutral-200 rounded-xl p-4 mb-4">
+            <Text className="text-sm font-semibold text-neutral-500 mb-3">TIP</Text>
             <View className="flex-row gap-2 mb-3">
               {[15, 18, 20, 25].map((pct) => {
                 const tipAmount = Math.round(currentReceipt.subtotal * pct) / 100;
@@ -274,13 +274,13 @@ export function ValidateReceiptScreen() {
                     key={pct}
                     onPress={() => updateReceiptField('tip', tipAmount)}
                     className={`flex-1 py-2 rounded-lg items-center border ${
-                      isSelected ? 'bg-accent border-accent' : 'bg-transparent border-border'
+                      isSelected ? 'bg-onyx-900 border-onyx-900' : 'bg-transparent border-neutral-200'
                     }`}
                   >
-                    <Text className={`text-sm font-semibold ${isSelected ? 'text-white' : 'text-text-primary'}`}>
+                    <Text className={`text-sm font-semibold ${isSelected ? 'text-white' : 'text-onyx-900'}`}>
                       {pct}%
                     </Text>
-                    <Text className={`text-xs ${isSelected ? 'text-white/70' : 'text-text-secondary'}`}>
+                    <Text className={`text-xs ${isSelected ? 'text-white/70' : 'text-neutral-500'}`}>
                       {formatCurrency(tipAmount)}
                     </Text>
                   </TouchableOpacity>
@@ -288,21 +288,21 @@ export function ValidateReceiptScreen() {
               })}
             </View>
             <View className="flex-row justify-between items-center">
-              <Text className="text-base text-text-secondary">Custom</Text>
+              <Text className="text-base text-neutral-500">Custom</Text>
               <PriceInput
                 value={currentReceipt.tip}
                 onCommit={(n) => updateReceiptField('tip', n)}
                 textAlign="right"
-                style="w-24 text-right text-base text-text-primary border border-border rounded-lg px-3 py-1.5"
+                style="w-24 text-right text-base text-onyx-900 border border-neutral-200 rounded-lg px-3 py-1.5"
               />
             </View>
           </View>
 
           {/* Total */}
-          <View className="bg-background-secondary rounded-xl p-4 mb-6">
+          <View className="bg-white border border-neutral-200 rounded-xl p-4 mb-6">
             <View className="flex-row justify-between items-center">
-              <Text className="text-lg font-bold text-text-primary">Total</Text>
-              <Text className="text-lg font-bold text-accent">
+              <Text className="text-lg font-bold text-onyx-900">Total</Text>
+              <Text className="text-lg font-bold text-onyx-900">
                 {formatCurrency(currentReceipt.total || (currentReceipt.subtotal + currentReceipt.tax + currentReceipt.tip - currentReceipt.discount))}
               </Text>
             </View>
@@ -310,13 +310,13 @@ export function ValidateReceiptScreen() {
         </ScrollView>
 
         {/* Continue button */}
-        <View className="absolute bottom-0 left-0 right-0 bg-background border-t border-border-light px-4 py-4">
+        <View className="absolute bottom-0 left-0 right-0 bg-cream border-t border-neutral-200 px-4 py-4">
           <Animated.View style={shakeStyle}>
             <TouchableOpacity
               onPress={handleContinue}
-              className="bg-accent rounded-xl py-4 items-center"
+              className="bg-onyx-900 rounded-xl py-4 items-center"
             >
-              <Text className="text-white text-base font-semibold">Continue → Select Friends</Text>
+              <Text className="text-white text-base font-semibold">Continue · Select friends</Text>
             </TouchableOpacity>
           </Animated.View>
         </View>
