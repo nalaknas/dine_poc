@@ -1,13 +1,15 @@
 require('dotenv').config();
 
+const IS_DEV = process.env.APP_VARIANT === 'development';
+
 module.exports = {
   expo: {
-    name: 'Dine',
+    name: IS_DEV ? 'Dine (Dev)' : 'Dine',
     slug: 'dine',
     version: '1.0.1',
     scheme: 'dine',
     orientation: 'portrait',
-    icon: './assets/icon-gold.png',
+    icon: IS_DEV ? './assets/icon.png' : './assets/icon-gold.png',
     userInterfaceStyle: 'automatic',
     splash: {
       image: './assets/splash-logo.png',
@@ -16,7 +18,7 @@ module.exports = {
     },
     ios: {
       supportsTablet: false,
-      bundleIdentifier: 'com.nalaknas.dine',
+      bundleIdentifier: IS_DEV ? 'com.nalaknas.dine.dev' : 'com.nalaknas.dine',
       usesAppleSignIn: true,
       associatedDomains: ['applinks:dine.app'],
       infoPlist: {
@@ -54,7 +56,7 @@ module.exports = {
       [
         'expo-notifications',
         {
-          icon: './assets/icon-gold.png',
+          icon: IS_DEV ? './assets/icon.png' : './assets/icon-gold.png',
           color: '#007AFF',
         },
       ],

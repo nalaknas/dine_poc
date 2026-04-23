@@ -12,6 +12,7 @@ import * as Crypto from 'expo-crypto';
 import { useAuthStore } from '../../stores/authStore';
 import { getOrCreateUserProfile } from '../../services/auth-service';
 import { useUserProfileStore } from '../../stores/userProfileStore';
+import { useSettingsStore } from '../../stores/settingsStore';
 import { Button } from '../../components/ui/Button';
 import { trackSignUp, trackSignIn } from '../../lib/analytics';
 import type { RootStackParamList } from '../../types';
@@ -38,6 +39,7 @@ export function AuthScreen() {
   const navigation = useNavigation<Nav>();
   const { signIn, signUp, signInWithIdToken, isLoading } = useAuthStore();
   const { setProfile } = useUserProfileStore();
+  const { setHasCompletedOnboarding } = useSettingsStore();
 
   const [mode, setMode] = useState<Mode>('signin');
   const [email, setEmail] = useState('');
@@ -64,8 +66,15 @@ export function AuthScreen() {
     const { user } = useAuthStore.getState();
     if (user) {
       trackSignIn({ userId: user.id, loginMethod: method, success: true });
-      const profile = await getOrCreateUserProfile(user.id, user.email);
+      const { profile, wasCreated } = await getOrCreateUserProfile(user.id, user.email);
       setProfile(profile);
+      // Late correction for Apple flow: by the time we get here the
+      // navigator has already routed off user state, so if the flag was
+      // wrong we've landed on the wrong screen. The email flow handles
+      // this eagerly before signUp/signIn; Apple can't distinguish at
+      // call time so we rely on `wasCreated` + accept a brief flicker
+      // when a returning Apple user briefly sees Onboarding.
+      setHasCompletedOnboarding(!wasCreated);
     }
   };
 
@@ -109,6 +118,13 @@ export function AuthScreen() {
     }
 
     try {
+      // Set the onboarding flag BEFORE the auth call so it's already the
+      // right value when `onAuthStateChange` fires inside signUp/signIn.
+      // If we set it after, React re-renders RootNavigator with user=authed
+      // but a stale flag, which routes the user to Main before we can
+      // correct it — and RN doesn't auto-navigate back once stacks change.
+      setHasCompletedOnboarding(mode === 'signin');
+
       if (mode === 'signup') {
         await signUp(email.trim().toLowerCase(), password);
       } else {
@@ -123,7 +139,7 @@ export function AuthScreen() {
         } else {
           trackSignIn({ userId: user.id, loginMethod: 'email', success: true });
         }
-        const profile = await getOrCreateUserProfile(user.id, user.email);
+        const { profile } = await getOrCreateUserProfile(user.id, user.email);
         setProfile(profile);
       }
     } catch (err: any) {
