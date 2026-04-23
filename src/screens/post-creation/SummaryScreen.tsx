@@ -20,6 +20,7 @@ export function SummaryScreen() {
     selectedFriends,
     itemAssignments,
     familyStyleItems,
+    isFamilyStyle,
   } = useBillSplitterStore();
 
   // Friends who aren't you and have Venmo usernames
@@ -39,9 +40,12 @@ export function SummaryScreen() {
     return Math.round((tip / subtotal) * 100);
   }, [currentReceipt]);
 
-  // Resolve the avatar stack for a given receipt item
+  // Resolve the avatar stack for a given receipt item. Two paths:
+  //   1. `isFamilyStyle` global flag — whole receipt is split equally
+  //   2. `familyStyleItems` Set — per-item family-style override
+  //   3. Otherwise: explicit `itemAssignments` from AssignItemsScreen
   const avatarsFor = (itemId: string) => {
-    const isFamily = familyStyleItems.has(itemId);
+    const isFamily = isFamilyStyle || familyStyleItems.has(itemId);
     const assignedIds = isFamily
       ? selectedFriends.map((f) => f.id)
       : itemAssignments[itemId] ?? [];
