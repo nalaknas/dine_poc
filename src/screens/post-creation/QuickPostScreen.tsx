@@ -212,7 +212,7 @@ export function QuickPostScreen() {
   }, []);
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={['bottom']}>
+    <SafeAreaView className="flex-1 bg-cream" edges={['bottom']}>
       <TierUpCelebration
         visible={showTierUp}
         newTier={newTier}
@@ -226,28 +226,31 @@ export function QuickPostScreen() {
         >
           {/* Quick Post badge */}
           <View className="flex-row items-center mb-4">
-            <View className="bg-gold/15 rounded-full px-3 py-1 flex-row items-center">
-              <Ionicons name="flash" size={14} color="#F59E0B" />
-              <Text className="text-gold font-semibold text-xs ml-1">Quick Post</Text>
+            <View
+              className="rounded-full px-3 py-1 flex-row items-center"
+              style={{ backgroundColor: 'rgba(247,181,46,0.15)' }}
+            >
+              <Ionicons name="flash" size={14} color="#B07C15" />
+              <Text className="font-semibold text-xs ml-1" style={{ color: '#B07C15' }}>Quick Post</Text>
             </View>
-            <Text className="text-sm text-text-secondary ml-2">Skip the receipt, just share!</Text>
+            <Text className="text-sm text-neutral-500 ml-2">Skip the receipt, just share!</Text>
           </View>
 
           {/* Restaurant Name */}
           <View className="mb-5">
-            <Text className="text-sm font-semibold text-text-secondary mb-2">RESTAURANT *</Text>
+            <Text className="text-sm font-semibold text-neutral-500 mb-2">RESTAURANT *</Text>
             <TextInput
               value={restaurantName}
               onChangeText={setRestaurantName}
               placeholder="Where did you eat?"
-              placeholderTextColor="#9CA3AF"
-              className="bg-background-secondary border border-border rounded-xl px-4 py-3 text-base text-text-primary"
+              placeholderTextColor="#9B9791"
+              className="bg-white border border-neutral-200 rounded-xl px-4 py-3 text-base text-onyx-900"
             />
           </View>
 
           {/* Photos */}
           <View className="mb-5">
-            <Text className="text-sm font-semibold text-text-secondary mb-3">
+            <Text className="text-sm font-semibold text-neutral-500 mb-3">
               PHOTOS ({photos.length}/5)
             </Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -255,7 +258,7 @@ export function QuickPostScreen() {
                 <View key={i} className="mr-3 relative">
                   <Image
                     source={{ uri }}
-                    style={{ width: 100, height: 100, borderRadius: 10 }}
+                    style={{ width: 100, height: 100, borderRadius: 12 }}
                     resizeMode="cover"
                   />
                   <TouchableOpacity
@@ -270,19 +273,19 @@ export function QuickPostScreen() {
                 <View className="flex-row" style={{ gap: 8 }}>
                   <TouchableOpacity
                     onPress={() => pickPhotos('camera')}
-                    style={{ width: 100, height: 100, borderRadius: 10 }}
-                    className="bg-background-secondary border-2 border-dashed border-border items-center justify-center"
+                    style={{ width: 100, height: 100, borderRadius: 12 }}
+                    className="bg-white border-2 border-dashed border-neutral-300 items-center justify-center"
                   >
-                    <Ionicons name="camera-outline" size={28} color="#9CA3AF" />
-                    <Text className="text-xs text-text-secondary mt-1">Camera</Text>
+                    <Ionicons name="camera-outline" size={26} color="#9B9791" />
+                    <Text className="text-xs text-neutral-500 mt-1">Camera</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => pickPhotos('library')}
-                    style={{ width: 100, height: 100, borderRadius: 10 }}
-                    className="bg-background-secondary border-2 border-dashed border-border items-center justify-center"
+                    style={{ width: 100, height: 100, borderRadius: 12 }}
+                    className="bg-white border-2 border-dashed border-neutral-300 items-center justify-center"
                   >
-                    <Ionicons name="image-outline" size={28} color="#9CA3AF" />
-                    <Text className="text-xs text-text-secondary mt-1">Gallery</Text>
+                    <Ionicons name="image-outline" size={26} color="#9B9791" />
+                    <Text className="text-xs text-neutral-500 mt-1">Gallery</Text>
                   </TouchableOpacity>
                 </View>
               )}
@@ -291,42 +294,44 @@ export function QuickPostScreen() {
 
           {/* Caption */}
           <View className="mb-5">
-            <Text className="text-sm font-semibold text-text-secondary mb-2">CAPTION</Text>
+            <Text className="text-sm font-semibold text-neutral-500 mb-2">CAPTION</Text>
             <TextInput
               value={caption}
               onChangeText={setCaption}
               placeholder="What did you think? (optional)"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor="#9B9791"
               multiline
               numberOfLines={3}
-              className="bg-background-secondary border border-border rounded-xl px-4 py-3 text-base text-text-primary"
-              style={{ minHeight: 80, textAlignVertical: 'top' }}
+              className="bg-white border border-neutral-200 rounded-xl px-4 py-3 text-base text-onyx-900"
+              style={{ minHeight: 88, textAlignVertical: 'top', lineHeight: 22 }}
             />
           </View>
 
           {/* Visibility toggle */}
           <View className="mb-4">
-            <Text className="text-sm font-semibold text-text-secondary mb-2">VISIBILITY</Text>
+            <Text className="text-sm font-semibold text-neutral-500 mb-2">VISIBILITY</Text>
             <View className="flex-row" style={{ gap: 12 }}>
               <TouchableOpacity
                 onPress={() => setIsPublic(true)}
-                className={`flex-1 flex-row items-center p-3 rounded-xl border ${
-                  isPublic ? 'border-accent bg-accent/5' : 'border-border bg-background-secondary'
+                className={`flex-1 flex-row items-center p-3 rounded-xl border bg-white ${
+                  isPublic ? 'border-onyx-900' : 'border-neutral-200'
                 }`}
+                style={isPublic ? { borderWidth: 2 } : undefined}
               >
-                <Ionicons name="globe-outline" size={18} color={isPublic ? '#007AFF' : '#6B7280'} />
-                <Text className={`ml-2 font-semibold text-sm ${isPublic ? 'text-accent' : 'text-text-secondary'}`}>
+                <Ionicons name="globe-outline" size={18} color={isPublic ? '#0A0A0A' : '#6E6A63'} />
+                <Text className={`ml-2 font-semibold text-sm ${isPublic ? 'text-onyx-900' : 'text-neutral-500'}`}>
                   Public
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => setIsPublic(false)}
-                className={`flex-1 flex-row items-center p-3 rounded-xl border ${
-                  !isPublic ? 'border-accent bg-accent/5' : 'border-border bg-background-secondary'
+                className={`flex-1 flex-row items-center p-3 rounded-xl border bg-white ${
+                  !isPublic ? 'border-onyx-900' : 'border-neutral-200'
                 }`}
+                style={!isPublic ? { borderWidth: 2 } : undefined}
               >
-                <Ionicons name="lock-closed-outline" size={18} color={!isPublic ? '#007AFF' : '#6B7280'} />
-                <Text className={`ml-2 font-semibold text-sm ${!isPublic ? 'text-accent' : 'text-text-secondary'}`}>
+                <Ionicons name="lock-closed-outline" size={18} color={!isPublic ? '#0A0A0A' : '#6E6A63'} />
+                <Text className={`ml-2 font-semibold text-sm ${!isPublic ? 'text-onyx-900' : 'text-neutral-500'}`}>
                   Private
                 </Text>
               </TouchableOpacity>
@@ -335,19 +340,19 @@ export function QuickPostScreen() {
         </ScrollView>
 
         {/* Post button */}
-        <View className="bg-background border-t border-border-light px-4 py-4">
+        <View className="bg-cream border-t border-neutral-200 px-4 py-4">
           <TouchableOpacity
             onPress={handlePublish}
             disabled={isPosting || !canPost}
-            className={`rounded-xl py-4 items-center ${canPost ? 'bg-accent' : 'bg-border'}`}
+            className={`rounded-xl py-4 items-center ${canPost ? 'bg-onyx-900' : 'bg-neutral-200'}`}
           >
             {isPosting ? (
               <View className="flex-row items-center">
                 <ActivityIndicator color="#fff" />
-                <Text className="text-white font-semibold ml-2">Posting...</Text>
+                <Text className="text-white font-semibold ml-2">Posting…</Text>
               </View>
             ) : (
-              <Text className={`text-base font-semibold ${canPost ? 'text-white' : 'text-text-secondary'}`}>
+              <Text className={`text-base font-semibold ${canPost ? 'text-white' : 'text-neutral-500'}`}>
                 Post
               </Text>
             )}

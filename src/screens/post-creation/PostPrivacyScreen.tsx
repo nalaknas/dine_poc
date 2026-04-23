@@ -283,67 +283,74 @@ export function PostPrivacyScreen() {
   }, []);
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={['bottom']}>
+    <SafeAreaView className="flex-1 bg-cream" edges={['bottom']}>
       <TierUpCelebration
         visible={showTierUp}
         newTier={newTier}
         onDismiss={handleTierUpDismiss}
       />
       <View className="flex-1 px-6 pt-8">
-        <Text className="text-2xl font-bold text-text-primary mb-2">Almost Done!</Text>
-        <Text className="text-base text-text-secondary mb-8">
+        <Text
+          className="mb-2 text-onyx-900"
+          style={{ fontFamily: 'Fraunces_400Regular', fontSize: 32, lineHeight: 38, letterSpacing: -0.64 }}
+        >
+          Almost done.
+        </Text>
+        <Text className="text-base text-neutral-500 mb-8">
           Choose who can see your post.
         </Text>
 
         {/* Public */}
         <TouchableOpacity
           onPress={() => setIsPublic(true)}
-          className={`flex-row items-center p-4 rounded-xl border mb-3 ${
-            isPublic ? 'border-accent bg-accent/5' : 'border-border bg-background-secondary'
+          className={`flex-row items-center p-4 rounded-xl border mb-3 bg-white ${
+            isPublic ? 'border-onyx-900' : 'border-neutral-200'
           }`}
+          style={isPublic ? { borderWidth: 2 } : undefined}
         >
           <View className={`w-10 h-10 rounded-full items-center justify-center mr-3 ${
-            isPublic ? 'bg-accent' : 'bg-border'
+            isPublic ? 'bg-onyx-900' : 'bg-neutral-100'
           }`}>
-            <Ionicons name="globe-outline" size={20} color={isPublic ? '#fff' : '#6B7280'} />
+            <Ionicons name="globe-outline" size={20} color={isPublic ? '#fff' : '#6E6A63'} />
           </View>
           <View className="flex-1">
-            <Text className="text-base font-semibold text-text-primary">Public</Text>
-            <Text className="text-sm text-text-secondary">Appears in your followers' feeds</Text>
+            <Text className="text-base font-semibold text-onyx-900">Public</Text>
+            <Text className="text-sm text-neutral-500">Appears in your followers' feeds</Text>
           </View>
-          {isPublic && <Ionicons name="checkmark-circle" size={22} color="#007AFF" />}
+          {isPublic && <Ionicons name="checkmark-circle" size={22} color="#0A0A0A" />}
         </TouchableOpacity>
 
         {/* Private */}
         <TouchableOpacity
           onPress={() => setIsPublic(false)}
-          className={`flex-row items-center p-4 rounded-xl border ${
-            !isPublic ? 'border-accent bg-accent/5' : 'border-border bg-background-secondary'
+          className={`flex-row items-center p-4 rounded-xl border bg-white ${
+            !isPublic ? 'border-onyx-900' : 'border-neutral-200'
           }`}
+          style={!isPublic ? { borderWidth: 2 } : undefined}
         >
           <View className={`w-10 h-10 rounded-full items-center justify-center mr-3 ${
-            !isPublic ? 'bg-accent' : 'bg-border'
+            !isPublic ? 'bg-onyx-900' : 'bg-neutral-100'
           }`}>
-            <Ionicons name="lock-closed-outline" size={20} color={!isPublic ? '#fff' : '#6B7280'} />
+            <Ionicons name="lock-closed-outline" size={20} color={!isPublic ? '#fff' : '#6E6A63'} />
           </View>
           <View className="flex-1">
-            <Text className="text-base font-semibold text-text-primary">Private</Text>
-            <Text className="text-sm text-text-secondary">Only you can see this (dining journal)</Text>
+            <Text className="text-base font-semibold text-onyx-900">Private</Text>
+            <Text className="text-sm text-neutral-500">Only you can see this (dining journal)</Text>
           </View>
-          {!isPublic && <Ionicons name="checkmark-circle" size={22} color="#007AFF" />}
+          {!isPublic && <Ionicons name="checkmark-circle" size={22} color="#0A0A0A" />}
         </TouchableOpacity>
 
         <View className="mt-auto pb-6">
           {/* Upload progress indicator */}
           {isPosting && uploadProgress.total > 0 && !isFinalizing && (
             <View className="mb-4">
-              <Text className="text-sm font-semibold text-text-primary text-center mb-2">
-                Uploading {uploadProgress.current}/{uploadProgress.total} photos...
+              <Text className="text-sm font-semibold text-onyx-900 text-center mb-2">
+                Uploading {uploadProgress.current}/{uploadProgress.total} photos…
               </Text>
               {/* Progress bar */}
-              <View className="h-2 bg-border rounded-full overflow-hidden mb-3">
+              <View className="h-2 bg-neutral-200 rounded-full overflow-hidden mb-3">
                 <Animated.View
-                  className="h-full bg-accent rounded-full"
+                  className="h-full bg-onyx-900 rounded-full"
                   style={{
                     width: progressAnim.interpolate({
                       inputRange: [0, 1],
@@ -357,12 +364,14 @@ export function PostPrivacyScreen() {
                 {photoStatuses.map((status, i) => (
                   <View
                     key={i}
-                    className={`w-5 h-5 rounded-full items-center justify-center ${
-                      status === 'done' ? 'bg-green-500' :
-                      status === 'uploading' ? 'bg-accent' :
-                      status === 'failed' ? 'bg-red-400' :
-                      'bg-border'
-                    }`}
+                    className="w-5 h-5 rounded-full items-center justify-center"
+                    style={{
+                      backgroundColor:
+                        status === 'done' ? '#4A8260' :
+                        status === 'uploading' ? '#0A0A0A' :
+                        status === 'failed' ? '#B84545' :
+                        '#E4E2DE',
+                    }}
                   >
                     {status === 'done' && (
                       <Ionicons name="checkmark" size={12} color="#fff" />
@@ -382,13 +391,13 @@ export function PostPrivacyScreen() {
           <TouchableOpacity
             onPress={handlePublish}
             disabled={isPosting}
-            className="bg-accent rounded-xl py-4 items-center"
+            className="bg-onyx-900 rounded-xl py-4 items-center"
           >
             {isPosting ? (
               <View className="flex-row items-center">
                 <ActivityIndicator color="#fff" />
                 <Text className="text-white font-semibold ml-2">
-                  {isFinalizing ? 'Finishing up...' : uploadProgress.total === 0 ? 'Posting...' : 'Uploading...'}
+                  {isFinalizing ? 'Finishing up…' : uploadProgress.total === 0 ? 'Posting…' : 'Uploading…'}
                 </Text>
               </View>
             ) : (
