@@ -9,13 +9,20 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import * as Crypto from 'expo-crypto';
+import * as Google from 'expo-auth-session/providers/google';
+import * as WebBrowser from 'expo-web-browser';
 import { useAuthStore } from '../../stores/authStore';
 import { getOrCreateUserProfile } from '../../services/auth-service';
 import { useUserProfileStore } from '../../stores/userProfileStore';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { Button } from '../../components/ui/Button';
 import { trackSignUp, trackSignIn } from '../../lib/analytics';
+import { Config } from '../../constants/config';
 import type { RootStackParamList } from '../../types';
+
+// Required for the Google OAuth redirect to dismiss the in-app browser and
+// hand control back to the auth-session listener on iOS.
+WebBrowser.maybeCompleteAuthSession();
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -47,6 +54,16 @@ export function AuthScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [showEmailForm, setShowEmailForm] = useState(false);
   const [appleAvailable, setAppleAvailable] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  // useIdTokenAuthRequest does the implicit id_token flow so we get a token
+  // verifiable by Supabase directly — no code exchange roundtrip. Both
+  // client IDs must be listed as accepted audiences in Supabase's Google
+  // provider config; the iOS native flow audiences the token to iosClientId.
+  const [googleRequest, googleResponse, promptGoogleSignIn] = Google.useIdTokenAuthRequest({
+    clientId: Config.google.oauthClientId,
+    iosClientId: Config.google.iosOAuthClientId,
+  });
 
   // Apple Sign-In is only available on iOS 13+. Hide the button otherwise so
   // users never see a non-functional CTA (also a common App Store reject reason).
@@ -61,6 +78,36 @@ export function AuthScreen() {
       });
     return () => { cancelled = true; };
   }, []);
+
+  // Drive the Google sign-in completion off the auth-session response. The
+  // promptAsync() promise only tells us the prompt was shown — the id_token
+  // arrives later via this hook update.
+  useEffect(() => {
+    if (!googleResponse) return;
+    if (googleResponse.type === 'success') {
+      const idToken = googleResponse.params?.id_token;
+      if (!idToken) {
+        Alert.alert('Error', 'Google Sign-In failed — no ID token received.');
+        setGoogleLoading(false);
+        return;
+      }
+      (async () => {
+        try {
+          await signInWithIdToken('google', idToken);
+          await handlePostAuth('google');
+        } catch (err: any) {
+          Alert.alert('Error', friendlyError(err?.message ?? 'Google Sign-In failed'));
+        } finally {
+          setGoogleLoading(false);
+        }
+      })();
+    } else {
+      setGoogleLoading(false);
+    }
+  // handlePostAuth + signInWithIdToken are stable from Zustand; including
+  // them would re-run this effect on unrelated re-renders.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [googleResponse]);
 
   const handlePostAuth = async (method: string) => {
     const { user } = useAuthStore.getState();
@@ -108,6 +155,17 @@ export function AuthScreen() {
     } catch (err: any) {
       if (err.code === 'ERR_REQUEST_CANCELED') return;
       Alert.alert('Error', friendlyError(err?.message ?? 'Apple Sign-In failed'));
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    if (!googleRequest || googleLoading) return;
+    setGoogleLoading(true);
+    try {
+      await promptGoogleSignIn();
+    } catch (err: any) {
+      setGoogleLoading(false);
+      Alert.alert('Error', friendlyError(err?.message ?? 'Google Sign-In failed'));
     }
   };
 
@@ -183,6 +241,17 @@ export function AuthScreen() {
                   </Text>
                 </TouchableOpacity>
               )}
+
+              <TouchableOpacity
+                onPress={handleGoogleSignIn}
+                disabled={isLoading || googleLoading || !googleRequest}
+                className="flex-row items-center justify-center bg-white border border-border rounded-xl py-3.5 px-4"
+              >
+                <Ionicons name="logo-google" size={20} color="#4285F4" />
+                <Text className="text-text-primary text-base font-semibold ml-2">
+                  {googleLoading ? 'Signing in…' : 'Continue with Google'}
+                </Text>
+              </TouchableOpacity>
             </View>
 
             {/* Divider */}
