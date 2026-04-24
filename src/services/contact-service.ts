@@ -136,50 +136,53 @@ export async function bulkIncrementSplitCounts(contactIds: string[]): Promise<vo
 // ─── iOS Contact Picker (single contact at a time) ──────────────────────────
 
 /**
- * Opens the native iOS contact picker and returns the selected contact's
- * name and phone number. Returns null if the user cancels or the contact
- * has no phone number.
+ * Opens the native iOS contact picker. Returns the selected contact's name
+ * and (optional) phone number. Returns null if the user cancelled.
+ *
+ * Note: `presentContactPickerAsync` wraps CNContactPickerViewController, a
+ * system sheet that does NOT require Contacts permission — Apple designed it
+ * so users can share a single contact without granting full-book access.
+ * Requesting permission here would prompt unnecessarily and confuse the
+ * limited-access flow (iOS 14+).
  */
 export async function pickContactFromPhone(): Promise<{
   name: string;
-  phone: string;
+  phone?: string;
 } | null> {
-  const { status } = await Contacts.requestPermissionsAsync();
-  if (status !== 'granted') {
-    throw new Error('Contacts permission not granted. Please enable in Settings.');
-  }
-
   const contact = await Contacts.presentContactPickerAsync();
   if (!contact) return null; // user cancelled
 
-  const name = contact.name;
-  if (!name) return null;
+  const fallbackName = [contact.firstName, contact.lastName].filter(Boolean).join(' ').trim();
+  const name = contact.name?.trim() || fallbackName;
+  if (!name) {
+    throw new Error('That contact has no name. Pick a different one or add manually.');
+  }
 
   const phone = contact.phoneNumbers?.[0]?.number;
-  if (!phone) return null;
-
-  return { name, phone: normalizePhoneNumber(phone) };
+  return { name, phone: phone ? normalizePhoneNumber(phone) : undefined };
 }
 
 /**
  * Picks a contact from the native picker and creates/returns a server-side
  * contact record. If the contact already exists (by phone), returns the existing one.
+ * Contacts without a phone number are accepted — they land as name-only records.
  */
 export async function pickAndCreateContact(ownerId: string): Promise<Contact | null> {
   const picked = await pickContactFromPhone();
   if (!picked) return null;
 
-  // Check if contact already exists by phone number
-  const { data: existing } = await supabase
-    .from('contacts')
-    .select('*, linked_user:users!contacts_linked_user_id_fkey(*)')
-    .eq('owner_id', ownerId)
-    .eq('phone_number', picked.phone)
-    .maybeSingle();
+  // Dedup by phone when we have one
+  if (picked.phone) {
+    const { data: existing } = await supabase
+      .from('contacts')
+      .select('*, linked_user:users!contacts_linked_user_id_fkey(*)')
+      .eq('owner_id', ownerId)
+      .eq('phone_number', picked.phone)
+      .maybeSingle();
 
-  if (existing) return existing as Contact;
+    if (existing) return existing as Contact;
+  }
 
-  // Create new contact
   return createContact({
     owner_id: ownerId,
     display_name: picked.name,
