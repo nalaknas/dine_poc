@@ -10,6 +10,7 @@ import { useSocialStore } from '../../stores/socialStore';
 import { useBillSplitterStore } from '../../stores/billSplitterStore';
 import { analyzeReceipt } from '../../services/receipt-service';
 import { useToast } from '../../contexts/ToastContext';
+import { POST_CREATION_SCREENS } from '../../navigation/PostCreationNavigator';
 import { Image } from 'react-native';
 
 const OPTION = [
@@ -49,7 +50,19 @@ export function HomeScreen() {
           {
             text: 'Resume',
             onPress: () => {
-              navigation.navigate(billResult.step);
+              // Drafts can outlive a screen rename on older app builds. If the
+              // stored step no longer exists, clear the draft silently and
+              // keep the user on Home rather than dead-ending navigation.
+              if (POST_CREATION_SCREENS.has(billResult.step)) {
+                navigation.navigate(billResult.step);
+              } else {
+                resetBill();
+                clearDraftPost();
+                showToast({
+                  message: 'Draft was from an older version. Cleared.',
+                  type: 'info',
+                });
+              }
             },
           },
         ]

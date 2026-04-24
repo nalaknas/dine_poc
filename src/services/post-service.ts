@@ -496,6 +496,7 @@ export async function createQuickPost(
   caption: string,
   foodPhotos: string[],
   isPublic: boolean,
+  overallRating: number = 0,
 ): Promise<Post> {
   let restaurantId: string | undefined;
   if (restaurantName) {
@@ -515,7 +516,7 @@ export async function createQuickPost(
       caption,
       food_photos: foodPhotos,
       is_public: isPublic,
-      overall_rating: 0,
+      overall_rating: overallRating,
       tags: [],
       is_quick_post: true,
     })

@@ -21,6 +21,7 @@ import {
   trackPostAbandonedIfNotCreated,
 } from '../../lib/analytics';
 import { TierUpCelebration } from '../../components/ui/TierUpCelebration';
+import { RatingSlider } from '../../components/ui/RatingSlider';
 import type { UserTier } from '../../types';
 
 export function QuickPostScreen() {
@@ -33,6 +34,7 @@ export function QuickPostScreen() {
   const [restaurantName, setRestaurantName] = useState('');
   const [caption, setCaption] = useState('');
   const [photos, setPhotos] = useState<string[]>([]);
+  const [rating, setRating] = useState(0);
   const [isPublic, setIsPublic] = useState(true);
   const [isPosting, setIsPosting] = useState(false);
 
@@ -47,6 +49,31 @@ export function QuickPostScreen() {
     trackPostCreationStep('quick_post_opened', 0, 'quick');
     return () => trackPostAbandonedIfNotCreated('QuickPost', 0, 'quick');
   }, []);
+
+  // Guard back-gesture / hardware back during upload so users don't lose
+  // progress mid-flight. Our own success path uses CommonActions.reset
+  // (type 'RESET') — that must pass through even while isPosting is still
+  // true, so we only block user-initiated pops.
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e: any) => {
+      if (!isPosting) return;
+      if (e.data?.action?.type === 'RESET') return;
+      e.preventDefault();
+      Alert.alert(
+        'Still posting…',
+        'Your meal is uploading. Wait a moment, or cancel to discard this post.',
+        [
+          { text: 'Keep posting', style: 'cancel', onPress: () => {} },
+          {
+            text: 'Cancel post',
+            style: 'destructive',
+            onPress: () => navigation.dispatch(e.data.action),
+          },
+        ],
+      );
+    });
+    return unsubscribe;
+  }, [navigation, isPosting]);
 
   const pickPhotos = async (source: 'camera' | 'library') => {
     if (photos.length >= 5) {
@@ -106,6 +133,7 @@ export function QuickPostScreen() {
         caption.trim(),
         uploadedPhotos,
         isPublic,
+        rating,
       );
 
       // 3. Track analytics
@@ -305,6 +333,14 @@ export function QuickPostScreen() {
               className="bg-white border border-neutral-200 rounded-xl px-4 py-3 text-base text-onyx-900"
               style={{ minHeight: 88, textAlignVertical: 'top', lineHeight: 22 }}
             />
+          </View>
+
+          {/* Rating — 0-10 editorial picker, optional */}
+          <View className="mb-5">
+            <Text className="text-sm font-semibold text-neutral-500 mb-3">
+              RATING{rating > 0 ? ` · ${rating.toFixed(1)}` : ''}
+            </Text>
+            <RatingSlider value={rating} onChange={setRating} />
           </View>
 
           {/* Visibility toggle */}

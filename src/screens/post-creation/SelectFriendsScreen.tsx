@@ -34,7 +34,7 @@ export function SelectFriendsScreen() {
   const { user } = useAuthStore();
   const { profile } = useUserProfileStore();
   const { selectedFriends, addSelectedFriend, removeSelectedFriend } = useBillSplitterStore();
-  const { addContact } = useContactsStore();
+  const { addContact, loadContacts, pickContact, contacts, isLoaded: contactsLoaded } = useContactsStore();
 
   // Auto-include current user ("You") in the bill split on mount
   useEffect(() => {
@@ -50,6 +50,13 @@ export function SelectFriendsScreen() {
       });
     }
   }, []);
+
+  // Hydrate contacts cache the first time this screen mounts so "Recent" can render
+  useEffect(() => {
+    if (user && !contactsLoaded) {
+      loadContacts(user.id);
+    }
+  }, [user, contactsLoaded, loadContacts]);
 
   const [query, setQuery] = useState('');
   const [searchResults, setSearchResults] = useState<User[]>([]);
@@ -117,6 +124,46 @@ export function SelectFriendsScreen() {
 
   const isSearching = query.trim().length >= 2;
 
+  // Recency-sorted list of people the user has actually tagged/split with before.
+  // Unused contacts (no last_split_at) are intentionally excluded — "Recent" should
+  // mean recent, not "all my contacts alphabetized".
+  const recentContacts = isSearching
+    ? []
+    : [...contacts]
+        .filter((c) => !!c.last_split_at)
+        .sort((a, b) => (b.last_split_at ?? '').localeCompare(a.last_split_at ?? ''))
+        .filter((c) => {
+          const friendId = c.linked_user_id ?? c.id;
+          return !selectedFriends.some((f) => f.id === friendId || f.contact_id === c.id);
+        })
+        .slice(0, 10);
+
+  const handlePickFromContacts = async () => {
+    if (!user) return;
+    try {
+      const contact = await pickContact(user.id);
+      if (!contact) return; // user cancelled
+      trackFriendInvited(contact.linked_user_id ? 'app_user' : 'manual');
+      addSelectedFriend(contactToFriend(contact));
+    } catch (e) {
+      Alert.alert(
+        'Contacts',
+        e instanceof Error ? e.message : "Something went wrong. Try adding a friend by name instead.",
+      );
+    }
+  };
+
+  const toggleContact = (c: typeof contacts[number]) => {
+    const friend = contactToFriend(c);
+    const isSelected = selectedFriends.some((f) => f.id === friend.id || f.contact_id === c.id);
+    if (isSelected) {
+      removeSelectedFriend(friend.id);
+    } else {
+      trackFriendInvited(c.linked_user_id ? 'app_user' : 'manual');
+      addSelectedFriend(friend);
+    }
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-cream" edges={['bottom']}>
       {/* Selected friends chips */}
@@ -172,24 +219,34 @@ export function SelectFriendsScreen() {
         </View>
       </View>
 
-      {/* Add by name — always visible */}
-      <View className="px-4 pb-2">
+      {/* Quick-add actions — manual entry + native iOS contact picker.
+          When searching, the "Add by name" button prefills with the query so a
+          no-results search turns into a one-tap invite. */}
+      <View className="px-4 pb-2 flex-row gap-2">
         <TouchableOpacity
           onPress={() => {
             setManualName(isSearching ? query.trim() : '');
             setShowManualModal(true);
           }}
-          className="flex-row items-center bg-white border border-neutral-200 rounded-xl px-3 py-3"
+          accessibilityRole="button"
+          accessibilityLabel={isSearching ? `Add ${query.trim()} manually` : 'Add friend by name'}
+          className="flex-1 flex-row items-center bg-white border border-neutral-200 rounded-xl px-3 py-3"
         >
-          <View className="w-8 h-8 rounded-full items-center justify-center mr-2 bg-neutral-100">
-            <Ionicons name="person-add" size={16} color="#0A0A0A" />
-          </View>
-          <View className="flex-1">
-            <Text className="text-sm font-semibold text-onyx-900">
-              {isSearching ? `Add "${query.trim()}" manually` : 'Add by name'}
-            </Text>
-            <Text className="text-xs text-neutral-500">For friends who aren't on Dine</Text>
-          </View>
+          <Ionicons name="person-add" size={16} color="#0A0A0A" />
+          <Text className="text-sm font-semibold text-onyx-900 ml-2 flex-1" numberOfLines={1}>
+            {isSearching ? `Add "${query.trim()}"` : 'Add by name'}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={handlePickFromContacts}
+          accessibilityRole="button"
+          accessibilityLabel="Pick from iOS Contacts"
+          className="flex-1 flex-row items-center bg-white border border-neutral-200 rounded-xl px-3 py-3"
+        >
+          <Ionicons name="people" size={16} color="#0A0A0A" />
+          <Text className="text-sm font-semibold text-onyx-900 ml-2 flex-1" numberOfLines={1}>
+            From Contacts
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -206,6 +263,9 @@ export function SelectFriendsScreen() {
                 <TouchableOpacity
                   key={item.id}
                   onPress={() => toggleUser(item)}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: isSelected }}
+                  accessibilityLabel={`${isSelected ? 'Deselect' : 'Select'} ${item.display_name}`}
                   className="flex-row items-center px-4 py-2.5 border-b border-neutral-100"
                 >
                   <Avatar uri={item.avatar_url} displayName={item.display_name} size={42} />
@@ -232,9 +292,47 @@ export function SelectFriendsScreen() {
           </View>
         )}
 
-        {/* No-split-partners editorial prompt — shown only at the initial state
-            before the user searches or picks anyone beyond themselves. */}
-        {!isSearching && selectedFriends.length <= 1 && (
+        {/* Recent — contacts you've actually split with before, most-recent first.
+            Mixes Dine and non-Dine; native-picker and manual contacts both appear here
+            once they've been used at least once. */}
+        {!isSearching && recentContacts.length > 0 && (
+          <View className="pb-2">
+            <Text className="text-xs font-semibold text-neutral-500 mb-1 uppercase tracking-wide px-4">
+              Recent
+            </Text>
+            {recentContacts.map((item) => {
+              const friend = contactToFriend(item);
+              const isSelected = selectedFriends.some((f) => f.id === friend.id || f.contact_id === item.id);
+              const subtitle = friend.username
+                ? `@${friend.username}`
+                : item.phone_number ?? 'Not on Dine';
+              return (
+                <TouchableOpacity
+                  key={item.id}
+                  onPress={() => toggleContact(item)}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: isSelected }}
+                  accessibilityLabel={`${isSelected ? 'Deselect' : 'Select'} ${item.display_name}`}
+                  className="flex-row items-center px-4 py-2.5 border-b border-neutral-100"
+                >
+                  <Avatar uri={friend.avatar_url} displayName={item.display_name} size={42} />
+                  <View className="flex-1 ml-3">
+                    <Text className="text-base font-semibold text-onyx-900">{item.display_name}</Text>
+                    <Text className="text-sm text-neutral-500">{subtitle}</Text>
+                  </View>
+                  <View className={`w-6 h-6 rounded-full border-2 items-center justify-center ${
+                    isSelected ? 'bg-onyx-900 border-onyx-900' : 'border-neutral-300'
+                  }`}>
+                    {isSelected && <Ionicons name="checkmark" size={14} color="#fff" />}
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
+
+        {/* No-split-partners editorial prompt — first-time state, before any recents exist. */}
+        {!isSearching && selectedFriends.length <= 1 && recentContacts.length === 0 && (
           <EmptyState
             glyph="◐"
             title="No one to split with."
