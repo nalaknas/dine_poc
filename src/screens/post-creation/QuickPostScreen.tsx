@@ -21,6 +21,7 @@ import {
   trackPostAbandonedIfNotCreated,
 } from '../../lib/analytics';
 import { TierUpCelebration } from '../../components/ui/TierUpCelebration';
+import { RatingSlider } from '../../components/ui/RatingSlider';
 import type { UserTier } from '../../types';
 
 export function QuickPostScreen() {
@@ -33,6 +34,7 @@ export function QuickPostScreen() {
   const [restaurantName, setRestaurantName] = useState('');
   const [caption, setCaption] = useState('');
   const [photos, setPhotos] = useState<string[]>([]);
+  const [rating, setRating] = useState(0);
   const [isPublic, setIsPublic] = useState(true);
   const [isPosting, setIsPosting] = useState(false);
 
@@ -131,6 +133,7 @@ export function QuickPostScreen() {
         caption.trim(),
         uploadedPhotos,
         isPublic,
+        rating,
       );
 
       // 3. Track analytics
@@ -330,6 +333,14 @@ export function QuickPostScreen() {
               className="bg-white border border-neutral-200 rounded-xl px-4 py-3 text-base text-onyx-900"
               style={{ minHeight: 88, textAlignVertical: 'top', lineHeight: 22 }}
             />
+          </View>
+
+          {/* Rating — 0-10 editorial picker, optional */}
+          <View className="mb-5">
+            <Text className="text-sm font-semibold text-neutral-500 mb-3">
+              RATING{rating > 0 ? ` · ${rating.toFixed(1)}` : ''}
+            </Text>
+            <RatingSlider value={rating} onChange={setRating} />
           </View>
 
           {/* Visibility toggle */}
