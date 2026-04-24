@@ -104,12 +104,25 @@ export function ProfileScreen() {
 
   const header = (
     <View>
-      {/* Top bar — spacer + settings gear */}
+      {/* Top bar — share + settings.
+          Edit Profile lives under Settings › Account; Share was moved out of
+          the identity block so the post grid can breathe. */}
       <View style={styles.topBar}>
         <AnimatedPressable
-          onPress={() => navigation.navigate('Settings')}
-          style={styles.gearPill}
+          onPress={handleShare}
+          style={styles.headerPill}
           hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Share profile"
+        >
+          <Ionicons name="share-outline" size={18} color={Onyx[900]} />
+        </AnimatedPressable>
+        <AnimatedPressable
+          onPress={() => navigation.navigate('Settings')}
+          style={[styles.headerPill, { marginLeft: 8 }]}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Settings"
         >
           <Ionicons name="settings-outline" size={18} color={Onyx[900]} />
         </AnimatedPressable>
@@ -159,22 +172,6 @@ export function ProfileScreen() {
             <Text style={styles.statLabel}>{stat.label}</Text>
           </View>
         ))}
-      </View>
-
-      {/* Action row */}
-      <View style={styles.actionRow}>
-        <AnimatedPressable
-          onPress={() => navigation.navigate('EditProfile')}
-          style={[styles.actionButton, styles.actionButtonPrimary]}
-        >
-          <Text style={styles.actionLabelPrimary}>Edit Profile</Text>
-        </AnimatedPressable>
-        <AnimatedPressable
-          onPress={handleShare}
-          style={[styles.actionButton, styles.actionButtonSecondary]}
-        >
-          <Text style={styles.actionLabelSecondary}>Share</Text>
-        </AnimatedPressable>
       </View>
 
       {/* Grid tab indicators */}
@@ -322,7 +319,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 8,
   },
-  gearPill: {
+  headerPill: {
     width: 36,
     height: 36,
     borderRadius: 999,
@@ -402,37 +399,6 @@ const styles = StyleSheet.create({
     color: '#8E8B84',
     textTransform: 'uppercase',
     letterSpacing: 0.66, // +0.06em × 11
-  },
-  actionRow: {
-    marginTop: 16,
-    marginHorizontal: 16,
-    flexDirection: 'row',
-    gap: 8,
-  },
-  actionButton: {
-    flex: 1,
-    paddingVertical: 11,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  actionButtonPrimary: {
-    backgroundColor: Indigo.linear,
-  },
-  actionButtonSecondary: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: Neutral[200],
-  },
-  actionLabelPrimary: {
-    fontFamily: 'Inter_600SemiBold',
-    fontSize: 14,
-    color: '#FFFFFF',
-  },
-  actionLabelSecondary: {
-    fontFamily: 'Inter_600SemiBold',
-    fontSize: 14,
-    color: Onyx[900],
   },
   tabRow: {
     marginTop: 20,
