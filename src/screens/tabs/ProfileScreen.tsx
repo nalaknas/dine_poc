@@ -190,9 +190,12 @@ export function ProfileScreen() {
               end={{ x: 1, y: 1 }}
               style={styles.tierBadge}
             >
-              <Text style={styles.tierBadgeText}>
-                ◇ {TIER_LABEL[profile.current_tier]} DISCOVERER
-              </Text>
+              <View style={styles.tierBadgeRow}>
+                <Ionicons name="diamond-outline" size={11} color={Onyx[900]} />
+                <Text style={styles.tierBadgeText}>
+                  {TIER_LABEL[profile.current_tier]} DISCOVERER
+                </Text>
+              </View>
             </LinearGradient>
           </View>
         )}
@@ -442,6 +445,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 5,
     borderRadius: 999,
+  },
+  tierBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
   },
   tierBadgeText: {
     fontFamily: 'Inter_700Bold',
