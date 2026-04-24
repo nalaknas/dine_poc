@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useState } from 'react';
+import React, { useEffect, useCallback, useMemo, useState } from 'react';
 import {
   View, Text, Pressable, FlatList, RefreshControl,
   Image, Dimensions, Share, StyleSheet,
@@ -101,6 +101,46 @@ export function ProfileScreen() {
   const joinedYear = profile?.created_at
     ? new Date(profile.created_at).getFullYear()
     : null;
+
+  // Photo posts → hero grid. Photoless posts → journal feed below.
+  // Grid stays visually clean; photoless posts still get a dedicated home.
+  const photoPosts = useMemo(
+    () => myPosts.filter((p) => p.food_photos && p.food_photos.length > 0),
+    [myPosts],
+  );
+  const journalPosts = useMemo(
+    () => myPosts.filter((p) => !p.food_photos || p.food_photos.length === 0),
+    [myPosts],
+  );
+
+  // Group journal posts by month, newest month first, newest post first within a month.
+  // Lets the user scan "what did I eat out last month" without hunting.
+  const journalByMonth = useMemo(() => {
+    const sorted = [...journalPosts].sort((a, b) => {
+      const aDate = a.meal_date || a.created_at;
+      const bDate = b.meal_date || b.created_at;
+      return bDate.localeCompare(aDate);
+    });
+    const groups: { key: string; label: string; posts: Post[] }[] = [];
+    for (const post of sorted) {
+      const d = new Date(post.meal_date || post.created_at);
+      if (Number.isNaN(d.getTime())) continue;
+      const key = `${d.getFullYear()}-${d.getMonth()}`;
+      const label = d
+        .toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+        .toUpperCase();
+      const last = groups[groups.length - 1];
+      if (last && last.key === key) {
+        last.posts.push(post);
+      } else {
+        groups.push({ key, label, posts: [post] });
+      }
+    }
+    return groups;
+  }, [journalPosts]);
+
+  const gridData =
+    activeTab === 'tagged' ? taggedPosts : activeTab === 'grid' ? photoPosts : myPosts;
 
   const header = (
     <View>
@@ -212,7 +252,7 @@ export function ProfileScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <FlatList
-        data={activeTab === 'tagged' ? taggedPosts : myPosts}
+        data={gridData}
         keyExtractor={(item) => item.id}
         numColumns={3}
         ListHeaderComponent={header}
@@ -229,23 +269,11 @@ export function ProfileScreen() {
               onPress={() => navigation.navigate('MealDetail', { postId: item.id })}
               style={styles.gridItem}
             >
-              {item.food_photos?.length > 0 ? (
-                <Image
-                  source={{ uri: item.food_photos[0] }}
-                  style={StyleSheet.absoluteFill}
-                  resizeMode="cover"
-                />
-              ) : (
-                <LinearGradient
-                  colors={[Neutral[100], Neutral[200]]}
-                  style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]}
-                >
-                  <Ionicons name="receipt-outline" size={24} color={Neutral[400]} />
-                  <Text style={styles.gridPlaceholderLabel} numberOfLines={1}>
-                    {item.restaurant_name || 'Meal'}
-                  </Text>
-                </LinearGradient>
-              )}
+              <Image
+                source={{ uri: item.food_photos[0] }}
+                style={StyleSheet.absoluteFill}
+                resizeMode="cover"
+              />
 
               {/* Gold rating pill — reserved for posts ≥ 8.5 */}
               {showGoldPill && (
@@ -280,7 +308,7 @@ export function ProfileScreen() {
               title="No tagged meals"
               description="When friends tag you in their meals, they'll appear here."
             />
-          ) : (
+          ) : activeTab === 'grid' && journalPosts.length > 0 ? null : (
             <EmptyState
               icon="restaurant-outline"
               title="No meals yet"
@@ -289,6 +317,55 @@ export function ProfileScreen() {
               onAction={() => navigation.navigate('PostCreation' as never)}
             />
           )
+        }
+        ListFooterComponent={
+          activeTab === 'grid' && journalByMonth.length > 0 ? (
+            <View style={styles.journalSection}>
+              <View style={styles.journalDivider}>
+                <Text style={styles.journalLabel}>Journal</Text>
+              </View>
+              {journalByMonth.map((group, groupIndex) => (
+                <View key={group.key}>
+                  <Text
+                    style={[
+                      styles.journalMonthHeader,
+                      groupIndex === 0 && styles.journalMonthHeaderFirst,
+                    ]}
+                  >
+                    {group.label}
+                  </Text>
+                  {group.posts.map((post) => (
+                    <AnimatedPressable
+                      key={post.id}
+                      onPress={() => navigation.navigate('MealDetail', { postId: post.id })}
+                      style={styles.journalRow}
+                    >
+                      <View style={styles.journalDateCol}>
+                        <Text style={styles.journalDate}>
+                          {formatJournalDate(post.meal_date || post.created_at)}
+                        </Text>
+                        {post.overall_rating > 0 && (
+                          <Text style={styles.journalRating}>
+                            ★ {post.overall_rating.toFixed(1)}
+                          </Text>
+                        )}
+                      </View>
+                      <View style={styles.journalBody}>
+                        <Text style={styles.journalRestaurant} numberOfLines={1}>
+                          {post.restaurant_name || 'Untitled'}
+                        </Text>
+                        {post.caption ? (
+                          <Text style={styles.journalCaption} numberOfLines={2}>
+                            {post.caption}
+                          </Text>
+                        ) : null}
+                      </View>
+                    </AnimatedPressable>
+                  ))}
+                </View>
+              ))}
+            </View>
+          ) : null
         }
         contentContainerStyle={{ flexGrow: 1, paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
@@ -304,6 +381,14 @@ function formatCount(n: number): string {
     return `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k`;
   }
   return String(n);
+}
+
+function formatJournalDate(iso?: string): string {
+  if (!iso) return '';
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
+  const dow = date.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+  return `${dow} ${date.getDate()}`;
 }
 
 // ─── Styles ─────────────────────────────────────────────────────────────────
@@ -429,12 +514,73 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: Neutral[100],
   },
-  gridPlaceholderLabel: {
+  journalSection: {
+    marginTop: 28,
+    paddingHorizontal: 16,
+  },
+  journalDivider: {
+    paddingBottom: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Neutral[200],
+    marginBottom: 4,
+  },
+  journalLabel: {
     fontFamily: 'Inter_500Medium',
-    fontSize: 10,
-    color: Neutral[400],
-    marginTop: 2,
-    paddingHorizontal: 6,
+    fontSize: 11,
+    color: '#8E8B84',
+    textTransform: 'uppercase',
+    letterSpacing: 0.66,
+  },
+  journalMonthHeader: {
+    marginTop: 28,
+    paddingBottom: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Neutral[200],
+    fontFamily: 'Manrope_600SemiBold',
+    fontSize: 13,
+    letterSpacing: 1.3, // editorial feel
+    color: Onyx[900],
+  },
+  journalMonthHeaderFirst: {
+    marginTop: 16, // smaller gap since the JOURNAL label sits just above
+  },
+  journalRow: {
+    flexDirection: 'row',
+    paddingVertical: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Neutral[100],
+  },
+  journalDateCol: {
+    width: 64,
+    paddingTop: 2,
+  },
+  journalDate: {
+    fontFamily: 'JetBrainsMono_600SemiBold',
+    fontSize: 11,
+    color: '#8E8B84',
+    letterSpacing: 0.5,
+  },
+  journalRating: {
+    marginTop: 4,
+    fontFamily: 'JetBrainsMono_600SemiBold',
+    fontSize: 11,
+    color: Onyx[900],
+  },
+  journalBody: {
+    flex: 1,
+  },
+  journalRestaurant: {
+    fontFamily: 'Manrope_600SemiBold',
+    fontSize: 16,
+    letterSpacing: -0.16,
+    color: Onyx[900],
+  },
+  journalCaption: {
+    marginTop: 4,
+    fontFamily: 'Inter_400Regular',
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#2B2926',
   },
   ratingPill: {
     position: 'absolute',
