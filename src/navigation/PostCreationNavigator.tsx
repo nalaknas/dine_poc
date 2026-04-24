@@ -22,6 +22,15 @@ const STEPS: (keyof PostCreationParamList)[] = [
   'Summary', 'RateMeal', 'ReviewComposer', 'PostPrivacy',
 ];
 
+// Runtime guard for navigate() calls driven by persisted draft state.
+// Drafts live in AsyncStorage, so a step name from an older build can
+// linger after the screen is renamed/removed. Exporting the set of
+// currently-registered screens lets consumers validate before navigating.
+export const POST_CREATION_SCREENS = new Set<keyof PostCreationParamList>([
+  ...STEPS,
+  'QuickPost',
+]);
+
 function ProgressBar({ routeName }: { routeName: string }) {
   const stepIndex = STEPS.indexOf(routeName as any);
   const progress = stepIndex >= 0 ? (stepIndex + 1) / STEPS.length : 0;

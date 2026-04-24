@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, ScrollView, TouchableOpacity,
-  ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
+  ActivityIndicator, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
@@ -12,11 +12,13 @@ import { useUserProfileStore } from '../../stores/userProfileStore';
 import { updateUserProfile } from '../../services/auth-service';
 import { uploadAvatar } from '../../services/receipt-service';
 import { VenmoConnectButton } from '../../components/ui/VenmoConnectButton';
+import { useToast } from '../../contexts/ToastContext';
 
 export function EditProfileScreen() {
   const navigation = useNavigation();
   const { user } = useAuthStore();
   const { profile, updateProfile } = useUserProfileStore();
+  const { showToast } = useToast();
 
   const [displayName, setDisplayName] = useState(profile?.display_name ?? '');
   const [username, setUsername] = useState(profile?.username ?? '');
@@ -56,9 +58,13 @@ export function EditProfileScreen() {
       };
       await updateUserProfile(user.id, updates);
       updateProfile(updates);
+      showToast({ message: 'Profile updated', type: 'success' });
       navigation.goBack();
     } catch (err: any) {
-      Alert.alert('Error', err?.message ?? 'Could not save profile');
+      showToast({
+        message: err?.message ?? 'Could not save profile. Try again.',
+        type: 'error',
+      });
     } finally {
       setIsSaving(false);
     }
