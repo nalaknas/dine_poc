@@ -48,6 +48,31 @@ export function QuickPostScreen() {
     return () => trackPostAbandonedIfNotCreated('QuickPost', 0, 'quick');
   }, []);
 
+  // Guard back-gesture / hardware back during upload so users don't lose
+  // progress mid-flight. Our own success path uses CommonActions.reset
+  // (type 'RESET') — that must pass through even while isPosting is still
+  // true, so we only block user-initiated pops.
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e: any) => {
+      if (!isPosting) return;
+      if (e.data?.action?.type === 'RESET') return;
+      e.preventDefault();
+      Alert.alert(
+        'Still posting…',
+        'Your meal is uploading. Wait a moment, or cancel to discard this post.',
+        [
+          { text: 'Keep posting', style: 'cancel', onPress: () => {} },
+          {
+            text: 'Cancel post',
+            style: 'destructive',
+            onPress: () => navigation.dispatch(e.data.action),
+          },
+        ],
+      );
+    });
+    return unsubscribe;
+  }, [navigation, isPosting]);
+
   const pickPhotos = async (source: 'camera' | 'library') => {
     if (photos.length >= 5) {
       Alert.alert('Max Photos', 'Quick posts support up to 5 photos.');
