@@ -36,8 +36,7 @@ export function FeedScreen() {
       setFeedError(false);
       const posts = await getFeedPosts(user.id);
       setFeedPosts(posts);
-    } catch (err) {
-      console.warn('Feed load error:', err);
+    } catch {
       setFeedError(true);
     } finally {
       setLoadingFeed(false);
