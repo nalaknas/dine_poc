@@ -10,6 +10,7 @@ import { getOrCreateUserProfile } from '../services/auth-service';
 import { MainTabNavigator } from './MainTabNavigator';
 import { AuthScreen } from '../screens/auth/AuthScreen';
 import { SplashScreen, shouldSkipSplash, markSplashPlayed } from '../screens/onboarding/SplashScreen';
+import { PhoneVerifyScreen } from '../screens/onboarding/PhoneVerifyScreen';
 import { WelcomeOnboardingScreen } from '../screens/onboarding/WelcomeOnboardingScreen';
 import { TastePickerScreen } from '../screens/onboarding/TastePickerScreen';
 import { FollowFriendsScreen } from '../screens/onboarding/FollowFriendsScreen';
@@ -252,12 +253,23 @@ export function RootNavigator() {
 }
 
 // Inline onboarding stack to keep RootNavigator clean.
-// Flow (ENG-129): Welcome → TastePicker → FollowFriends → Permissions → Main.
+// Flow (ENG-147): PhoneVerify → Welcome → TastePicker → FollowFriends → Permissions → Main.
+// PhoneVerify gates everything else (one phone per account, verified via OTP).
 // Permissions is the step that flips `hasCompletedOnboarding = true`.
 const OnboardingStack = createNativeStackNavigator();
 function OnboardingNavigator() {
+  const { profile } = useUserProfileStore();
+  // Pre-pick the entry point so users who already verified (force-quit between
+  // PhoneVerify success and Permissions finish) don't see the phone screen
+  // again on relaunch. PhoneVerifyScreen has its own redirect as a backstop
+  // for the case where profile loads asynchronously after this mounts.
+  const initialRoute = profile?.phone_verified_at ? 'Welcome' : 'PhoneVerify';
   return (
-    <OnboardingStack.Navigator screenOptions={{ headerShown: false }}>
+    <OnboardingStack.Navigator
+      initialRouteName={initialRoute}
+      screenOptions={{ headerShown: false }}
+    >
+      <OnboardingStack.Screen name="PhoneVerify" component={PhoneVerifyScreen} />
       <OnboardingStack.Screen name="Welcome" component={WelcomeOnboardingScreen} />
       <OnboardingStack.Screen name="TastePicker" component={TastePickerScreen} />
       <OnboardingStack.Screen name="FollowFriends" component={FollowFriendsScreen} />
