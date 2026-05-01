@@ -163,7 +163,16 @@ export function TaggedRateScreen({ route, navigation }: Props) {
       }
 
       Alert.alert('Done!', isEditMode ? 'Ratings updated.' : 'Ratings saved. Your taste profile has been updated.', [
-        { text: 'OK', onPress: () => navigation.replace('MealDetail', { postId }) },
+        // reset (not replace) so Main is always on the stack below — without
+        // this, push-tap entrants get a parent-less MealDetail with no back
+        // chevron after submitting.
+        {
+          text: 'OK',
+          onPress: () => navigation.reset({
+            index: 1,
+            routes: [{ name: 'Main' }, { name: 'MealDetail', params: { postId } }],
+          }),
+        },
       ]);
     } catch {
       Alert.alert('Error', 'Could not save ratings. Try again.');
