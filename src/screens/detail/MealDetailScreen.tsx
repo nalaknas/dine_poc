@@ -200,14 +200,14 @@ export function MealDetailScreen() {
 
   if (!post) {
     return (
-      <View className="flex-1 items-center justify-center">
-        <Text className="text-text-secondary">Post not found.</Text>
+      <View className="flex-1 items-center justify-center bg-cream">
+        <Text className="text-neutral-500">Post not found.</Text>
       </View>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-background" edges={['bottom']}>
+    <SafeAreaView className="flex-1 bg-cream" edges={['bottom']}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} className="flex-1">
         <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
           {/* Author */}
@@ -217,29 +217,46 @@ export function MealDetailScreen() {
           >
             <Avatar uri={post.author?.avatar_url} displayName={post.author?.display_name ?? 'User'} size={40} />
             <View className="ml-2 flex-1">
-              <Text className="text-base font-semibold text-text-primary">{post.author?.username ?? 'User'}</Text>
+              <Text className="text-base font-semibold text-onyx-900">{post.author?.username ?? 'User'}</Text>
               {post.restaurant_name ? (
-                <Text className="text-sm text-accent">{post.restaurant_name}</Text>
+                <Text className="text-base font-serif text-neutral-500">{post.restaurant_name}</Text>
               ) : null}
             </View>
             {post.author_id === user?.id && (
               <TouchableOpacity onPress={() => navigation.navigate('EditPost', { postId: post.id })}>
-                <Ionicons name="ellipsis-horizontal" size={20} color="#6B7280" />
+                <Ionicons name="ellipsis-horizontal" size={20} color="#9B9791" />
               </TouchableOpacity>
             )}
           </TouchableOpacity>
 
+          {/* Rate-the-dishes CTA (tagged but not yet rated). Catches users
+              who reach the post via feed/share/mention rather than the tag
+              push, so the rating loop has more than one entry point. */}
+          {isTaggedUser && !hasRated && (
+            <TouchableOpacity
+              onPress={() => navigation.navigate('TaggedRate', { postId: post.id })}
+              className="mx-4 mb-2 bg-onyx-900 rounded-xl p-4 flex-row items-center"
+            >
+              <Ionicons name="pricetag" size={18} color="#FFFFFF" />
+              <View className="flex-1 ml-2">
+                <Text className="text-sm font-semibold text-white">Rate the dishes you had</Text>
+                <Text className="text-xs text-neutral-300 mt-0.5">Improve your taste profile</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color="#FFFFFF" />
+            </TouchableOpacity>
+          )}
+
           {/* Your Ratings card (already rated) */}
           {isTaggedUser && hasRated && myRatings.length > 0 && (
-            <View className="mx-4 mb-2 bg-blue-50 border border-blue-200 rounded-xl p-3">
+            <View className="mx-4 mb-2 bg-white border border-neutral-200 rounded-xl p-3">
               <View className="flex-row items-center mb-2">
-                <Ionicons name="checkmark-circle" size={18} color="#3B82F6" />
-                <Text className="text-sm font-semibold text-text-primary ml-1">Your Ratings</Text>
+                <Ionicons name="checkmark-circle" size={18} color="#6E6A63" />
+                <Text className="text-sm font-semibold text-onyx-900 ml-1">Your Ratings</Text>
               </View>
               <View className="flex-row flex-wrap">
                 {myRatings.map((r) => (
-                  <Text key={r.id} className="text-xs text-text-secondary mr-3 mb-1">
-                    {r.dish_name}: <Text className="font-semibold text-text-primary">{r.rating}</Text>
+                  <Text key={r.id} className="text-xs text-neutral-500 mr-3 mb-1">
+                    {r.dish_name}: <Text className="font-semibold text-onyx-900">{r.rating}</Text>
                   </Text>
                 ))}
               </View>
@@ -260,14 +277,14 @@ export function MealDetailScreen() {
           {/* Actions */}
           <View className="flex-row items-center px-4 pt-3 gap-4">
             <LikeButton isLiked={post.is_liked ?? false} likeCount={post.like_count} onToggle={handleLike} />
-            <Ionicons name="chatbubble-outline" size={24} color="#6B7280" />
-            <Ionicons name="paper-plane-outline" size={24} color="#6B7280" />
+            <Ionicons name="chatbubble-outline" size={24} color="#6E6A63" />
+            <Ionicons name="paper-plane-outline" size={24} color="#6E6A63" />
             {isTaggedUser && (
               <TouchableOpacity onPress={handleAddPhoto} disabled={isUploadingPhoto}>
                 {isUploadingPhoto ? (
-                  <ActivityIndicator size="small" color="#007AFF" />
+                  <ActivityIndicator size="small" color="#0A0A0A" />
                 ) : (
-                  <Ionicons name="camera-outline" size={24} color="#6B7280" />
+                  <Ionicons name="camera-outline" size={24} color="#6E6A63" />
                 )}
               </TouchableOpacity>
             )}
@@ -275,11 +292,11 @@ export function MealDetailScreen() {
 
           {/* Caption */}
           <View className="px-4 pt-2">
-            <Text className="text-base text-text-primary">
+            <Text className="text-base text-onyx-900">
               <Text className="font-semibold">{post.author?.username} </Text>
             </Text>
             {post.caption ? (
-              <MentionText text={post.caption} style={{ fontSize: 16, color: '#1F2937' }} />
+              <MentionText text={post.caption} style={{ fontSize: 16, color: '#0A0A0A' }} />
             ) : null}
           </View>
 
@@ -297,18 +314,18 @@ export function MealDetailScreen() {
                       const userEndorsed = dishEndorsements.some((e) => e.user_id === user?.id);
                       return (
                         <View key={dish.id} className="flex-row items-center mb-1">
-                          <Text className="text-xs text-text-secondary flex-1" numberOfLines={1}>
+                          <Text className="text-xs text-neutral-500 flex-1" numberOfLines={1}>
                             {dish.dish_name}
                           </Text>
                           <TouchableOpacity
                             onPress={() => handleEndorsement(dish.id, '\u{1F525}')}
                             className={`flex-row items-center px-2 py-1 rounded-full ${
-                              userEndorsed ? 'bg-orange-100' : 'bg-background-secondary'
+                              userEndorsed ? 'bg-gold-100' : 'bg-neutral-100'
                             }`}
                           >
                             <Text className="text-xs">{'\u{1F525}'}</Text>
                             {dishEndorsements.length > 0 && (
-                              <Text className="text-xs text-text-secondary ml-1">
+                              <Text className="text-xs text-neutral-500 ml-1">
                                 {dishEndorsements.length}
                               </Text>
                             )}
@@ -323,13 +340,13 @@ export function MealDetailScreen() {
 
           {/* Bill split info */}
           {post.tagged_friends && post.tagged_friends.length > 0 && (
-            <View className="mx-4 mb-3 bg-background-secondary rounded-xl p-3">
-              <Text className="text-sm font-semibold text-text-secondary mb-2">BILL SPLIT</Text>
+            <View className="mx-4 mb-3 bg-white border border-neutral-200 rounded-xl p-3">
+              <Text className="text-xs font-semibold uppercase tracking-wide text-neutral-500 mb-2">Bill Split</Text>
               {post.tagged_friends.map((f) => (
                 <View key={f.id} className="flex-row justify-between py-1">
-                  <Text className="text-sm text-text-primary">{f.display_name}</Text>
+                  <Text className="text-sm text-onyx-900">{f.display_name}</Text>
                   {f.amount_owed ? (
-                    <Text className="text-sm font-semibold text-accent">
+                    <Text className="text-sm font-mono text-onyx-900">
                       {formatCurrency(f.amount_owed)}
                     </Text>
                   ) : null}
@@ -342,37 +359,37 @@ export function MealDetailScreen() {
           {(post.tags?.length ?? 0) > 0 && (
             <View className="flex-row flex-wrap px-4 mb-3">
               {post.tags?.map((tag) => (
-                <Text key={tag} className="text-sm text-accent mr-2">#{tag}</Text>
+                <Text key={tag} className="text-sm text-neutral-500 mr-2">#{tag}</Text>
               ))}
             </View>
           )}
 
           {/* Timestamp */}
-          <Text className="px-4 mb-4 text-xs text-text-secondary">{formatTimeAgo(post.created_at)}</Text>
+          <Text className="px-4 mb-4 text-xs text-neutral-500">{formatTimeAgo(post.created_at)}</Text>
 
           {/* Comments */}
-          <View className="border-t border-border-light px-4 pt-4">
-            <Text className="text-base font-semibold text-text-primary mb-3">Comments</Text>
+          <View className="border-t border-neutral-200 px-4 pt-4">
+            <Text className="text-base font-semibold text-onyx-900 mb-3">Comments</Text>
             {comments.map((c) => (
               <View key={c.id} className="flex-row mb-3">
                 <Avatar uri={c.author?.avatar_url} displayName={c.author?.display_name ?? 'User'} size={32} />
                 <View className="flex-1 ml-2">
-                  <Text className="text-sm text-text-primary">
+                  <Text className="text-sm text-onyx-900">
                     <Text className="font-semibold">{c.author?.username ?? 'user'} </Text>
                   </Text>
-                  <MentionText text={c.content} style={{ fontSize: 14, color: '#1F2937' }} />
-                  <Text className="text-xs text-text-secondary mt-0.5">{formatTimeAgo(c.created_at)}</Text>
+                  <MentionText text={c.content} style={{ fontSize: 14, color: '#0A0A0A' }} />
+                  <Text className="text-xs text-neutral-500 mt-0.5">{formatTimeAgo(c.created_at)}</Text>
                 </View>
               </View>
             ))}
             {comments.length === 0 && (
-              <Text className="text-sm text-text-secondary mb-4">Be the first to comment.</Text>
+              <Text className="text-sm text-neutral-500 mb-4">Be the first to comment.</Text>
             )}
           </View>
         </ScrollView>
 
         {/* Comment input */}
-        <View className="px-4 py-3 border-t border-border-light">
+        <View className="px-4 py-3 border-t border-neutral-200 bg-cream">
           <View className="flex-row items-end">
             <Avatar uri={undefined} displayName={user?.email ?? 'Me'} size={32} />
             <View className="flex-1 mx-3">
@@ -380,15 +397,15 @@ export function MealDetailScreen() {
                 value={commentText}
                 onChangeText={setCommentText}
                 placeholder="Add a comment..."
-                placeholderTextColor="#9CA3AF"
-                className="text-base text-text-primary"
+                placeholderTextColor="#9B9791"
+                className="text-base text-onyx-900"
               />
             </View>
             <TouchableOpacity onPress={handleComment} disabled={!commentText.trim() || isCommenting} className="pb-1">
               <Ionicons
                 name="send"
                 size={22}
-                color={commentText.trim() ? '#007AFF' : '#D1D5DB'}
+                color={commentText.trim() ? '#0A0A0A' : '#9B9791'}
               />
             </TouchableOpacity>
           </View>

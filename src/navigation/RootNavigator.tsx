@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useCallback, useState } from 'react';
 import { View, ActivityIndicator, Linking } from 'react-native';
+import * as Notifications from 'expo-notifications';
 import { NavigationContainer, LinkingOptions, NavigationState, useNavigationContainerRef } from '@react-navigation/native';
 import { identifyUser, resetAnalytics, trackScreen } from '../lib/analytics';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -21,6 +22,7 @@ import { UserProfileScreen } from '../screens/detail/UserProfileScreen';
 import { RestaurantDetailScreen } from '../screens/detail/RestaurantDetailScreen';
 import { CommentsScreen } from '../screens/detail/CommentsScreen';
 import { EditPostScreen } from '../screens/detail/EditPostScreen';
+import { TaggedRateScreen } from '../screens/detail/TaggedRateScreen';
 import { EditProfileScreen } from '../screens/detail/EditProfileScreen';
 import { SettingsScreen } from '../screens/settings/SettingsScreen';
 import { NotificationPreferencesScreen } from '../screens/settings/NotificationPreferencesScreen';
@@ -41,6 +43,7 @@ const linking: LinkingOptions<RootStackParamList> = {
         },
       },
       MealDetail: 'post/:postId',
+      TaggedRate: 'rate/:postId',
       UserProfile: 'profile/:userId',
       RestaurantDetail: 'restaurant/:name',
       VenmoRequests: 'split/:splitId',
@@ -94,24 +97,23 @@ export function RootNavigator() {
     return () => sub.remove();
   }, []);
 
-  // Replay pending deep link once auth + onboarding are complete.
-  useEffect(() => {
-    if (!urlCaptureDone || !user || !hasCompletedOnboarding) return;
-    const url = pendingDeepLink.current;
-    if (!url) return;
-    pendingDeepLink.current = null;
-
+  // Shared deep-link router used by both pending-link replay (cold start
+  // unauthed) and push-notification-tap (warm taps while authed).
+  const routeDeepLink = useCallback((url: string) => {
     const path = url
       .replace(/^dine:\/\//, '')
       .replace(/^https?:\/\/dine\.app\/?/, '');
 
     const split = path.match(/^split\/([^/?#]+)/);
     const post = path.match(/^post\/([^/?#]+)/);
+    const rate = path.match(/^rate\/([^/?#]+)/);
     const userProfile = path.match(/^profile\/([^/?#]+)/);
     const restaurant = path.match(/^restaurant\/([^/?#]+)/);
 
     if (split) {
       navigationRef.navigate('VenmoRequests', { splitId: split[1] });
+    } else if (rate) {
+      navigationRef.navigate('TaggedRate', { postId: rate[1] });
     } else if (post) {
       navigationRef.navigate('MealDetail', { postId: post[1] });
     } else if (userProfile) {
@@ -120,7 +122,33 @@ export function RootNavigator() {
       navigationRef.navigate('RestaurantDetail', { name: restaurant[1] });
     }
     // Unknown paths fall through to the default Feed; no crash.
-  }, [urlCaptureDone, user, hasCompletedOnboarding, navigationRef]);
+  }, [navigationRef]);
+
+  // Replay pending deep link once auth + onboarding are complete. Gated on
+  // navReady too — cold-start via push tap can flip urlCaptureDone before
+  // NavigationContainer.onReady fires, and navigating against an
+  // uninitialized navigationRef logs "navigation hasn't been initialized".
+  useEffect(() => {
+    if (!navReady || !urlCaptureDone || !user || !hasCompletedOnboarding) return;
+    const url = pendingDeepLink.current;
+    if (!url) return;
+    pendingDeepLink.current = null;
+    routeDeepLink(url);
+  }, [navReady, urlCaptureDone, user, hasCompletedOnboarding, routeDeepLink]);
+
+  // Route warm push-notification taps. The OS-level cold-start path goes
+  // through Linking.getInitialURL() (handled by the pendingDeepLink replay
+  // above), but foregrounded/backgrounded taps land here. We use
+  // navigationRef directly rather than Linking.openURL so the navigation
+  // happens in-process without bouncing through the system URL handler.
+  useEffect(() => {
+    if (!navReady || !user || !hasCompletedOnboarding) return;
+    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+      const url = response.notification.request.content.data?.url as string | undefined;
+      if (url) routeDeepLink(url);
+    });
+    return () => sub.remove();
+  }, [navReady, user, hasCompletedOnboarding, routeDeepLink]);
 
   useEffect(() => {
     loadSettings().then(() => initialize());
@@ -227,7 +255,22 @@ export function RootNavigator() {
             <Stack.Screen
               name="MealDetail"
               component={MealDetailScreen}
-              options={{ headerShown: true, title: 'Post' }}
+              options={{
+                headerShown: true,
+                title: 'Post',
+                headerStyle: { backgroundColor: '#FAF8F4' },
+                headerShadowVisible: false,
+              }}
+            />
+            <Stack.Screen
+              name="TaggedRate"
+              component={TaggedRateScreen}
+              options={{
+                headerShown: true,
+                title: 'Rate Dishes',
+                headerStyle: { backgroundColor: '#FAF8F4' },
+                headerShadowVisible: false,
+              }}
             />
             <Stack.Screen
               name="UserProfile"
