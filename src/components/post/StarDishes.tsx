@@ -77,16 +77,16 @@ export function StarDishes({ dishRatings, userInfo = {} }: StarDishesProps) {
   const visible = expanded ? starDishes : starDishes.slice(0, MAX_VISIBLE);
 
   return (
-    <View style={{ marginHorizontal: 12, marginBottom: 12, borderRadius: 12, overflow: 'hidden' }}>
+    <View style={{ marginHorizontal: 12, marginBottom: 12, borderRadius: 16, overflow: 'hidden' }}>
       <LinearGradient
-        colors={['#FEF3C7', '#FFFBEB']}
+        colors={['#FFF7E0', '#FCEBB0']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={{ padding: 12 }}
+        style={{ padding: 14 }}
       >
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
-          <Ionicons name="star" size={14} color="#F59E0B" />
-          <Text style={{ fontSize: 13, fontWeight: '600', color: '#1F2937', marginLeft: 4 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+          <Ionicons name="star" size={14} color="#F7B52E" />
+          <Text style={{ fontSize: 11, fontWeight: '600', color: '#6E6A63', marginLeft: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>
             Star Dishes
           </Text>
         </View>
@@ -107,7 +107,7 @@ export function StarDishes({ dishRatings, userInfo = {} }: StarDishesProps) {
                 }}
               >
                 <Text
-                  style={{ fontSize: 13, color: '#1F2937', flex: 1, marginRight: 6 }}
+                  style={{ fontSize: 14, color: '#0A0A0A', flex: 1, marginRight: 6 }}
                   numberOfLines={1}
                 >
                   {dish.dishName}
@@ -121,7 +121,7 @@ export function StarDishes({ dishRatings, userInfo = {} }: StarDishesProps) {
                     </View>
                   ))}
                   {dish.ratings.length > 3 && (
-                    <Text style={{ fontSize: 10, color: '#9CA3AF', marginLeft: 2 }}>
+                    <Text style={{ fontSize: 10, color: '#9B9791', marginLeft: 2 }}>
                       +{dish.ratings.length - 3}
                     </Text>
                   )}
@@ -131,17 +131,17 @@ export function StarDishes({ dishRatings, userInfo = {} }: StarDishesProps) {
                   <Ionicons
                     name={isOpen ? 'chevron-up' : 'chevron-down'}
                     size={12}
-                    color="#9CA3AF"
+                    color="#9B9791"
                     style={{ marginRight: 4 }}
                   />
                 )}
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Ionicons name="star" size={11} color="#F59E0B" />
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: '#F59E0B', marginLeft: 2 }}>
+                  <Ionicons name="star" size={11} color="#F7B52E" />
+                  <Text style={{ fontSize: 14, fontWeight: '600', color: '#DB9C1F', marginLeft: 2 }}>
                     {dish.avgRating.toFixed(1)}
                   </Text>
                   {hasMultipleRaters && (
-                    <Text style={{ fontSize: 10, color: '#9CA3AF', marginLeft: 4 }}>
+                    <Text style={{ fontSize: 10, color: '#9B9791', marginLeft: 4 }}>
                       avg
                     </Text>
                   )}
@@ -166,12 +166,12 @@ export function StarDishes({ dishRatings, userInfo = {} }: StarDishesProps) {
                         size={20}
                       />
                       <Text
-                        style={{ fontSize: 12, color: '#6B7280', marginLeft: 6, flex: 1 }}
+                        style={{ fontSize: 12, color: '#6E6A63', marginLeft: 6, flex: 1 }}
                         numberOfLines={1}
                       >
                         {r.displayName}
                       </Text>
-                      <Text style={{ fontSize: 12, fontWeight: '500', color: '#D97706' }}>
+                      <Text style={{ fontSize: 12, fontWeight: '500', color: '#B07C15' }}>
                         {r.rating.toFixed(1)}
                       </Text>
                     </View>
@@ -186,7 +186,7 @@ export function StarDishes({ dishRatings, userInfo = {} }: StarDishesProps) {
             onPress={() => setExpanded((prev) => !prev)}
             style={{ paddingTop: 6 }}
           >
-            <Text style={{ fontSize: 12, fontWeight: '500', color: '#D97706', textAlign: 'center' }}>
+            <Text style={{ fontSize: 12, fontWeight: '500', color: '#B07C15', textAlign: 'center' }}>
               {expanded
                 ? 'Show less'
                 : `Show ${starDishes.length - MAX_VISIBLE} more`}
