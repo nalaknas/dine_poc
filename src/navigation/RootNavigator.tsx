@@ -124,14 +124,17 @@ export function RootNavigator() {
     // Unknown paths fall through to the default Feed; no crash.
   }, [navigationRef]);
 
-  // Replay pending deep link once auth + onboarding are complete.
+  // Replay pending deep link once auth + onboarding are complete. Gated on
+  // navReady too — cold-start via push tap can flip urlCaptureDone before
+  // NavigationContainer.onReady fires, and navigating against an
+  // uninitialized navigationRef logs "navigation hasn't been initialized".
   useEffect(() => {
-    if (!urlCaptureDone || !user || !hasCompletedOnboarding) return;
+    if (!navReady || !urlCaptureDone || !user || !hasCompletedOnboarding) return;
     const url = pendingDeepLink.current;
     if (!url) return;
     pendingDeepLink.current = null;
     routeDeepLink(url);
-  }, [urlCaptureDone, user, hasCompletedOnboarding, routeDeepLink]);
+  }, [navReady, urlCaptureDone, user, hasCompletedOnboarding, routeDeepLink]);
 
   // Route warm push-notification taps. The OS-level cold-start path goes
   // through Linking.getInitialURL() (handled by the pendingDeepLink replay
