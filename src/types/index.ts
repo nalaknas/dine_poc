@@ -16,6 +16,7 @@ export interface User {
   avatar_url?: string;
   bio?: string;
   phone_number?: string;
+  phone_verified_at?: string | null;
   venmo_username?: string;
   city?: string;
   state?: string;
@@ -382,6 +383,7 @@ export type RootStackParamList = {
   Auth: undefined;
   Onboarding: undefined;
   Main: undefined;
+  PhoneBackfill: undefined;
   // Detail screens
   MealDetail: { postId: string };
   UserProfile: { userId: string };

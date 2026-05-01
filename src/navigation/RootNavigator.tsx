@@ -10,6 +10,8 @@ import { getOrCreateUserProfile } from '../services/auth-service';
 import { MainTabNavigator } from './MainTabNavigator';
 import { AuthScreen } from '../screens/auth/AuthScreen';
 import { SplashScreen, shouldSkipSplash, markSplashPlayed } from '../screens/onboarding/SplashScreen';
+import { PhoneVerifyScreen } from '../screens/onboarding/PhoneVerifyScreen';
+import { PhoneBackfillScreen } from '../screens/onboarding/PhoneBackfillScreen';
 import { WelcomeOnboardingScreen } from '../screens/onboarding/WelcomeOnboardingScreen';
 import { TastePickerScreen } from '../screens/onboarding/TastePickerScreen';
 import { FollowFriendsScreen } from '../screens/onboarding/FollowFriendsScreen';
@@ -51,6 +53,10 @@ export function RootNavigator() {
   const { hasCompletedOnboarding, loadSettings } = useSettingsStore();
   const { profile, setProfile } = useUserProfileStore();
   const navigationRef = useNavigationContainerRef<RootStackParamList>();
+  // Gates ENG-148's PhoneBackfill navigate effect — without this, the effect
+  // can fire before NavigationContainer mounts on cold start and warn
+  // "navigation object hasn't been initialized yet".
+  const [navReady, setNavReady] = useState(false);
 
   // Splash plays first on cold-start, regardless of auth state. In prod we
   // only play once per JS session (ENG-133); in dev we always play so Metro
@@ -132,6 +138,24 @@ export function RootNavigator() {
     }
   }, [user, profile]);
 
+  // ENG-148: nudge existing users (those who finished onboarding before phone
+  // verification was required) to add a phone. Once profile loads and we can
+  // see they have no `phone_verified_at`, present PhoneBackfill modally over
+  // whatever they're on. Skipped while the user is still in initial
+  // onboarding (handled by ENG-147's PhoneVerify), and skipped if the modal
+  // is already showing — without that guard, any subsequent profile mutation
+  // would re-navigate and stack PhoneBackfill on top of itself. Gated on
+  // navReady so cold-start ordering doesn't fire navigate() before the
+  // NavigationContainer mounts.
+  useEffect(() => {
+    if (!navReady) return;
+    if (!user || !hasCompletedOnboarding || !profile) return;
+    if (profile.phone_verified_at) return;
+    const currentRoute = navigationRef.getCurrentRoute?.()?.name;
+    if (currentRoute === 'PhoneBackfill') return;
+    navigationRef.navigate('PhoneBackfill');
+  }, [navReady, user, hasCompletedOnboarding, profile, navigationRef]);
+
   // Identify user for analytics when authenticated
   useEffect(() => {
     if (user) {
@@ -176,7 +200,12 @@ export function RootNavigator() {
   }
 
   return (
-    <NavigationContainer ref={navigationRef} linking={linking} onStateChange={onNavigationStateChange}>
+    <NavigationContainer
+      ref={navigationRef}
+      linking={linking}
+      onStateChange={onNavigationStateChange}
+      onReady={() => setNavReady(true)}
+    >
       <Stack.Navigator screenOptions={{
         headerShown: false,
         headerTintColor: '#007AFF',
@@ -244,6 +273,20 @@ export function RootNavigator() {
               component={VenmoRequestsScreen}
               options={{ headerShown: true, title: 'Collect Payment' }}
             />
+            {/* ENG-148: full-screen non-dismissible backfill prompt for users
+                who completed onboarding before phone verification was required.
+                Triggered by an effect, not user action; no header / no swipe-
+                to-dismiss / no user-facing exit besides completing OTP. */}
+            <Stack.Screen
+              name="PhoneBackfill"
+              component={PhoneBackfillScreen}
+              options={{
+                presentation: 'fullScreenModal',
+                gestureEnabled: false,
+                headerShown: false,
+                animation: 'slide_from_bottom',
+              }}
+            />
           </>
         )}
       </Stack.Navigator>
@@ -252,12 +295,23 @@ export function RootNavigator() {
 }
 
 // Inline onboarding stack to keep RootNavigator clean.
-// Flow (ENG-129): Welcome → TastePicker → FollowFriends → Permissions → Main.
+// Flow (ENG-147): PhoneVerify → Welcome → TastePicker → FollowFriends → Permissions → Main.
+// PhoneVerify gates everything else (one phone per account, verified via OTP).
 // Permissions is the step that flips `hasCompletedOnboarding = true`.
 const OnboardingStack = createNativeStackNavigator();
 function OnboardingNavigator() {
+  const { profile } = useUserProfileStore();
+  // Pre-pick the entry point so users who already verified (force-quit between
+  // PhoneVerify success and Permissions finish) don't see the phone screen
+  // again on relaunch. PhoneVerifyScreen has its own redirect as a backstop
+  // for the case where profile loads asynchronously after this mounts.
+  const initialRoute = profile?.phone_verified_at ? 'Welcome' : 'PhoneVerify';
   return (
-    <OnboardingStack.Navigator screenOptions={{ headerShown: false }}>
+    <OnboardingStack.Navigator
+      initialRouteName={initialRoute}
+      screenOptions={{ headerShown: false }}
+    >
+      <OnboardingStack.Screen name="PhoneVerify" component={PhoneVerifyScreen} />
       <OnboardingStack.Screen name="Welcome" component={WelcomeOnboardingScreen} />
       <OnboardingStack.Screen name="TastePicker" component={TastePickerScreen} />
       <OnboardingStack.Screen name="FollowFriends" component={FollowFriendsScreen} />
