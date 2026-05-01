@@ -255,12 +255,22 @@ export function RootNavigator() {
             <Stack.Screen
               name="MealDetail"
               component={MealDetailScreen}
-              options={{ headerShown: true, title: 'Post' }}
+              options={{
+                headerShown: true,
+                title: 'Post',
+                headerStyle: { backgroundColor: '#FAF8F4' },
+                headerShadowVisible: false,
+              }}
             />
             <Stack.Screen
               name="TaggedRate"
               component={TaggedRateScreen}
-              options={{ headerShown: true, title: 'Rate Dishes' }}
+              options={{
+                headerShown: true,
+                title: 'Rate Dishes',
+                headerStyle: { backgroundColor: '#FAF8F4' },
+                headerShadowVisible: false,
+              }}
             />
             <Stack.Screen
               name="UserProfile"
