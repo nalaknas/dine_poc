@@ -229,6 +229,23 @@ export function MealDetailScreen() {
             )}
           </TouchableOpacity>
 
+          {/* Rate-the-dishes CTA (tagged but not yet rated). Catches users
+              who reach the post via feed/share/mention rather than the tag
+              push, so the rating loop has more than one entry point. */}
+          {isTaggedUser && !hasRated && (
+            <TouchableOpacity
+              onPress={() => navigation.navigate('TaggedRate', { postId: post.id })}
+              className="mx-4 mb-2 bg-green-50 border border-green-200 rounded-xl p-3 flex-row items-center"
+            >
+              <Ionicons name="pricetag" size={18} color="#10B981" />
+              <View className="flex-1 ml-2">
+                <Text className="text-sm font-semibold text-text-primary">Rate the dishes you had</Text>
+                <Text className="text-xs text-text-secondary mt-0.5">Improve your taste profile</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color="#10B981" />
+            </TouchableOpacity>
+          )}
+
           {/* Your Ratings card (already rated) */}
           {isTaggedUser && hasRated && myRatings.length > 0 && (
             <View className="mx-4 mb-2 bg-blue-50 border border-blue-200 rounded-xl p-3">

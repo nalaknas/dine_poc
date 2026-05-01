@@ -24,7 +24,7 @@ export function TaggedRateScreen({ route, navigation }: Props) {
   const [isEditMode, setIsEditMode] = useState(false);
   const [restaurantName, setRestaurantName] = useState('');
   const [overallRating, setOverallRating] = useState(0);
-  const [dishRatings, setDishRatings] = useState<{ dishName: string; rating: number; notes?: string }[]>([]);
+  const [dishRatings, setDishRatings] = useState<{ dishName: string; rating: number; notes?: string; isYours: boolean }[]>([]);
 
   useEffect(() => {
     loadPostDishes();
@@ -39,24 +39,47 @@ export function TaggedRateScreen({ route, navigation }: Props) {
     }
     setRestaurantName(post.restaurant_name);
 
-    // Get ALL receipt items (the full bill)
+    // Get ALL receipt items (the full bill). assigned_to drives the
+    // "dishes you had" sort below — items the current user shared in are
+    // surfaced at the top so they can rate what they actually ate.
     const { data: receiptItems } = await supabase
       .from('receipt_items')
-      .select('name')
+      .select('name, assigned_to')
       .eq('post_id', postId);
 
     const seen = new Set<string>();
-    let dishes: { dishName: string; rating: number }[] = [];
+    let dishes: { dishName: string; rating: number; isYours: boolean }[] = [];
 
     if (receiptItems && receiptItems.length > 0) {
-      dishes = receiptItems
+      // Aggregate assignment state per deduped dish name. A dish is "yours"
+      // if any receipt row with that name has the current user in assigned_to.
+      const yoursByName = new Map<string, boolean>();
+      for (const item of receiptItems as { name: string; assigned_to: string[] | null }[]) {
+        const key = (item.name ?? '').toLowerCase().trim();
+        if (!key) continue;
+        const yours = !!user && Array.isArray(item.assigned_to) && item.assigned_to.includes(user.id);
+        yoursByName.set(key, (yoursByName.get(key) ?? false) || yours);
+      }
+
+      const ordered = receiptItems
         .filter((item) => {
           const key = (item.name as string).toLowerCase().trim();
           if (!key || seen.has(key)) return false;
           seen.add(key);
           return true;
         })
-        .map((item) => ({ dishName: item.name as string, rating: 0 }));
+        .map((item) => {
+          const key = (item.name as string).toLowerCase().trim();
+          return {
+            dishName: item.name as string,
+            rating: 0,
+            isYours: yoursByName.get(key) ?? false,
+          };
+        });
+
+      // Stable partition: yours first, others after. Preserves on-receipt
+      // order within each group.
+      dishes = [...ordered.filter((d) => d.isYours), ...ordered.filter((d) => !d.isYours)];
     } else {
       // Fallback: use dish names from author's ratings
       const authorRatings = (post.dish_ratings ?? []).filter(
@@ -69,7 +92,7 @@ export function TaggedRateScreen({ route, navigation }: Props) {
           seen.add(key);
           return true;
         })
-        .map((r) => ({ dishName: r.dish_name, rating: 0 }));
+        .map((r) => ({ dishName: r.dish_name, rating: 0, isYours: false }));
     }
 
     // Check for existing ratings (edit mode)
@@ -88,7 +111,7 @@ export function TaggedRateScreen({ route, navigation }: Props) {
         dishes = dishes.map((d) => {
           const existing = existingMap.get(d.dishName.toLowerCase().trim());
           return existing
-            ? { dishName: d.dishName, rating: existing.rating, notes: existing.notes ?? undefined }
+            ? { dishName: d.dishName, rating: existing.rating, notes: existing.notes ?? undefined, isYours: d.isYours }
             : d;
         });
       }
@@ -183,36 +206,52 @@ export function TaggedRateScreen({ route, navigation }: Props) {
             />
           </View>
 
-          {/* Individual dish ratings */}
-          {dishRatings.length > 0 && (
-            <View className="bg-background-secondary rounded-xl p-4 mb-4">
-              <Text className="text-sm font-semibold text-text-secondary mb-4">DISHES</Text>
-              {dishRatings.map((dish, i) => (
-                <View key={i} className="mb-4">
-                  <RatingSlider
-                    value={dish.rating}
-                    onChange={(v) => updateDishRating(i, v)}
-                    label={dish.dishName}
-                  />
-                  {dish.rating > 0 && (
-                    <TextInput
-                      value={dish.notes ?? ''}
-                      onChangeText={(t) => updateDishNotes(i, t)}
-                      placeholder="Notes (optional)"
-                      placeholderTextColor="#9CA3AF"
-                      className="mt-1 text-sm text-text-primary border border-border rounded-lg px-3 py-2"
-                    />
-                  )}
-                  {dish.rating >= 7 && (
-                    <View className="flex-row items-center mt-1">
-                      <Ionicons name="star" size={12} color="#F59E0B" />
-                      <Text className="text-xs text-gold ml-1 font-semibold">Star Dish!</Text>
+          {/* Individual dish ratings — items the user shared in are
+              surfaced first, with a separator before the rest of the table. */}
+          {dishRatings.length > 0 && (() => {
+            const hasYours = dishRatings.some((d) => d.isYours);
+            const firstOtherIdx = hasYours ? dishRatings.findIndex((d) => !d.isYours) : -1;
+            return (
+              <View className="bg-background-secondary rounded-xl p-4 mb-4">
+                <Text className="text-sm font-semibold text-text-secondary mb-4">
+                  {hasYours ? 'DISHES YOU HAD' : 'DISHES'}
+                </Text>
+                {dishRatings.map((dish, i) => (
+                  <React.Fragment key={i}>
+                    {i === firstOtherIdx && (
+                      <View className="-mx-4 px-4 py-2 mb-4 border-t border-border-light">
+                        <Text className="text-xs font-semibold text-text-secondary uppercase tracking-wide">
+                          Others at the table
+                        </Text>
+                      </View>
+                    )}
+                    <View className="mb-4">
+                      <RatingSlider
+                        value={dish.rating}
+                        onChange={(v) => updateDishRating(i, v)}
+                        label={dish.dishName}
+                      />
+                      {dish.rating > 0 && (
+                        <TextInput
+                          value={dish.notes ?? ''}
+                          onChangeText={(t) => updateDishNotes(i, t)}
+                          placeholder="Notes (optional)"
+                          placeholderTextColor="#9CA3AF"
+                          className="mt-1 text-sm text-text-primary border border-border rounded-lg px-3 py-2"
+                        />
+                      )}
+                      {dish.rating >= 7 && (
+                        <View className="flex-row items-center mt-1">
+                          <Ionicons name="star" size={12} color="#F59E0B" />
+                          <Text className="text-xs text-gold ml-1 font-semibold">Star Dish!</Text>
+                        </View>
+                      )}
                     </View>
-                  )}
-                </View>
-              ))}
-            </View>
-          )}
+                  </React.Fragment>
+                ))}
+              </View>
+            );
+          })()}
 
           {/* Star dish summary */}
           {starDishCount > 0 && (
