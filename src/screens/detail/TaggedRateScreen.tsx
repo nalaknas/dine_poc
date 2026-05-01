@@ -34,7 +34,10 @@ export function TaggedRateScreen({ route, navigation }: Props) {
     const post = await getPost(postId, user?.id);
     if (!post) {
       Alert.alert('Error', 'Post not found.');
-      navigation.goBack();
+      // reset (not goBack) — when reached via push deep-link the stack is
+      // [TaggedRate] alone, so goBack throws "GO_BACK was not handled" and
+      // strands the user on an empty screen.
+      navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
       return;
     }
     setRestaurantName(post.restaurant_name);
