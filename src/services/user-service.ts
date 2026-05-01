@@ -63,6 +63,8 @@ export async function getFrequentFriends(userId: string, limit = 8): Promise<Use
 // ─── Follow System ────────────────────────────────────────────────────────────
 
 export async function followUser(currentUserId: string, targetUserId: string): Promise<void> {
+  if (currentUserId === targetUserId) return;
+
   const { error } = await supabase
     .from('follows')
     .insert({ follower_id: currentUserId, following_id: targetUserId });
