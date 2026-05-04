@@ -32,7 +32,7 @@ import type { RootStackParamList } from '../types';
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const linking: LinkingOptions<RootStackParamList> = {
-  prefixes: ['dine://', 'https://dine.app'],
+  prefixes: ['dine://', 'https://joindine.app'],
   config: {
     screens: {
       Main: {

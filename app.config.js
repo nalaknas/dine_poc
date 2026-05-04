@@ -20,7 +20,7 @@ module.exports = {
       supportsTablet: false,
       bundleIdentifier: IS_DEV ? 'com.nalaknas.dine.dev' : 'com.nalaknas.dine',
       usesAppleSignIn: true,
-      associatedDomains: ['applinks:dine.app'],
+      associatedDomains: ['applinks:joindine.app'],
       infoPlist: {
         NSCameraUsageDescription: 'Dine needs camera access to scan receipts and take food photos.',
         NSPhotoLibraryUsageDescription: 'Dine needs photo library access to upload food photos.',
