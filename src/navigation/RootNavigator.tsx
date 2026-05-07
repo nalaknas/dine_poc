@@ -29,6 +29,7 @@ import { NotificationPreferencesScreen } from '../screens/settings/NotificationP
 import { VenmoRequestsScreen } from '../screens/post-creation/VenmoRequestsScreen';
 import { PaymentRequestScreen } from '../screens/detail/PaymentRequestScreen';
 import { SplitHistoryScreen } from '../screens/detail/SplitHistoryScreen';
+import { WaitlistAdminScreen } from '../screens/detail/WaitlistAdminScreen';
 import type { RootStackParamList } from '../types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -341,6 +342,11 @@ export function RootNavigator() {
               name="SplitHistory"
               component={SplitHistoryScreen}
               options={{ headerShown: true, title: 'Sent Requests' }}
+            />
+            <Stack.Screen
+              name="WaitlistAdmin"
+              component={WaitlistAdminScreen}
+              options={{ headerShown: true, title: 'Beta Waitlist' }}
             />
             {/* ENG-148: full-screen non-dismissible backfill prompt for users
                 who completed onboarding before phone verification was required.

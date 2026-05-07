@@ -89,6 +89,12 @@ export function SettingsScreen() {
           <Row label="Terms of Service" last />
         </Section>
 
+        {profile?.is_admin && (
+          <Section title="Admin">
+            <Row label="Beta waitlist" onPress={() => (navigation as any).navigate('WaitlistAdmin')} last />
+          </Section>
+        )}
+
         <TouchableOpacity
           onPress={handleSignOut}
           className="bg-error/10 border border-error/30 rounded-xl py-4 items-center mt-2"
