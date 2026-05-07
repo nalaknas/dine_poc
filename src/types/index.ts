@@ -398,6 +398,7 @@ export type RootStackParamList = {
   NotificationPreferences: undefined;
   Recommendations: undefined;
   VenmoRequests: { breakdowns?: PersonBreakdown[]; restaurantName?: string; splitId?: string };
+  PaymentRequest: { token: string };
   CreditDashboard: undefined;
   SavedRestaurants: undefined;
   Leaderboard: { city?: string; cuisine?: string; period?: LeaderboardTimePeriod };
