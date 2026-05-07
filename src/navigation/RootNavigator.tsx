@@ -28,6 +28,7 @@ import { SettingsScreen } from '../screens/settings/SettingsScreen';
 import { NotificationPreferencesScreen } from '../screens/settings/NotificationPreferencesScreen';
 import { VenmoRequestsScreen } from '../screens/post-creation/VenmoRequestsScreen';
 import { PaymentRequestScreen } from '../screens/detail/PaymentRequestScreen';
+import { SplitHistoryScreen } from '../screens/detail/SplitHistoryScreen';
 import type { RootStackParamList } from '../types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -335,6 +336,11 @@ export function RootNavigator() {
               name="PaymentRequest"
               component={PaymentRequestScreen}
               options={{ headerShown: true, title: 'Payment Request' }}
+            />
+            <Stack.Screen
+              name="SplitHistory"
+              component={SplitHistoryScreen}
+              options={{ headerShown: true, title: 'Sent Requests' }}
             />
             {/* ENG-148: full-screen non-dismissible backfill prompt for users
                 who completed onboarding before phone verification was required.
