@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { View, Text, ScrollView, StyleSheet, Image } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { View, Text, ScrollView, StyleSheet, Image, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -9,11 +9,21 @@ import { Shadows } from '../../constants/shadows';
 import { Gold, Neutral, Onyx, Semantic } from '../../constants/colors';
 import { useBillSplitterStore } from '../../stores/billSplitterStore';
 import { useAuthStore } from '../../stores/authStore';
+import { useUserProfileStore } from '../../stores/userProfileStore';
+import { useToast } from '../../contexts/ToastContext';
 import { formatCurrency } from '../../utils/format';
+import { track } from '../../lib/analytics';
+import {
+  createSplitRequest,
+  getRequestableBreakdowns,
+  openSmsShareSheet,
+} from '../../services/split-request-service';
 
 export function SummaryScreen() {
   const navigation = useNavigation<any>();
   const { user } = useAuthStore();
+  const { profile } = useUserProfileStore();
+  const { showToast } = useToast();
   const {
     personBreakdowns,
     currentReceipt,
@@ -23,9 +33,17 @@ export function SummaryScreen() {
     isFamilyStyle,
   } = useBillSplitterStore();
 
-  // Friends who aren't you and have Venmo usernames
-  const venmoableBreakdowns = personBreakdowns.filter(
-    (b) => b.friend.id !== user?.id && b.friend.venmo_username && b.total > 0,
+  const [isRequesting, setIsRequesting] = useState(false);
+
+  // Friends eligible for the sender-SMS payment-request flow (phone- or
+  // user-id-tagged, non-zero amount, not the sender). Subset of personBreakdowns.
+  const requestableBreakdowns = useMemo(
+    () => getRequestableBreakdowns(personBreakdowns, user?.id),
+    [personBreakdowns, user?.id],
+  );
+  const requestTotal = useMemo(
+    () => requestableBreakdowns.reduce((sum, b) => sum + b.total, 0),
+    [requestableBreakdowns],
   );
 
   const userBreakdown = personBreakdowns.find((b) => b.friend.id === user?.id);
@@ -50,6 +68,85 @@ export function SummaryScreen() {
       ? selectedFriends.map((f) => f.id)
       : itemAssignments[itemId] ?? [];
     return selectedFriends.filter((f) => assignedIds.includes(f.id));
+  };
+
+  const promptForVenmoHandle = () => {
+    Alert.alert(
+      'Add your Venmo handle',
+      'Recipients will pay you via Venmo. Add your handle in Settings to enable payment requests.',
+      [
+        { text: 'Not now', style: 'cancel' },
+        {
+          text: 'Add handle',
+          onPress: () => navigation.navigate('EditProfile'),
+        },
+      ],
+    );
+  };
+
+  const handleRequestFromAll = async () => {
+    if (isRequesting) return;
+    if (requestableBreakdowns.length === 0) return;
+
+    // Client-side gate. The Edge Function also enforces this server-side
+    // (returns 412 missing_venmo_handle), but routing the user before the
+    // network round-trip is faster.
+    if (!profile?.venmo_username || profile.venmo_username.trim().length === 0) {
+      promptForVenmoHandle();
+      return;
+    }
+
+    setIsRequesting(true);
+    try {
+      const restaurantName = currentReceipt?.restaurantName?.trim() || 'Dinner';
+      const result = await createSplitRequest({
+        restaurantName,
+        note: undefined,
+        lines: requestableBreakdowns.map((b) => ({
+          recipient_user_id: b.friend.user_id,
+          recipient_name: b.friend.display_name,
+          recipient_phone: b.friend.phone_number,
+          amount: b.total,
+        })),
+      });
+
+      track('pay_request_sent', {
+        recipient_count: requestableBreakdowns.length,
+        sms_recipient_count: result.recipient_phones.length,
+        dine_recipient_count: result.dine_recipient_user_ids.length,
+        total_amount: requestTotal,
+        restaurant_name: restaurantName,
+      });
+
+      // Phone-tagged recipients get the SMS share sheet. Dine-only tags
+      // (no phone) rely on the in-app push fan-out wired up in ENG-163.
+      if (result.recipient_phones.length > 0) {
+        const opened = await openSmsShareSheet(result.recipient_phones, result.sms_body);
+        if (!opened) {
+          showToast({
+            message: 'Could not open Messages on this device.',
+            type: 'error',
+          });
+          return;
+        }
+      }
+
+      showToast({
+        message: `Sent to ${requestableBreakdowns.length} ${requestableBreakdowns.length === 1 ? 'friend' : 'friends'}`,
+        type: 'success',
+      });
+    } catch (err: any) {
+      if (err?.kind === 'missing_venmo_handle') {
+        promptForVenmoHandle();
+      } else {
+        showToast({
+          message: err?.message ?? 'Could not send request. Try again.',
+          type: 'error',
+        });
+      }
+    } finally {
+      setIsRequesting(false);
+    }
   };
 
   return (
@@ -152,28 +249,38 @@ export function SummaryScreen() {
 
       {/* Bottom actions */}
       <View style={styles.footer}>
-        {venmoableBreakdowns.length > 0 && (
+        {requestableBreakdowns.length > 0 && (
           <AnimatedPressable
-            onPress={() =>
-              navigation.navigate('VenmoRequests', {
-                breakdowns: venmoableBreakdowns,
-                restaurantName: currentReceipt?.restaurantName ?? 'Dinner',
-              })
-            }
-            style={[styles.ctaSecondary]}
+            onPress={handleRequestFromAll}
+            disabled={isRequesting}
+            style={[styles.ctaRequest, isRequesting && styles.ctaDisabled]}
           >
-            <Ionicons name="card-outline" size={16} color={Onyx[900]} />
-            <Text style={styles.ctaSecondaryLabel}>
-              Request via Venmo ({venmoableBreakdowns.length})
+            <Ionicons name="paper-plane-outline" size={16} color={Onyx[900]} />
+            <Text style={styles.ctaRequestLabel}>
+              {isRequesting
+                ? 'Sending…'
+                : `Request ${formatCurrency(requestTotal)} from ${requestableBreakdowns.length} ${requestableBreakdowns.length === 1 ? 'friend' : 'friends'}`}
             </Text>
           </AnimatedPressable>
         )}
 
         <AnimatedPressable
           onPress={() => navigation.navigate('RateMeal')}
-          style={styles.ctaPrimary}
+          style={
+            requestableBreakdowns.length > 0
+              ? styles.ctaSecondary
+              : styles.ctaPrimary
+          }
         >
-          <Text style={styles.ctaPrimaryLabel}>Continue · Rate the meal</Text>
+          <Text
+            style={
+              requestableBreakdowns.length > 0
+                ? styles.ctaSecondaryLabel
+                : styles.ctaPrimaryLabel
+            }
+          >
+            Continue · Rate the meal
+          </Text>
         </AnimatedPressable>
       </View>
     </SafeAreaView>
@@ -402,5 +509,24 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_600SemiBold',
     fontSize: 15,
     color: '#FFFFFF',
+  },
+  // Primary "Request $X.XX from N friends" CTA — gold to differentiate from
+  // the onyx forward-flow primary, signals the value action of bill splitting.
+  ctaRequest: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 14,
+    backgroundColor: Gold[300],
+  },
+  ctaRequestLabel: {
+    fontFamily: 'Inter_600SemiBold',
+    fontSize: 15,
+    color: Onyx[900],
+  },
+  ctaDisabled: {
+    opacity: 0.55,
   },
 });

@@ -20,6 +20,7 @@ export interface User {
   venmo_username?: string;
   city?: string;
   state?: string;
+  is_admin?: boolean;
   total_meals: number;
   restaurants_visited: number;
   cities_explored: number;
@@ -398,6 +399,9 @@ export type RootStackParamList = {
   NotificationPreferences: undefined;
   Recommendations: undefined;
   VenmoRequests: { breakdowns?: PersonBreakdown[]; restaurantName?: string; splitId?: string };
+  PaymentRequest: { token: string };
+  SplitHistory: undefined;
+  WaitlistAdmin: undefined;
   CreditDashboard: undefined;
   SavedRestaurants: undefined;
   Leaderboard: { city?: string; cuisine?: string; period?: LeaderboardTimePeriod };

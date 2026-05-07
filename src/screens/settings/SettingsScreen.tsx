@@ -68,6 +68,7 @@ export function SettingsScreen() {
         </Section>
 
         <Section title="Bill Splitting">
+          <Row label="Sent payment requests" onPress={() => (navigation as any).navigate('SplitHistory')} />
           <Row label="Tax Split" value={taxSplitMethod === 'proportional' ? 'By items' : 'Equal'} onPress={() => setTaxSplitMethod(taxSplitMethod === 'proportional' ? 'equal' : 'proportional')} />
           <Row label="Tip Split" value={tipSplitMethod === 'proportional' ? 'By items' : 'Equal'} onPress={() => setTipSplitMethod(tipSplitMethod === 'proportional' ? 'equal' : 'proportional')} last />
         </Section>
@@ -87,6 +88,12 @@ export function SettingsScreen() {
           <Row label="Privacy Policy" />
           <Row label="Terms of Service" last />
         </Section>
+
+        {profile?.is_admin && (
+          <Section title="Admin">
+            <Row label="Beta waitlist" onPress={() => (navigation as any).navigate('WaitlistAdmin')} last />
+          </Section>
+        )}
 
         <TouchableOpacity
           onPress={handleSignOut}

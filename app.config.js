@@ -6,7 +6,7 @@ module.exports = {
   expo: {
     name: IS_DEV ? 'Dine (Dev)' : 'Dine',
     slug: 'dine',
-    version: '1.0.1',
+    version: '1.0.2',
     scheme: 'dine',
     orientation: 'portrait',
     icon: IS_DEV ? './assets/icon.png' : './assets/icon-gold.png',
@@ -20,7 +20,7 @@ module.exports = {
       supportsTablet: false,
       bundleIdentifier: IS_DEV ? 'com.nalaknas.dine.dev' : 'com.nalaknas.dine',
       usesAppleSignIn: true,
-      associatedDomains: ['applinks:dine.app'],
+      associatedDomains: ['applinks:joindine.app'],
       infoPlist: {
         NSCameraUsageDescription: 'Dine needs camera access to scan receipts and take food photos.',
         NSPhotoLibraryUsageDescription: 'Dine needs photo library access to upload food photos.',

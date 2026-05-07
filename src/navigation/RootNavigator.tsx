@@ -27,12 +27,15 @@ import { EditProfileScreen } from '../screens/detail/EditProfileScreen';
 import { SettingsScreen } from '../screens/settings/SettingsScreen';
 import { NotificationPreferencesScreen } from '../screens/settings/NotificationPreferencesScreen';
 import { VenmoRequestsScreen } from '../screens/post-creation/VenmoRequestsScreen';
+import { PaymentRequestScreen } from '../screens/detail/PaymentRequestScreen';
+import { SplitHistoryScreen } from '../screens/detail/SplitHistoryScreen';
+import { WaitlistAdminScreen } from '../screens/detail/WaitlistAdminScreen';
 import type { RootStackParamList } from '../types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const linking: LinkingOptions<RootStackParamList> = {
-  prefixes: ['dine://', 'https://dine.app'],
+  prefixes: ['dine://', 'https://joindine.app'],
   config: {
     screens: {
       Main: {
@@ -47,6 +50,7 @@ const linking: LinkingOptions<RootStackParamList> = {
       UserProfile: 'profile/:userId',
       RestaurantDetail: 'restaurant/:name',
       VenmoRequests: 'split/:splitId',
+      PaymentRequest: 'r/:token',
     },
   },
 };
@@ -78,8 +82,18 @@ export function RootNavigator() {
   const pendingDeepLink = useRef<string | null>(null);
   const [urlCaptureDone, setUrlCaptureDone] = useState(false);
   useEffect(() => {
-    Linking.getInitialURL()
-      .then((url) => {
+    // Cold-start sources: (1) a Universal Link / dine:// URL captured by
+    // Linking.getInitialURL, (2) a push notification tap that launched the
+    // app — that one needs getLastNotificationResponseAsync because expo-
+    // notifications doesn't pump push data through Linking.
+    Promise.all([
+      Linking.getInitialURL(),
+      Notifications.getLastNotificationResponseAsync().then(
+        (resp) => (resp?.notification?.request?.content?.data?.url as string | undefined) ?? null,
+      ),
+    ])
+      .then(([linkUrl, pushUrl]) => {
+        const url = linkUrl ?? pushUrl;
         if (url) pendingDeepLink.current = url;
       })
       .finally(() => setUrlCaptureDone(true));
@@ -109,9 +123,12 @@ export function RootNavigator() {
     const rate = path.match(/^rate\/([^/?#]+)/);
     const userProfile = path.match(/^profile\/([^/?#]+)/);
     const restaurant = path.match(/^restaurant\/([^/?#]+)/);
+    const paymentRequest = path.match(/^r\/([^/?#]+)/);
 
     if (split) {
       navigationRef.navigate('VenmoRequests', { splitId: split[1] });
+    } else if (paymentRequest) {
+      navigationRef.navigate('PaymentRequest', { token: paymentRequest[1] });
     } else if (rate) {
       navigationRef.navigate('TaggedRate', { postId: rate[1] });
     } else if (post) {
@@ -315,6 +332,21 @@ export function RootNavigator() {
               name="VenmoRequests"
               component={VenmoRequestsScreen}
               options={{ headerShown: true, title: 'Collect Payment' }}
+            />
+            <Stack.Screen
+              name="PaymentRequest"
+              component={PaymentRequestScreen}
+              options={{ headerShown: true, title: 'Payment Request' }}
+            />
+            <Stack.Screen
+              name="SplitHistory"
+              component={SplitHistoryScreen}
+              options={{ headerShown: true, title: 'Sent Requests' }}
+            />
+            <Stack.Screen
+              name="WaitlistAdmin"
+              component={WaitlistAdminScreen}
+              options={{ headerShown: true, title: 'Beta Waitlist' }}
             />
             {/* ENG-148: full-screen non-dismissible backfill prompt for users
                 who completed onboarding before phone verification was required.
