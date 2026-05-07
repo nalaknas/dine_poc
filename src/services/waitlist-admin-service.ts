@@ -63,7 +63,7 @@ export async function unmarkRow(id: string): Promise<void> {
  *
  * For a phone-only signup we fall back to an sms: deep link instead.
  */
-const TESTFLIGHT_PUBLIC_LINK = 'https://testflight.apple.com/join/REPLACE_ME';
+const TESTFLIGHT_PUBLIC_LINK = 'https://testflight.apple.com/join/48Egub9d';
 const FROM_NAME = 'Sanka';
 
 export function buildInviteUrl(signup: WaitlistSignup): string | null {
