@@ -16,6 +16,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { AnimatedPressable } from '../../components/ui/AnimatedPressable';
 import { Gold, Neutral, Onyx, Semantic, Success } from '../../constants/colors';
 import { Shadows } from '../../constants/shadows';
+import { supabase } from '../../lib/supabase';
 import { useAuthStore } from '../../stores/authStore';
 import { useSplitRequestsStore } from '../../stores/splitRequestsStore';
 import { useToast } from '../../contexts/ToastContext';
@@ -41,14 +42,46 @@ export function SplitHistoryScreen() {
     if (user) void refresh(user.id);
   }, [user, refresh]);
 
-  // Refetch on screen focus — replaces realtime for this PR (PR #4 will
-  // wire a postgres_changes subscription once we enable the realtime
-  // publication on split_request_lines).
+  // Initial fetch on focus. Realtime subscription below catches updates
+  // while the screen stays open; the focus refetch handles brand-new
+  // splits (INSERT events aren't subscribed) and reconciles after any
+  // missed events (network blip, app suspended).
   useFocusEffect(
     useCallback(() => {
       doRefresh();
     }, [doRefresh]),
   );
+
+  // Realtime: subscribe to UPDATE events on split_request_lines. RLS gates
+  // which rows the subscriber sees — for the sender, that's any line in
+  // any of their split_requests. REPLICA IDENTITY FULL on the table
+  // (migration 027) ensures the full new row is in the payload.
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel(`split-history-${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'split_request_lines' },
+        (payload) => {
+          const row = payload.new as Partial<SenderSplitLine> & {
+            id?: string;
+            split_request_id?: string;
+          };
+          if (!row?.id || !row?.split_request_id) return;
+          patchLine(row.split_request_id, row.id, {
+            status: row.status,
+            viewed_at: row.viewed_at,
+            paid_at: row.paid_at,
+            updated_at: row.updated_at,
+          });
+        },
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [user?.id, patchLine]);
 
   useEffect(() => {
     void track('split_history_viewed', { split_count: splits.length });
