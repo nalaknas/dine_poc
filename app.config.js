@@ -6,7 +6,7 @@ module.exports = {
   expo: {
     name: IS_DEV ? 'Dine (Dev)' : 'Dine',
     slug: 'dine',
-    version: '1.0.2',
+    version: '1.0.3',
     scheme: 'dine',
     orientation: 'portrait',
     icon: IS_DEV ? './assets/icon.png' : './assets/icon-gold.png',
