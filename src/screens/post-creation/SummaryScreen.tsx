@@ -121,12 +121,15 @@ export function SummaryScreen() {
       // Phone-tagged recipients get the SMS share sheet. Dine-only tags
       // (no phone) rely on the in-app push fan-out wired up in ENG-163.
       if (result.recipient_phones.length > 0) {
-        const opened = await openSmsShareSheet(result.recipient_phones, result.sms_body);
-        if (!opened) {
+        const smsResult = await openSmsShareSheet(result.recipient_phones, result.sms_body);
+        if (smsResult === 'unavailable') {
           showToast({
-            message: 'Could not open Messages on this device.',
+            message: 'Could not send SMS on this device.',
             type: 'error',
           });
+          return;
+        }
+        if (smsResult === 'cancelled') {
           return;
         }
       }

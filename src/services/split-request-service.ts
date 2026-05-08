@@ -1,4 +1,5 @@
-import { Linking, Platform } from 'react-native';
+import * as SMS from 'expo-sms';
+import { Platform } from 'react-native';
 import { supabase } from '../lib/supabase';
 import type { PersonBreakdown } from '../types';
 
@@ -72,29 +73,29 @@ export async function createSplitRequest(input: {
   return data as CreateSplitRequestResponse;
 }
 
-/**
- * Builds the iOS Messages deep link with all recipients prefilled.
- * `sms:${phones-joined}&body=${urlencoded}` is the iOS-native format.
- */
-export function buildSmsLink(recipientPhones: string[], body: string): string {
-  const phones = recipientPhones.join(',');
-  return `sms:${phones}&body=${encodeURIComponent(body)}`;
-}
+export type SmsShareResult = 'sent' | 'cancelled' | 'unavailable';
 
 /**
- * Convenience: opens the Messages app with N recipients + body. Returns
- * `false` if Messages can't be opened (e.g., simulator, Android pre-handler).
+ * Opens the native iOS MFMessageComposeViewController with all recipients
+ * prefilled. Unlike a `sms:` deep link, this delivers reliably to every
+ * recipient regardless of iMessage vs SMS or carrier group-MMS settings.
+ *
+ * Returns:
+ *   - 'sent'        — user tapped Send
+ *   - 'cancelled'   — user dismissed the sheet without sending
+ *   - 'unavailable' — device can't send SMS (simulator, no SIM)
  */
 export async function openSmsShareSheet(
   recipientPhones: string[],
   body: string,
-): Promise<boolean> {
-  if (recipientPhones.length === 0) return false;
-  const url = buildSmsLink(recipientPhones, body);
-  const canOpen = await Linking.canOpenURL(url);
-  if (!canOpen) return false;
-  await Linking.openURL(url);
-  return true;
+): Promise<SmsShareResult> {
+  if (recipientPhones.length === 0) return 'unavailable';
+  const isAvailable = await SMS.isAvailableAsync();
+  if (!isAvailable) return 'unavailable';
+  const { result } = await SMS.sendSMSAsync(recipientPhones, body);
+  if (result === 'cancelled') return 'cancelled';
+  // iOS sometimes returns 'unknown' even after a successful send; treat as sent.
+  return 'sent';
 }
 
 /**
