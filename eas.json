@@ -31,6 +31,10 @@
       "autoIncrement": true,
       "distribution": "store",
       "channel": "production",
+      "env": {
+        "GOOGLE_OAUTH_CLIENT_ID": "425324763689-0hm9qt32lfmdghdqfjr02i9v1iki5tjs.apps.googleusercontent.com",
+        "GOOGLE_IOS_OAUTH_CLIENT_ID": "425324763689-dgg6jvdhvahd8dr5900baasr66quq7if.apps.googleusercontent.com"
+      },
       "ios": {
         "resourceClass": "m-medium"
       }
