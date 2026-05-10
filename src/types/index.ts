@@ -384,7 +384,7 @@ export type RootStackParamList = {
   Auth: undefined;
   Onboarding: undefined;
   Main: undefined;
-  PhoneBackfill: undefined;
+  PhoneGate: undefined;
   // Detail screens
   MealDetail: { postId: string };
   UserProfile: { userId: string };

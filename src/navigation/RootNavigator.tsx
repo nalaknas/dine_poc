@@ -11,8 +11,7 @@ import { getOrCreateUserProfile } from '../services/auth-service';
 import { MainTabNavigator } from './MainTabNavigator';
 import { AuthScreen } from '../screens/auth/AuthScreen';
 import { SplashScreen, shouldSkipSplash, markSplashPlayed } from '../screens/onboarding/SplashScreen';
-import { PhoneVerifyScreen } from '../screens/onboarding/PhoneVerifyScreen';
-import { PhoneBackfillScreen } from '../screens/onboarding/PhoneBackfillScreen';
+import { PhoneGateScreen } from '../screens/onboarding/PhoneGateScreen';
 import { WelcomeOnboardingScreen } from '../screens/onboarding/WelcomeOnboardingScreen';
 import { TastePickerScreen } from '../screens/onboarding/TastePickerScreen';
 import { FollowFriendsScreen } from '../screens/onboarding/FollowFriendsScreen';
@@ -60,9 +59,8 @@ export function RootNavigator() {
   const { hasCompletedOnboarding, loadSettings } = useSettingsStore();
   const { profile, setProfile } = useUserProfileStore();
   const navigationRef = useNavigationContainerRef<RootStackParamList>();
-  // Gates ENG-148's PhoneBackfill navigate effect — without this, the effect
-  // can fire before NavigationContainer mounts on cold start and warn
-  // "navigation object hasn't been initialized yet".
+  // Gates deep-link replay + push-notification listener so they don't
+  // navigate before NavigationContainer mounts on cold start.
   const [navReady, setNavReady] = useState(false);
 
   // Splash plays first on cold-start, regardless of auth state. In prod we
@@ -98,13 +96,15 @@ export function RootNavigator() {
       })
       .finally(() => setUrlCaptureDone(true));
 
-    // While unauthed, subsequent URLs would otherwise be dropped. Store
-    // them; once authed, React Navigation's built-in linking takes over
-    // and this branch is a no-op.
+    // While unauthed OR stuck on the phone gate / onboarding, subsequent
+    // URLs would otherwise be dropped — the target detail screen isn't
+    // mounted yet. Store; the replay effect picks them up once the user
+    // reaches Main.
     const sub = Linking.addEventListener('url', ({ url }) => {
       const { user: currentUser } = useAuthStore.getState();
       const { hasCompletedOnboarding: onboarded } = useSettingsStore.getState();
-      if (!currentUser || !onboarded) {
+      const { profile: currentProfile } = useUserProfileStore.getState();
+      if (!currentUser || !onboarded || !currentProfile?.phone_verified_at) {
         pendingDeepLink.current = url;
       }
     });
@@ -142,16 +142,17 @@ export function RootNavigator() {
   }, [navigationRef]);
 
   // Replay pending deep link once auth + onboarding are complete. Gated on
-  // navReady too — cold-start via push tap can flip urlCaptureDone before
-  // NavigationContainer.onReady fires, and navigating against an
-  // uninitialized navigationRef logs "navigation hasn't been initialized".
+  // navReady (cold-start via push tap can flip urlCaptureDone before
+  // NavigationContainer.onReady fires) and on phone_verified_at — without a
+  // verified phone the user is on PhoneGate, so detail screens aren't
+  // mounted and the navigate would no-op.
   useEffect(() => {
-    if (!navReady || !urlCaptureDone || !user || !hasCompletedOnboarding) return;
+    if (!navReady || !urlCaptureDone || !user || !profile?.phone_verified_at || !hasCompletedOnboarding) return;
     const url = pendingDeepLink.current;
     if (!url) return;
     pendingDeepLink.current = null;
     routeDeepLink(url);
-  }, [navReady, urlCaptureDone, user, hasCompletedOnboarding, routeDeepLink]);
+  }, [navReady, urlCaptureDone, user, profile?.phone_verified_at, hasCompletedOnboarding, routeDeepLink]);
 
   // Route warm push-notification taps. The OS-level cold-start path goes
   // through Linking.getInitialURL() (handled by the pendingDeepLink replay
@@ -159,13 +160,13 @@ export function RootNavigator() {
   // navigationRef directly rather than Linking.openURL so the navigation
   // happens in-process without bouncing through the system URL handler.
   useEffect(() => {
-    if (!navReady || !user || !hasCompletedOnboarding) return;
+    if (!navReady || !user || !profile?.phone_verified_at || !hasCompletedOnboarding) return;
     const sub = Notifications.addNotificationResponseReceivedListener((response) => {
       const url = response.notification.request.content.data?.url as string | undefined;
       if (url) routeDeepLink(url);
     });
     return () => sub.remove();
-  }, [navReady, user, hasCompletedOnboarding, routeDeepLink]);
+  }, [navReady, user, profile?.phone_verified_at, hasCompletedOnboarding, routeDeepLink]);
 
   useEffect(() => {
     loadSettings().then(() => initialize());
@@ -182,24 +183,6 @@ export function RootNavigator() {
         .catch(console.error);
     }
   }, [user, profile]);
-
-  // ENG-148: nudge existing users (those who finished onboarding before phone
-  // verification was required) to add a phone. Once profile loads and we can
-  // see they have no `phone_verified_at`, present PhoneBackfill modally over
-  // whatever they're on. Skipped while the user is still in initial
-  // onboarding (handled by ENG-147's PhoneVerify), and skipped if the modal
-  // is already showing — without that guard, any subsequent profile mutation
-  // would re-navigate and stack PhoneBackfill on top of itself. Gated on
-  // navReady so cold-start ordering doesn't fire navigate() before the
-  // NavigationContainer mounts.
-  useEffect(() => {
-    if (!navReady) return;
-    if (!user || !hasCompletedOnboarding || !profile) return;
-    if (profile.phone_verified_at) return;
-    const currentRoute = navigationRef.getCurrentRoute?.()?.name;
-    if (currentRoute === 'PhoneBackfill') return;
-    navigationRef.navigate('PhoneBackfill');
-  }, [navReady, user, hasCompletedOnboarding, profile, navigationRef]);
 
   // Identify user for analytics when authenticated
   useEffect(() => {
@@ -236,7 +219,10 @@ export function RootNavigator() {
     return <SplashScreen onComplete={handleSplashComplete} />;
   }
 
-  if (!isInitialized) {
+  // Block until profile is loaded for an authed user. Otherwise the gate
+  // logic below can't tell "no phone yet" from "still loading phone state",
+  // and either branch would flash the wrong screen briefly.
+  if (!isInitialized || (user && !profile)) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' }}>
         <ActivityIndicator size="large" color="#007AFF" />
@@ -263,6 +249,12 @@ export function RootNavigator() {
             <Stack.Screen name="Auth" component={AuthScreen} />
             <Stack.Screen name="Onboarding" component={OnboardingNavigator} />
           </>
+        ) : !profile?.phone_verified_at ? (
+          // ENG-168: needsPhoneVerification branch — every authed user must
+          // have a verified phone before Onboarding or Main can mount.
+          // Covers new signups (Apple, Google, email, phone) and existing
+          // pre-ENG-147 accounts in one path. Full-screen, no skip.
+          <Stack.Screen name="PhoneGate" component={PhoneGateScreen} />
         ) : (
           <>
             {!hasCompletedOnboarding && (
@@ -348,20 +340,6 @@ export function RootNavigator() {
               component={WaitlistAdminScreen}
               options={{ headerShown: true, title: 'Beta Waitlist' }}
             />
-            {/* ENG-148: full-screen non-dismissible backfill prompt for users
-                who completed onboarding before phone verification was required.
-                Triggered by an effect, not user action; no header / no swipe-
-                to-dismiss / no user-facing exit besides completing OTP. */}
-            <Stack.Screen
-              name="PhoneBackfill"
-              component={PhoneBackfillScreen}
-              options={{
-                presentation: 'fullScreenModal',
-                gestureEnabled: false,
-                headerShown: false,
-                animation: 'slide_from_bottom',
-              }}
-            />
           </>
         )}
       </Stack.Navigator>
@@ -370,23 +348,17 @@ export function RootNavigator() {
 }
 
 // Inline onboarding stack to keep RootNavigator clean.
-// Flow (ENG-147): PhoneVerify → Welcome → TastePicker → FollowFriends → Permissions → Main.
-// PhoneVerify gates everything else (one phone per account, verified via OTP).
-// Permissions is the step that flips `hasCompletedOnboarding = true`.
+// Flow: Welcome → TastePicker → FollowFriends → Permissions → Main.
+// Phone verification happens BEFORE onboarding starts (ENG-168 gate in
+// RootNavigator's main render branch). Permissions is the step that flips
+// `hasCompletedOnboarding = true`.
 const OnboardingStack = createNativeStackNavigator();
 function OnboardingNavigator() {
-  const { profile } = useUserProfileStore();
-  // Pre-pick the entry point so users who already verified (force-quit between
-  // PhoneVerify success and Permissions finish) don't see the phone screen
-  // again on relaunch. PhoneVerifyScreen has its own redirect as a backstop
-  // for the case where profile loads asynchronously after this mounts.
-  const initialRoute = profile?.phone_verified_at ? 'Welcome' : 'PhoneVerify';
   return (
     <OnboardingStack.Navigator
-      initialRouteName={initialRoute}
+      initialRouteName="Welcome"
       screenOptions={{ headerShown: false }}
     >
-      <OnboardingStack.Screen name="PhoneVerify" component={PhoneVerifyScreen} />
       <OnboardingStack.Screen name="Welcome" component={WelcomeOnboardingScreen} />
       <OnboardingStack.Screen name="TastePicker" component={TastePickerScreen} />
       <OnboardingStack.Screen name="FollowFriends" component={FollowFriendsScreen} />
